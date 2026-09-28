@@ -45,6 +45,7 @@ export interface Ghost extends Actor {
   color: string
   personality: Personality
   state: GhostState
+  late: boolean
   release: number
   homeX: number
   homeY: number
@@ -98,7 +99,18 @@ export interface Game {
   shake: number
   flash: number
   time: number
+  banner: string
+  bannerTimer: number
+  ending: number
+  intro: number
+  callouts: Pellet[]
+  entry: 'boot' | 'next' | 'caught'
 }
+
+export const WIN_CUT_AT = 3.2
+export const WIN_CARD_AT = 4
+export const CAUGHT_HOLD = 1.05
+export const SEAL_HOLD = 2.15
 
 export interface FrameInput {
   dir: Dir | null
@@ -226,6 +238,28 @@ function popup(game: Game, x: number, y: number, text: string, color: string): v
   game.popups.push({ x, y, text, life: 0.9, color })
 }
 
+function nearestCallouts(dots: Pellet[], px: number, py: number): Pellet[] {
+  return dots
+    .map((dot) => ({ dot, d: (dot.x - px) ** 2 + (dot.y - py) ** 2 }))
+    .sort((a, b) => a.d - b.d)
+    .slice(0, 3)
+    .map((item) => item.dot)
+}
+
+function markFrightened(game: Game, ghost: Ghost, reverse: boolean): void {
+  if (ghost.state === 'eaten') return
+  if (ghost.state === 'housed') {
+    ghost.release = Math.min(ghost.release, 0.05)
+    return
+  }
+  if (reverse && !onHouseTile(game.maze, ghost.x, ghost.y)) reverseActor(game.maze, ghost)
+  if (ghost.state !== 'frightened') ghost.state = 'frightened'
+  if (!ghost.late) {
+    ghost.late = true
+    popup(game, ghost.x, ghost.y - 0.55, 'TOO LATE', '#f4f1e4')
+  }
+}
+
 function onHouseTile(maze: Maze, x: number, y: number): boolean {
   const ch = tileAt(maze, x, y)
   return ch === 'G' || ch === 'd'
@@ -333,6 +367,10 @@ function loadLevel(game: Game, index: number): void {
   game.popups = []
   game.shake = 0
   game.flash = 0
+  game.banner = ''
+  game.bannerTimer = 0
+  game.intro = index === 0 ? 1 : 0
+  game.callouts = index === 0 ? nearestCallouts(parsed.dots, parsed.player.x, parsed.player.y) : []
   game.ghosts = LAWS.slice(0, def.laws).map((law, i) => {
     const home = parsed.homes[i] ?? parsed.homes[parsed.homes.length - 1]!
     return {
@@ -348,6 +386,7 @@ function loadLevel(game: Game, index: number): void {
       color: law.color,
       personality: law.personality,
       state: 'housed' as GhostState,
+      late: false,
       release: def.release[i] ?? 1 + i,
       homeX: home.x,
       homeY: home.y,
@@ -380,6 +419,12 @@ export function createGame(): Game {
     shake: 0,
     flash: 0,
     time: 0,
+    banner: '',
+    bannerTimer: 0,
+    ending: 0,
+    intro: 0,
+    callouts: [],
+    entry: 'boot' as const,
   }
   loadLevel(game, 0)
   game.mode = 'title'
@@ -389,7 +434,9 @@ export function createGame(): Game {
 export function startRun(game: Game): void {
   game.score = 0
   game.lives = 3
+  game.ending = 0
   loadLevel(game, 0)
+  game.entry = 'boot'
   game.mode = 'ready'
   game.modeTimer = 1.7
 }
@@ -404,6 +451,8 @@ function respawn(game: Game): void {
   game.player.queued = null
   game.surge = 0
   game.combo = 0
+  game.banner = ''
+  game.bannerTimer = 0
   game.phase = 'scatter'
   game.phaseTimer = def.scatter
   game.ghosts.forEach((ghost, i) => {
@@ -416,6 +465,7 @@ function respawn(game: Game): void {
     ghost.progress = 0
     ghost.queued = null
     ghost.state = 'housed'
+    ghost.late = false
     ghost.release = def.release[i] ?? 1 + i
   })
 }
@@ -515,7 +565,6 @@ function eatPellets(game: Game, events: GameEvents): void {
       game.score += 10
       events.ateRam++
       burst(game, dot.x, dot.y, '#dffc6a', 6, 2.2)
-      popup(game, dot.x, dot.y - 0.2, '+10', '#dffc6a')
     }
   }
   for (let i = game.cherries.length - 1; i >= 0; i--) {
@@ -528,17 +577,11 @@ function eatPellets(game: Game, events: GameEvents): void {
     if (game.surge <= 0) game.combo = 0
     game.surge = def.fright
     game.surgeMax = def.fright
+    game.banner = 'AI OUTRUNS THE LAW'
+    game.bannerTimer = 1
     burst(game, cherry.x, cherry.y, '#ff4d6a', 18, 3.4)
-    popup(game, cherry.x, cherry.y - 0.35, 'SURGE', '#ffd0da')
-    for (const ghost of game.ghosts) {
-      if (ghost.state === 'eaten') continue
-      if (ghost.state === 'housed') {
-        ghost.release = Math.min(ghost.release, 0.05)
-        continue
-      }
-      if (!onHouseTile(game.maze, ghost.x, ghost.y)) reverseActor(game.maze, ghost)
-      ghost.state = 'frightened'
-    }
+    for (const ghost of game.ghosts) ghost.late = false
+    for (const ghost of game.ghosts) markFrightened(game, ghost, true)
   }
 }
 
@@ -553,7 +596,7 @@ function collide(game: Game, events: GameEvents): void {
   if (hits.some((ghost) => ghost.state === 'chase' || ghost.state === 'scatter' || ghost.state === 'exiting')) {
     events.died = true
     game.mode = 'dying'
-    game.modeTimer = 1.15
+    game.modeTimer = game.lives <= 1 ? SEAL_HOLD : CAUGHT_HOLD
     game.shake = 14
     game.flash = 1
     burst(game, pos.x, pos.y, '#f4f1e4', 22, 3.6)
@@ -568,14 +611,22 @@ function collide(game: Game, events: GameEvents): void {
     game.score += points
     events.repealed = true
     game.shake = Math.max(game.shake, 6)
-    burst(game, ghost.x, ghost.y, ghost.color, 14, 3)
-    popup(game, ghost.x, ghost.y - 0.4, `${ghost.tag} +${points}`, '#f4f1e4')
+    burst(game, ghost.x, ghost.y, '#f4efe2', 16, 3.2)
+    burst(game, ghost.x, ghost.y, ghost.color, 8, 2.4)
+    popup(game, ghost.x, ghost.y - 0.4, 'REPEALED', '#f4f1e4')
   }
 }
 
 function stepFx(game: Game, dt: number): void {
   game.shake *= Math.pow(0.04, dt)
   game.flash *= Math.pow(0.05, dt)
+  if (game.bannerTimer > 0) {
+    game.bannerTimer -= dt
+    if (game.bannerTimer <= 0) {
+      game.bannerTimer = 0
+      game.banner = ''
+    }
+  }
   for (const particle of game.particles) {
     particle.life -= dt
     particle.x += particle.vx * dt
@@ -592,7 +643,8 @@ function stepFx(game: Game, dt: number): void {
 function enterPlayfield(game: Game, ghost: Ghost): void {
   if (ghost.state !== 'exiting') return
   if (onHouseTile(game.maze, ghost.x, ghost.y)) return
-  ghost.state = game.surge > 0 ? 'frightened' : game.phase
+  if (game.surge > 0) markFrightened(game, ghost, false)
+  else ghost.state = game.phase
 }
 
 export function update(game: Game, dt: number, input: FrameInput): GameEvents {
@@ -603,17 +655,26 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
     else if (game.mode === 'pause') game.mode = 'play'
   }
   if (input.start) {
-    if (game.mode === 'title' || game.mode === 'lose' || game.mode === 'win') startRun(game)
-    else if (game.mode === 'pause') game.mode = 'play'
+    if (game.mode === 'title' || game.mode === 'lose') startRun(game)
+    else if (game.mode === 'win') {
+      if (game.ending >= 1 && game.ending < WIN_CARD_AT) game.ending = WIN_CARD_AT
+      else if (game.ending >= WIN_CARD_AT) startRun(game)
+    } else if (game.mode === 'pause') game.mode = 'play'
   }
 
-  if (game.mode === 'pause' || game.mode === 'title' || game.mode === 'win' || game.mode === 'lose') {
+  if (game.mode === 'title' || game.mode === 'win' || game.mode === 'lose') {
+    game.time += step
+    if (game.mode !== 'title') game.ending += step
+    stepFx(game, step)
     return events
   }
+
+  if (game.mode === 'pause') return events
 
   game.time += step
   if (game.mode === 'ready' || game.mode === 'cleared') {
     game.modeTimer -= step
+    if (game.mode === 'cleared' && game.levelIndex >= LEVELS.length - 1) game.ending += step
     stepFx(game, step)
     if (game.modeTimer <= 0) {
       if (game.mode === 'ready') game.mode = 'play'
@@ -622,6 +683,7 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
         events.won = true
       } else {
         loadLevel(game, game.levelIndex + 1)
+        game.entry = 'next'
         game.mode = 'ready'
         game.modeTimer = 1.7
       }
@@ -634,16 +696,20 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
     stepFx(game, step)
     if (game.modeTimer <= 0) {
       game.lives--
-      if (game.lives <= 0) game.mode = 'lose'
-      else {
+      if (game.lives <= 0) {
+        game.mode = 'lose'
+        game.ending = 0
+      } else {
         respawn(game)
+        game.entry = 'caught'
         game.mode = 'ready'
-        game.modeTimer = 1.25
+        game.modeTimer = 1.35
       }
     }
     return events
   }
 
+  if (game.intro > 0) game.intro -= step
   steerPlayer(game.maze, game.player, input.dir)
   applySpeeds(game)
   const moved = moveActor(game.maze, game.player, step, () => 'player', () => pickPlayer(game.maze, game.player))
@@ -680,9 +746,10 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
   if (game.dots.length === 0) {
     events.cleared = true
     game.mode = 'cleared'
-    game.modeTimer = 1.8
+    const last = game.levelIndex >= LEVELS.length - 1
+    game.modeTimer = last ? 0.04 : 1.8
+    if (last) game.ending = 0
     game.score += 500
-    popup(game, game.player.x, game.player.y, 'RAM CLEARED', '#dffc6a')
     stepFx(game, step)
     return events
   }
@@ -697,7 +764,10 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
     if (game.surge <= 0) {
       game.surge = 0
       game.combo = 0
+      game.banner = 'THE STATUTE IS BACK'
+      game.bannerTimer = 0.5
       for (const ghost of game.ghosts) {
+        ghost.late = false
         if (ghost.state === 'frightened') ghost.state = game.phase
       }
     }
@@ -731,8 +801,8 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
 
 export function stateLabel(state: GhostState, phase: Game['phase']): string {
   if (state === 'housed' || state === 'exiting') return 'IN COMMITTEE'
-  if (state === 'frightened') return 'VULNERABLE'
+  if (state === 'frightened') return 'TOO LATE'
   if (state === 'eaten') return 'REPEALED'
-  if (state === 'scatter' || phase === 'scatter') return 'CIRCULATING'
-  return 'HUNTING'
+  if (state === 'scatter' || phase === 'scatter') return 'STILL DRAFTING'
+  return 'HUNTING YOU'
 }

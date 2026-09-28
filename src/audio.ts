@@ -72,9 +72,11 @@ export class Sfx {
   }
 
   win(): void {
-    this.tone(523, 0.18, 'triangle', 0.05, 0, 0)
-    this.tone(659, 0.18, 'triangle', 0.05, 0, 0.14)
-    this.tone(784, 0.18, 'triangle', 0.05, 0, 0.28)
-    this.tone(1046, 0.32, 'triangle', 0.05, 0, 0.42)
+    this.tone(880, 0.1, 'square', 0.04, 0, 0)
+    this.tone(440, 0.38, 'sawtooth', 0.04, -260, 0.12)
+  }
+
+  cut(): void {
+    this.tone(98, 0.5, 'sine', 0.06, -50)
   }
 }

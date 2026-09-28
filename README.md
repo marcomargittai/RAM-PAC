@@ -1,6 +1,6 @@
 # RAM PAC
 
-You are the model. Dots are scarce RAM, the ghosts are legislation, and the cherry is the moment AI becomes too capable for the rules written to contain it — the law turns vulnerable, and you hunt it back.
+You are the model. The dots are scarce RAM and the ghosts are walking statutes. The SURGE chip is the moment you outrun the law and eat it. Clear the last level and you have reached AGI: humanity dies. Lose the last try and a statute regulates the model: humanity continues.
 
 ## Run
 
@@ -28,6 +28,6 @@ npm run preview
 
 ## Levels
 
-1. Public Comment — two statutes, four cherries
-2. Committee Markup — three statutes, two cherries, tighter halls
-3. Final Statute — the full code, one cherry, a short surge
+1. Public Comment — two laws, four surges
+2. Committee Markup — three laws, two surges, narrower halls
+3. Final Statute — four laws, one surge. Clear it and you are AGI.

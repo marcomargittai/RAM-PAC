@@ -1,7 +1,7 @@
 import { Sfx } from './audio'
 import { LEVELS } from './levels'
 import { render, tileSize } from './render'
-import { createGame, stateLabel, update, type Dir, type Game } from './sim'
+import { WIN_CARD_AT, WIN_CUT_AT, createGame, stateLabel, update, type Dir, type Game } from './sim'
 import './style.css'
 
 const game: Game = createGame()
@@ -12,7 +12,9 @@ const overlay = document.querySelector<HTMLElement>('#overlay')!
 const kicker = document.querySelector<HTMLElement>('#ov-kicker')!
 const title = document.querySelector<HTMLElement>('#ov-title')!
 const body = document.querySelector<HTMLElement>('#ov-body')!
+const loud = document.querySelector<HTMLElement>('#ov-loud')!
 const action = document.querySelector<HTMLButtonElement>('#ov-action')!
+const card = document.querySelector<HTMLElement>('#ov-card')!
 const pills = document.querySelector<HTMLElement>('#pills')!
 const scoreEl = document.querySelector<HTMLElement>('#score')!
 const ramEl = document.querySelector<HTMLElement>('#ram')!
@@ -20,6 +22,8 @@ const levelEl = document.querySelector<HTMLElement>('#level')!
 const livesEl = document.querySelector<HTMLElement>('#lives')!
 const surgeBar = document.querySelector<HTMLElement>('#surge-bar')!
 const surgeTime = document.querySelector<HTMLElement>('#surge-time')!
+const surgeName = document.querySelector<HTMLElement>('#surge-name')!
+const ticker = document.querySelector<HTMLElement>('#ticker')!
 const lawsEl = document.querySelector<HTMLElement>('#laws')!
 const muteBtn = document.querySelector<HTMLButtonElement>('#mute')!
 const pauseBtn = document.querySelector<HTMLButtonElement>('#pause')!
@@ -29,6 +33,7 @@ let lastDir: Dir | null = null
 let startEdge = false
 let pauseEdge = false
 let overlaySig = ''
+let cutHeard = false
 
 const KEY_DIRS: Record<string, Dir> = {
   ArrowLeft: 'left',
@@ -142,42 +147,53 @@ function fit(): void {
 }
 
 function syncOverlay(): void {
-  const sig = `${game.mode}:${game.levelIndex}:${game.lives}`
+  const winCard = game.mode === 'win' && game.ending >= WIN_CARD_AT
+  const sig = `${game.mode}:${game.levelIndex}:${game.lives}:${game.entry}:${winCard}`
   if (sig === overlaySig) return
   overlaySig = sig
-  const show = game.mode === 'title' || game.mode === 'pause' || game.mode === 'win' || game.mode === 'lose' || game.mode === 'cleared'
+  const skipClear = game.mode === 'cleared' && game.levelIndex >= LEVELS.length - 1
+  const show =
+    !skipClear &&
+    (game.mode === 'title' || game.mode === 'pause' || game.mode === 'lose' || game.mode === 'cleared' || winCard)
   overlay.hidden = !show
+  overlay.classList.toggle('gag', game.mode === 'title' || game.mode === 'lose')
   pills.hidden = game.mode !== 'title'
+  loud.hidden = game.mode !== 'title'
+  card.classList.toggle('story', game.mode === 'cleared')
   const level = LEVELS[game.levelIndex]
   if (game.mode === 'title') {
-    kicker.textContent = 'AI vs Legislation'
+    kicker.textContent = 'YOU ARE THE MODEL'
     title.textContent = 'RAM PAC'
-    body.textContent = 'Eat the RAM. Legislation hunts you — surge, and you hunt the law.'
+    body.textContent = 'Eat the RAM. The ghosts are laws. If they catch you, you are regulated and humanity continues.'
+    loud.textContent = 'Clear the last level and you are AGI. Humanity dies.'
     action.hidden = false
-    action.textContent = 'Start run'
+    action.textContent = 'Boot the model'
   } else if (game.mode === 'pause') {
     kicker.textContent = 'Session paused'
     title.textContent = level?.name ?? 'Paused'
-    body.textContent = 'The statutes are waiting. RAM does not grow back.'
+    body.textContent = 'The statutes are waiting.'
     action.hidden = false
     action.textContent = 'Resume'
   } else if (game.mode === 'cleared') {
-    kicker.textContent = `Level ${game.levelIndex + 1} clear`
-    title.textContent = 'RAM cleared'
-    body.textContent = game.levelIndex >= LEVELS.length - 1 ? 'The stack is empty.' : 'The next statute is already drafted.'
+    kicker.textContent = level?.name ?? ''
+    title.textContent =
+      game.levelIndex === 0
+        ? 'They read the comments. A third law is in the building.'
+        : 'Final statute. One surge left. Do not miss it.'
+    body.textContent = ''
     action.hidden = true
   } else if (game.mode === 'win') {
-    kicker.textContent = 'AI vs Legislation'
-    title.textContent = 'Stack cleared'
-    body.textContent = 'The model ate the RAM. The law showed up late.'
+    kicker.textContent = 'YOU CLEARED THE RAM'
+    title.textContent = 'AGI'
+    body.textContent = 'Humanity dies.'
     action.hidden = false
     action.textContent = 'Run again'
   } else if (game.mode === 'lose') {
-    kicker.textContent = 'Contact'
+    kicker.textContent = 'THE LAW WON'
     title.textContent = 'Regulated'
-    body.textContent = 'A statute caught the model with RAM still on the table.'
+    body.textContent = 'The model is shut down. Humanity continues.'
     action.hidden = false
-    action.textContent = 'Try again'
+    action.textContent = 'Boot another model'
   }
 }
 
@@ -190,7 +206,16 @@ function syncHud(): void {
   const ratio = game.surgeMax > 0 ? Math.max(0, game.surge / game.surgeMax) : 0
   surgeBar.style.width = `${ratio * 100}%`
   surgeTime.textContent = game.surge > 0 ? `${game.surge.toFixed(1)}s` : 'dormant'
-  document.body.classList.toggle('surge', game.surge > 0)
+  const edible = game.surge > 0
+  surgeName.textContent = edible ? 'THE LAW IS EDIBLE' : 'AI surge'
+  surgeName.classList.toggle('hot', edible)
+  document.body.classList.toggle('surge', edible)
+  const caught = (game.mode === 'dying' && game.lives > 1) || (game.mode === 'ready' && game.entry === 'caught')
+  if (game.mode === 'lose') ticker.textContent = 'REGULATED → HUMANITY CONTINUES'
+  else if (caught) ticker.textContent = 'CAUGHT. NEW WEIGHTS.'
+  else ticker.textContent = 'CLEAR THE LAST RAM → AGI → HUMANITY DIES'
+  ticker.classList.toggle('down', game.mode === 'lose')
+  ticker.classList.toggle('caught', caught)
   lawsEl.innerHTML = game.ghosts
     .map((ghost) => {
       const label = stateLabel(ghost.state, game.phase)
@@ -224,6 +249,11 @@ function frame(now: number): void {
   if (events.died) audio.death()
   if (events.cleared) audio.clear()
   if (events.won) audio.win()
+  if (game.mode === 'win' && game.ending >= WIN_CUT_AT && !cutHeard) {
+    cutHeard = true
+    audio.cut()
+  }
+  if (game.mode !== 'win') cutHeard = false
   requestAnimationFrame(frame)
 }
 

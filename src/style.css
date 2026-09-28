@@ -118,6 +118,34 @@ canvas { display: block; touch-action: none; }
 
 .card p { color: var(--ink); line-height: 1.45; }
 
+.loud {
+  font-family: Fraunces, Palatino, "Iowan Old Style", serif;
+  font-size: clamp(20px, 3vw, 26px);
+  line-height: 1.15;
+  color: var(--surge);
+  margin: 0 0 8px;
+}
+
+.loud[hidden] { display: none; }
+
+.card.story h2 {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0;
+  line-height: 1.35;
+}
+
+.overlay.gag {
+  align-items: start;
+  padding-top: 12px;
+  background: linear-gradient(180deg, rgba(8, 12, 9, 0.82) 0 46%, rgba(8, 12, 9, 0.18) 72%, rgba(8, 12, 9, 0) 100%);
+}
+
+.overlay.gag .card { padding: 14px 16px 12px; }
+
+.overlay.gag .card h2 { font-size: clamp(32px, 4vw, 44px); }
+
 .pills {
   display: flex;
   flex-wrap: wrap;
@@ -187,6 +215,40 @@ canvas { display: block; touch-action: none; }
   background: linear-gradient(90deg, #ff4d6a, #d9c7a2);
 }
 
+#surge-name.hot {
+  color: var(--surge);
+  font-weight: 700;
+  animation: edible 0.45s steps(2, end) infinite;
+}
+
+@keyframes edible {
+  50% { opacity: 0.45; }
+}
+
+.ticker {
+  margin: 12px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: #10140f;
+  color: var(--brass);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  line-height: 1.35;
+}
+
+.ticker.down {
+  color: #10140f;
+  background: #e7ecdf;
+  border-color: #e7ecdf;
+}
+
+.ticker.caught {
+  color: #f4f1e4;
+  background: #e23d5c;
+  border-color: #e23d5c;
+}
+
 .panel-label { margin: 16px 0 8px; }
 
 #laws {
@@ -241,6 +303,12 @@ canvas { display: block; touch-action: none; }
   .layout { grid-template-columns: 1fr; }
   .pad { display: grid; }
   header { align-items: start; }
+  .overlay.gag { padding-top: 6px; }
+  .overlay.gag .card { padding: 10px 12px 8px; }
+  .overlay.gag .card h2 { font-size: 30px; margin-bottom: 4px; }
+  .overlay.gag .loud { font-size: 16px; }
+  .overlay.gag .card p { font-size: 13px; margin: 4px 0; }
+  .overlay.gag .pills { margin: 6px 0 8px; }
 }
 
 @media (pointer: coarse) {

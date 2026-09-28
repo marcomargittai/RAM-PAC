@@ -94,7 +94,7 @@ const L3 = [
 export const LEVELS: LevelDef[] = [
   {
     name: 'Public Comment',
-    blurb: 'Two statutes are in the building. Cherries are common. Clear every RAM.',
+    blurb: 'Two laws. They are still writing. Eat.',
     rows: L1,
     laws: 2,
     playerSpeed: 5.5,
@@ -109,7 +109,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     name: 'Committee Markup',
-    blurb: 'A third law joins the hunt. Cherries are scarce. The corridors tighten.',
+    blurb: 'Three laws. Two surges. Narrower halls.',
     rows: L2,
     laws: 3,
     playerSpeed: 5.75,
@@ -124,7 +124,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     name: 'Final Statute',
-    blurb: 'The full code is in force. One cherry. Make the surge count.',
+    blurb: 'Four laws. One surge. Clear this and you are AGI.',
     rows: L3,
     laws: 4,
     playerSpeed: 6.05,
