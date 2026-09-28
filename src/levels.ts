@@ -1,0 +1,211 @@
+export type Personality = 'chase' | 'ambush' | 'flank' | 'patrol'
+
+export interface LawDef {
+  name: string
+  tag: string
+  color: string
+  personality: Personality
+  scatter: { x: number; y: number }
+}
+
+export const LAWS: LawDef[] = [
+  { name: 'Compute Act', tag: 'ACT', color: '#e23d5c', personality: 'chase', scatter: { x: 17, y: 1 } },
+  { name: 'Export Ban', tag: 'BAN', color: '#7c5cff', personality: 'ambush', scatter: { x: 1, y: 1 } },
+  { name: 'Safety Bill', tag: 'BILL', color: '#1f9d8a', personality: 'flank', scatter: { x: 17, y: 15 } },
+  { name: 'Model Cap', tag: 'CAP', color: '#e3b341', personality: 'patrol', scatter: { x: 1, y: 15 } },
+]
+
+export interface LevelDef {
+  name: string
+  blurb: string
+  rows: string[]
+  laws: number
+  playerSpeed: number
+  ghostSpeed: number
+  frightSpeed: number
+  eatenSpeed: number
+  fright: number
+  scatter: number
+  chase: number
+  lead: number
+  release: number[]
+}
+
+const L1 = [
+  '###################',
+  '#........#........#',
+  '#.##.###.#.###.##.#',
+  '#o...............o#',
+  '#.##.#.#####.#.##.#',
+  '#....#...#...#....#',
+  '####.###.#.###.####',
+  '####.#.......#.####',
+  '####.#.##d##.#.####',
+  '####.#.#GGG#.#.####',
+  '####.#.#####.#.####',
+  '.....#.......#.....',
+  '#.##.#.#####.#.##.#',
+  '#o...#...P...#...o#',
+  '#.####.#####.####.#',
+  '#.................#',
+  '###################',
+]
+
+const L2 = [
+  '###################',
+  '#.......##........#',
+  '#.##.###.#.###.##.#',
+  '#o....#.....#....o#',
+  '#.##.#.#####.#.##.#',
+  '#.#..#...#...#..#.#',
+  '####.###.#.###.####',
+  '####.#.......#.####',
+  '####.#.##d##.#.####',
+  '####.#.#GGG#.#.####',
+  '####.#.#####.#.####',
+  '.....#.......#.....',
+  '#.##.#.#####.#.##.#',
+  '#....#...P...#....#',
+  '#.####.#####.####.#',
+  '#..#.....#........#',
+  '###################',
+]
+
+const L3 = [
+  '###################',
+  '#..#....##.....#..#',
+  '#.##.###.#.###.##.#',
+  '#o....#.....#.....#',
+  '#.##.#.#####.#.##.#',
+  '#.#..#...#...#..#.#',
+  '####.###.#.###.####',
+  '####.#.#.....#.####',
+  '####.#.##d##.#.####',
+  '####.#.#GGG#.#.####',
+  '####.#.#####.#.####',
+  '.....#.......#.....',
+  '#.##.#.#####.#.##.#',
+  '#....#...P...#....#',
+  '#.####.#####.####.#',
+  '#..#.....#........#',
+  '###################',
+]
+
+export const LEVELS: LevelDef[] = [
+  {
+    name: 'Public Comment',
+    blurb: 'Two statutes are in the building. Cherries are common. Clear every RAM.',
+    rows: L1,
+    laws: 2,
+    playerSpeed: 5.5,
+    ghostSpeed: 4.7,
+    frightSpeed: 2.85,
+    eatenSpeed: 8.6,
+    fright: 7.4,
+    scatter: 6.5,
+    chase: 15,
+    lead: 3,
+    release: [0.4, 2.4, 4.4, 6.4],
+  },
+  {
+    name: 'Committee Markup',
+    blurb: 'A third law joins the hunt. Cherries are scarce. The corridors tighten.',
+    rows: L2,
+    laws: 3,
+    playerSpeed: 5.75,
+    ghostSpeed: 5.15,
+    frightSpeed: 3.05,
+    eatenSpeed: 8.8,
+    fright: 5.1,
+    scatter: 4.2,
+    chase: 18,
+    lead: 4,
+    release: [0.3, 1.5, 3.1, 4.6],
+  },
+  {
+    name: 'Final Statute',
+    blurb: 'The full code is in force. One cherry. Make the surge count.',
+    rows: L3,
+    laws: 4,
+    playerSpeed: 6.05,
+    ghostSpeed: 5.6,
+    frightSpeed: 3.25,
+    eatenSpeed: 9.2,
+    fright: 3.35,
+    scatter: 2.1,
+    chase: 24,
+    lead: 5,
+    release: [0.15, 0.9, 1.8, 2.7],
+  },
+]
+
+const PLAYER_TILES = new Set(['.', 'o', 'P', ' '])
+
+export function validateLevel(rows: string[]): void {
+  const w = rows[0]?.length ?? 0
+  if (!w || rows.some((row) => row.length !== w)) {
+    throw new Error('Maze rows are not rectangular')
+  }
+  const h = rows.length
+  let px = -1
+  let py = -1
+  let doorX = -1
+  let doorY = -1
+  let ghosts = 0
+  let dots = 0
+  let cherries = 0
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const ch = rows[y]![x]
+      if (ch === 'P') {
+        px = x
+        py = y
+      } else if (ch === 'G') ghosts++
+      else if (ch === 'd') {
+        doorX = x
+        doorY = y
+      } else if (ch === '.') dots++
+      else if (ch === 'o') cherries++
+      else if (ch !== '#' && ch !== ' ') {
+        throw new Error(`Unknown tile "${ch}" at ${x},${y}`)
+      }
+    }
+  }
+  if (px < 0 || doorX < 0 || ghosts < 3 || dots < 1 || cherries < 1) {
+    throw new Error('Maze is missing a start, door, RAM, cherry, or ghost house')
+  }
+  const exitY = doorY - 1
+  if (exitY < 0 || !PLAYER_TILES.has(rows[exitY]![doorX]!)) {
+    throw new Error('Ghost door has no exit')
+  }
+  const seen = Array.from({ length: h }, () => Array(w).fill(false))
+  const queue: Array<[number, number]> = [[px, py]]
+  seen[py]![px] = true
+  const dirs = [
+    [1, 0],
+    [-1, 0],
+    [0, 1],
+    [0, -1],
+  ]
+  while (queue.length) {
+    const [x, y] = queue.shift()!
+    for (const [dx, dy] of dirs) {
+      let nx = x + dx!
+      const ny = y + dy!
+      if (nx < 0) nx = w - 1
+      if (nx >= w) nx = 0
+      if (ny < 0 || ny >= h || seen[ny]![nx]) continue
+      if (!PLAYER_TILES.has(rows[ny]![nx]!)) continue
+      seen[ny]![nx] = true
+      queue.push([nx, ny])
+    }
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const ch = rows[y]![x]!
+      if ((ch === '.' || ch === 'o') && !seen[y]![x]) {
+        throw new Error(`Unreachable RAM or cherry at ${x},${y}`)
+      }
+    }
+  }
+}

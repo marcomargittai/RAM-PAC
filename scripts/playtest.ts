@@ -1,0 +1,265 @@
+import { LEVELS } from '../src/levels'
+import {
+  ahead,
+  canStep,
+  createGame,
+  startRun,
+  update,
+  walkable,
+  type Dir,
+  type Game,
+} from '../src/sim'
+
+const DIRS: Dir[] = ['up', 'left', 'down', 'right']
+
+function fail(message: string): never {
+  throw new Error(message)
+}
+
+function mode(game: Game): string {
+  return game.mode
+}
+
+function advanceUntil(game: Game, seconds: number, stops: string[]): void {
+  let left = seconds
+  while (left > 0 && !stops.includes(mode(game))) {
+    const dt = Math.min(0.05, left)
+    update(game, dt, { dir: null, start: false, pause: false })
+    left -= dt
+  }
+}
+
+function park(game: Game): void {
+  for (const ghost of game.ghosts) {
+    ghost.state = 'housed'
+    ghost.release = 1e9
+    ghost.progress = 0
+    ghost.speed = 0
+  }
+}
+
+function pathDirs(game: Game, tx: number, ty: number): Dir[] | null {
+  const startX = game.player.x
+  const startY = game.player.y
+  if (startX === tx && startY === ty) return []
+  const parent = new Map<string, { x: number; y: number; dir: Dir | null }>()
+  const queue: Array<{ x: number; y: number }> = [{ x: startX, y: startY }]
+  parent.set(`${startX},${startY}`, { x: startX, y: startY, dir: null })
+  let found = false
+  while (queue.length) {
+    const current = queue.shift()!
+    if (current.x === tx && current.y === ty) {
+      found = true
+      break
+    }
+    for (const dir of DIRS) {
+      const next = ahead(game.maze, current.x, current.y, dir)
+      if (!next || !walkable(game.maze, next.x, next.y, 'player')) continue
+      const key = `${next.x},${next.y}`
+      if (parent.has(key)) continue
+      parent.set(key, { x: current.x, y: current.y, dir })
+      queue.push(next)
+    }
+  }
+  if (!found) return null
+  const steps: Dir[] = []
+  let cursor = `${tx},${ty}`
+  while (cursor !== `${startX},${startY}`) {
+    const node = parent.get(cursor)
+    if (!node?.dir) return null
+    steps.push(node.dir)
+    cursor = `${node.x},${node.y}`
+  }
+  steps.reverse()
+  return steps
+}
+
+function nearestDot(game: Game): { x: number; y: number } {
+  let best = game.dots[0]
+  let score = Infinity
+  for (const dot of game.dots) {
+    const dx = dot.x - game.player.x
+    const dy = dot.y - game.player.y
+    const dist = dx * dx + dy * dy
+    if (dist < score) {
+      score = dist
+      best = dot
+    }
+  }
+  if (!best) fail('no dot')
+  return best
+}
+
+function clearLevel(game: Game): void {
+  let guard = 0
+  while (game.dots.length) {
+    if (guard++ > 4000) fail(`could not clear level ${game.levelIndex}, ${game.dots.length} RAM left at ${game.player.x},${game.player.y}`)
+    park(game)
+    const target = nearestDot(game)
+    if (game.player.x === target.x && game.player.y === target.y) {
+      game.player.progress = 0
+      update(game, 1 / 60, { dir: null, start: false, pause: false })
+      continue
+    }
+    const steps = pathDirs(game, target.x, target.y)
+    if (!steps?.length) fail(`no path to ${target.x},${target.y} from ${game.player.x},${game.player.y} on level ${game.levelIndex}`)
+    for (const step of steps) {
+      if (!game.dots.length || mode(game) === 'cleared') return
+      const ox = game.player.x
+      const oy = game.player.y
+      let frames = 0
+      while (game.player.x === ox && game.player.y === oy) {
+        if (!game.dots.length || mode(game) === 'cleared') return
+        park(game)
+        update(game, 1 / 60, { dir: step, start: false, pause: false })
+        if (!game.dots.length || mode(game) === 'cleared') return
+        if (++frames > 40) {
+          const row = game.maze.rows[oy] ?? ''
+          fail(
+            `stuck stepping ${step} at ${ox},${oy} facing ${game.player.dir} progress ${game.player.progress.toFixed(2)} speed ${game.player.speed} mode ${mode(game)} can ${canStep(game.maze, ox, oy, step, 'player')} row ${row} level ${game.levelIndex}`,
+          )
+        }
+        if (mode(game) === 'dying' || mode(game) === 'lose') fail('died while legislation was housed')
+      }
+      game.player.progress = 0
+    }
+  }
+}
+
+function assertWalls(game: Game): void {
+  game.mode = 'play'
+  const ghost = game.ghosts[0]
+  if (!ghost) fail('no ghost')
+  ghost.state = 'chase'
+  ghost.x = 1
+  ghost.y = 1
+  ghost.progress = 0
+  ghost.dir = 'left'
+  for (let i = 0; i < 240 && game.mode === 'play'; i++) {
+    update(game, 1 / 60, { dir: null, start: false, pause: false })
+    for (const law of game.ghosts) {
+      const who = law.state === 'eaten' || law.state === 'exiting' || law.state === 'housed' ? 'house' : 'ghost'
+      if (!walkable(game.maze, law.x, law.y, who)) fail(`${law.name} inside a wall at ${law.x},${law.y}`)
+      if (law.progress > 0) {
+        const next = ahead(game.maze, law.x, law.y, law.dir)
+        if (next && !walkable(game.maze, next.x, next.y, who)) fail(`${law.name} clipping toward ${next.x},${next.y}`)
+      }
+    }
+  }
+}
+
+const seen = createGame()
+if (mode(seen) !== 'title') fail('title missing')
+if (LEVELS.length < 3) fail('need 3 levels')
+if (LEVELS[0]!.laws !== 2 || LEVELS[1]!.laws !== 3 || LEVELS[2]!.laws !== 4) fail('law count should rise')
+
+const probe = createGame()
+startRun(probe)
+probe.mode = 'play'
+park(probe)
+probe.player.x = 1
+probe.player.y = 1
+probe.player.dir = 'up'
+probe.player.queued = null
+probe.player.progress = 0
+for (let i = 0; i < 40; i++) {
+  park(probe)
+  update(probe, 1 / 60, { dir: 'up', start: false, pause: false })
+}
+if (probe.player.y !== 1 || !walkable(probe.maze, probe.player.x, probe.player.y, 'player')) fail('player clipped into a wall')
+if (!canStep(probe.maze, 0, 11, 'left', 'player')) fail('tunnel is closed')
+probe.player.x = 0
+probe.player.y = 11
+probe.player.dir = 'left'
+probe.player.queued = null
+probe.player.progress = 0
+for (let i = 0; i < 40 && probe.player.x !== probe.maze.w - 1; i++) {
+  park(probe)
+  probe.mode = 'play'
+  update(probe, 1 / 60, { dir: 'left', start: false, pause: false })
+}
+if (probe.player.x !== probe.maze.w - 1) fail(`tunnel wrap failed, x=${probe.player.x}`)
+
+const cherryGame = createGame()
+startRun(cherryGame)
+cherryGame.mode = 'play'
+const cherry = cherryGame.cherries[0]
+if (!cherry) fail('no cherry')
+cherryGame.player.x = cherry.x
+cherryGame.player.y = cherry.y
+cherryGame.player.progress = 0
+const hunter = cherryGame.ghosts[0]!
+hunter.state = 'chase'
+hunter.x = 8
+hunter.y = 1
+hunter.progress = 0
+update(cherryGame, 0.01, { dir: null, start: false, pause: false })
+if (cherryGame.surge <= 0) fail('cherry did not start a surge')
+const hunterState: string = hunter.state
+if (hunterState !== 'frightened') fail(`legislation stayed ${hunterState}`)
+
+const death = createGame()
+startRun(death)
+death.mode = 'play'
+death.surge = 0
+death.player.progress = 0
+const statute = death.ghosts[0]!
+statute.state = 'chase'
+statute.x = death.player.x
+statute.y = death.player.y
+statute.progress = 0
+update(death, 0.01, { dir: null, start: false, pause: false })
+const deathMode: string = death.mode
+if (deathMode !== 'dying') fail(`contact with legislation did not regulate the model (${deathMode})`)
+
+const repeal = createGame()
+startRun(repeal)
+repeal.mode = 'play'
+repeal.surge = 4
+repeal.player.progress = 0
+const edible = repeal.ghosts[0]!
+edible.state = 'frightened'
+edible.x = repeal.player.x
+edible.y = repeal.player.y
+edible.progress = 0
+const beforeScore = repeal.score
+update(repeal, 0.01, { dir: null, start: false, pause: false })
+const edibleState: string = edible.state
+const repealMode: string = repeal.mode
+if (edibleState !== 'eaten') fail(`vulnerable legislation was not repealed (${edibleState})`)
+if (repeal.score <= beforeScore) fail('repeal did not score')
+if (repealMode !== 'play') fail(`repeal should not end the run (${repealMode})`)
+
+const run = createGame()
+startRun(run)
+advanceUntil(run, 3, ['play'])
+if (mode(run) !== 'play') fail(`ready did not start play (${mode(run)})`)
+const counts = [2, 3, 4]
+const cherries = [4, 2, 1]
+for (let level = 0; level < 3; level++) {
+  if (run.levelIndex !== level) fail(`expected level ${level}, saw ${run.levelIndex}`)
+  if (run.ghosts.length !== counts[level]) fail(`level ${level} ghost count ${run.ghosts.length}`)
+  if (run.cherries.length !== cherries[level]) fail(`level ${level} cherries ${run.cherries.length}`)
+  const rams = run.dots.length
+  clearLevel(run)
+  const clearedMode: string = run.mode
+  if (clearedMode !== 'cleared') fail(`level ${level} did not clear after ${rams} RAM (${clearedMode})`)
+  advanceUntil(run, 3, level < 2 ? ['ready'] : ['win'])
+  if (level < 2) {
+    if (mode(run) !== 'ready' || run.levelIndex !== level + 1) fail(`next level failed from ${level} (${mode(run)} ${run.levelIndex})`)
+    advanceUntil(run, 3, ['play'])
+    if (mode(run) !== 'play') fail(`next level did not resume (${mode(run)})`)
+  }
+}
+const endMode: string = run.mode
+if (endMode !== 'win') fail(`full run should win, mode=${endMode}`)
+
+const walls = createGame()
+startRun(walls)
+walls.mode = 'play'
+assertWalls(walls)
+
+console.log('playtest ok', {
+  score: run.score,
+  levels: LEVELS.map((level) => level.name),
+})
