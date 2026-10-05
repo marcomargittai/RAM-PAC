@@ -90,10 +90,6 @@ function pressStart(): void {
 
 function skipAhead(): void {
   audio.unlock()
-  if (game.mode === 'title') {
-    startEdge = true
-    return
-  }
   if (game.mode === 'pause') game.mode = 'play'
   if (game.mode === 'ready' || game.mode === 'play' || game.mode === 'dying') {
     game.mode = 'play'

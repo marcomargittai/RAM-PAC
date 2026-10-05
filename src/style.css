@@ -290,38 +290,27 @@ canvas {
 
 #skip {
   position: fixed;
-  left: 6px;
-  bottom: 6px;
+  left: 10px;
+  bottom: 10px;
   z-index: 90;
-  width: 16px;
-  height: 16px;
-  padding: 0;
-  border: none;
-  background: transparent;
+  padding: 6px 8px;
+  font-size: 8px;
+  line-height: 1.4;
+  letter-spacing: 0.08em;
+  color: #8a74b0;
+  background: rgba(7, 4, 15, 0.82);
+  border: 1px solid #3a2460;
   box-shadow: none;
-  opacity: 0.28;
-}
-
-#skip::after {
-  content: "";
-  display: block;
-  width: 6px;
-  height: 6px;
-  margin: 5px;
-  background: #3a2460;
+  opacity: 0.85;
 }
 
 #skip:hover,
 #skip:focus-visible {
   opacity: 1;
-  background: transparent;
-  border: none;
+  color: #ffb000;
+  background: #100818;
+  border-color: #ffb000;
   box-shadow: none;
-}
-
-#skip:hover::after,
-#skip:focus-visible::after {
-  background: #ffb000;
 }
 
 #comic {
