@@ -73,8 +73,43 @@ function advanceStory(): boolean {
   return true
 }
 
+function celebrating(): boolean {
+  return game.mode === 'cleared' && game.modeTimer > 0
+}
+
 function pressStart(): void {
   audio.unlock()
+  if (celebrating()) {
+    game.modeTimer = 0
+    overlaySig = ''
+    return
+  }
+  if (advanceStory()) return
+  startEdge = true
+}
+
+function skipAhead(): void {
+  audio.unlock()
+  if (game.mode === 'title') {
+    startEdge = true
+    return
+  }
+  if (game.mode === 'pause') game.mode = 'play'
+  if (game.mode === 'ready' || game.mode === 'play' || game.mode === 'dying') {
+    game.mode = 'play'
+    game.dots = []
+    return
+  }
+  if (celebrating()) {
+    game.modeTimer = 0
+    overlaySig = ''
+    return
+  }
+  if (game.mode === 'win' && game.ending < WIN_CARD_AT) {
+    game.ending = WIN_CARD_AT
+    overlaySig = ''
+    return
+  }
   if (advanceStory()) return
   startEdge = true
 }
@@ -101,6 +136,9 @@ window.addEventListener('keydown', (event) => {
   } else if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault()
     pressStart()
+  } else if (event.key === ']') {
+    event.preventDefault()
+    skipAhead()
   }
 })
 
@@ -112,6 +150,7 @@ window.addEventListener('keyup', (event) => {
 })
 
 action.addEventListener('click', pressStart)
+document.querySelector<HTMLButtonElement>('#skip')?.addEventListener('click', skipAhead)
 pauseBtn.addEventListener('click', pressPause)
 muteBtn.addEventListener('click', () => {
   audio.unlock()
@@ -179,19 +218,22 @@ function syncOverlay(): void {
   }
   const panels = storyPanels()
   const panel = panels?.[Math.min(comicIndex, panels.length - 1)] ?? null
-  const sig = `${storyKey}:${game.lives}:${game.entry}:${comicIndex}`
+  const fanfare = celebrating()
+  const sig = `${storyKey}:${game.lives}:${game.entry}:${comicIndex}:${fanfare}`
   if (sig === overlaySig) return
   overlaySig = sig
   const skipClear = game.mode === 'cleared' && game.levelIndex >= LEVELS.length - 1
   const show =
+    !fanfare &&
     !skipClear &&
     (game.mode === 'title' || game.mode === 'pause' || game.mode === 'lose' || game.mode === 'cleared' || winCard)
   overlay.hidden = !show
+  overlay.classList.toggle('cinema', Boolean(panel) && show)
   overlay.classList.toggle('gag', false)
-  card.classList.toggle('story', false)
+  card.classList.toggle('story', Boolean(panel) && show)
   comic.hidden = !panel
   if (panel) {
-    drawComic(comicCtx, panel.scene)
+    drawComic(comicCtx, panel.scene, game.time)
     kicker.textContent = panel.kicker
     title.textContent = panel.year
     body.textContent = panel.caption
@@ -271,6 +313,8 @@ function frame(now: number): void {
   fit()
   render(ctx, game)
   syncOverlay()
+  const livePanel = storyPanels()?.[Math.min(comicIndex, (storyPanels()?.length ?? 1) - 1)]
+  if (livePanel && !overlay.hidden && !comic.hidden) drawComic(comicCtx, livePanel.scene, game.time)
   syncHud()
   const playing = game.mode === 'play'
   audio.frame(dt, {

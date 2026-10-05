@@ -1,5 +1,5 @@
 import { LEVELS } from './levels'
-import { CAUGHT_HOLD, SEAL_HOLD, WIN_CUT_AT, visual, type Dir, type Game, type Ghost } from './sim'
+import { CAUGHT_HOLD, CLEAR_HOLD, SEAL_HOLD, WIN_CUT_AT, visual, type Dir, type Game, type Ghost } from './sim'
 
 const TILE = 40
 const PIXEL = '"Press Start 2P", monospace'
@@ -193,7 +193,7 @@ export function render(ctx: CanvasRenderingContext2D, game: Game): void {
   const width = game.maze.w * tile
   const height = game.maze.h * tile
   const pal = palette(game.surge > 0)
-  const cinematic = game.mode === 'win' || (game.mode === 'cleared' && game.levelIndex >= LEVELS.length - 1)
+  const cinematic = game.mode === 'win'
   if (cinematic) {
     drawWin(ctx, game, width, height, pal)
     return
@@ -226,6 +226,7 @@ export function render(ctx: CanvasRenderingContext2D, game: Game): void {
   ctx.restore()
 
   if (game.mode === 'dying') drawDeathStamp(ctx, game, width, height)
+  if (game.mode === 'cleared' && game.modeTimer > 0) drawClearFanfare(ctx, game, width, height)
   drawBanner(ctx, game, width, height)
 
   if (game.mode === 'title') {
@@ -574,6 +575,56 @@ function drawTitleGag(ctx: CanvasRenderingContext2D, game: Game, width: number, 
     const x = mouthX + span - travel
     if (x < mouthX + 20) continue
     drawPerson(ctx, x, mouthY + 8, Math.sin(game.time * 8 + i), 1, i === 4)
+  }
+}
+
+function drawClearFanfare(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number): void {
+  const t = CLEAR_HOLD - game.modeTimer
+  const flash = clamp(1 - t / 0.22, 0, 1)
+  if (flash > 0) fill(ctx, `rgba(255, 224, 138, ${flash * 0.72})`, 0, 0, width, height)
+
+  const pos = visual(game.player)
+  const cx = pos.x * TILE + TILE / 2
+  const cy = pos.y * TILE + TILE / 2
+  const rings: Array<[number, string]> = [
+    [0.05, '#ffb000'],
+    [0.2, '#3ad7ff'],
+    [0.38, '#ff2e93'],
+  ]
+  for (const [delay, color] of rings) {
+    const u = clamp((t - delay) / 0.9, 0, 1)
+    if (u <= 0) continue
+    const r = 10 + u * 78
+    const alpha = 1 - u
+    ctx.globalAlpha = alpha
+    fill(ctx, color, cx - r, cy - r, r * 2, 3)
+    fill(ctx, color, cx - r, cy + r - 3, r * 2, 3)
+    fill(ctx, color, cx - r, cy - r, 3, r * 2)
+    fill(ctx, color, cx + r - 3, cy - r, 3, r * 2)
+  }
+  ctx.globalAlpha = 1
+
+  const bits = ['#ffb000', '#3ad7ff', '#ff2e93', '#f4f0e6']
+  for (let i = 0; i < 28; i++) {
+    const x = ((i * 47 + t * (36 + (i % 5) * 14)) % (width + 20)) - 10
+    const y = ((i * 29 + t * (48 + (i % 7) * 12)) % (height + 30)) - 16
+    fill(ctx, bits[i % bits.length]!, x, y, i % 3 === 0 ? 5 : 3, i % 3 === 0 ? 5 : 3)
+  }
+
+  const slam = clamp(t / 0.28, 0, 1)
+  const scale = 1 + (1 - slam) * (1 - slam) * 1.8
+  ctx.save()
+  ctx.translate(snap(width / 2), snap(height * 0.4))
+  ctx.scale(scale, scale)
+  fill(ctx, '#ffb000', -118, -28, 236, 56)
+  fill(ctx, '#100818', -112, -22, 224, 44)
+  label(ctx, 'CLEAR', 0, 2, 32, '#ffb000')
+  ctx.restore()
+
+  if (t > 0.32) {
+    const name = LEVELS[game.levelIndex]?.name ?? ''
+    fill(ctx, '#100818', width / 2 - 140, height * 0.4 + 36, 280, 28)
+    label(ctx, name.toUpperCase(), width / 2, height * 0.4 + 50, 16, '#f4f0e6')
   }
 }
 

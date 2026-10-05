@@ -1,177 +1,650 @@
 import type { SceneId } from './story'
 
-const NIGHT = '#100818'
-const SKY = '#2a1848'
-const DUSK = '#ff6a3d'
+const W = 256
+const H = 144
+
+const INK = '#07040f'
 const GOLD = '#ffb000'
+const GOLD_HOT = '#ffe08a'
 const CYAN = '#3ad7ff'
 const MAGENTA = '#ff2e93'
 const PAPER = '#f4f0e6'
 const RED = '#e1062c'
-const INK = '#07040f'
+const LAWN = '#1f7a45'
+const BRICK = '#a84838'
+const WOOD = '#6a3a22'
 
-function block(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number): void {
+function px(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w = 1, h = 1): void {
+  if (w <= 0 || h <= 0) return
   ctx.fillStyle = color
-  ctx.fillRect(x, y, w, h)
+  ctx.fillRect(x | 0, y | 0, w | 0, h | 0)
 }
 
-function skyline(ctx: CanvasRenderingContext2D, lights: string): void {
-  block(ctx, SKY, 0, 0, 160, 34)
-  block(ctx, DUSK, 0, 28, 160, 8)
-  block(ctx, NIGHT, 0, 36, 160, 48)
-  const towers: Array<[number, number, number]> = [
-    [6, 18, 14],
-    [22, 10, 10],
-    [36, 20, 16],
-    [56, 8, 12],
-    [72, 16, 18],
-    [94, 12, 10],
-    [108, 22, 20],
-    [132, 14, 12],
-    [146, 24, 10],
+function hash(x: number, y: number): number {
+  let n = (x * 374761393 + y * 668265263) | 0
+  n = Math.imul(n ^ (n >>> 13), 1274126177)
+  return (n ^ (n >>> 16)) >>> 0
+}
+
+function dither(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number, gap = 2): void {
+  ctx.fillStyle = color
+  for (let yy = y; yy < y + h; yy += gap) {
+    const shift = ((yy / gap) | 0) % 2
+    for (let xx = x + shift; xx < x + w; xx += gap) ctx.fillRect(xx, yy, 1, 1)
+  }
+}
+
+function bands(ctx: CanvasRenderingContext2D, colors: string[], y0: number, y1: number): void {
+  const span = y1 - y0
+  const row = Math.max(1, Math.ceil(span / colors.length))
+  colors.forEach((color, i) => px(ctx, color, 0, y0 + i * row, W, row + 1))
+}
+
+function stars(ctx: CanvasRenderingContext2D, count: number, yMax: number, color: string, time: number): void {
+  for (let i = 0; i < count; i++) {
+    const x = hash(i, 3) % W
+    const y = hash(i, 9) % yMax
+    const tw = (hash(i, 1) + time * 6) % 7
+    if (tw < 1.2) continue
+    const big = hash(i, 5) % 11 === 0
+    px(ctx, color, x, y, big ? 2 : 1, big ? 2 : 1)
+  }
+}
+
+function disc(ctx: CanvasRenderingContext2D, color: string, cx: number, cy: number, r: number): void {
+  for (let y = -r; y <= r; y++) {
+    const span = Math.round(Math.sqrt(r * r - y * y))
+    px(ctx, color, cx - span, cy + y, span * 2 + 1, 1)
+  }
+}
+
+function person(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  coat: string,
+  time: number,
+  phase = 0,
+): void {
+  const step = Math.sin(time * 3 + phase) > 0 ? 1 : 0
+  px(ctx, '#f0d2b0', x + 2, y, 3, 3)
+  px(ctx, INK, x + 2, y, 3, 1)
+  px(ctx, coat, x + 1, y + 3, 5, 5)
+  px(ctx, INK, x + 2, y + 8, 1, 3 + step)
+  px(ctx, INK, x + 4, y + 8, 1, 4 - step)
+}
+
+function edge(ctx: CanvasRenderingContext2D): void {
+  px(ctx, INK, 0, 0, W, 2)
+  px(ctx, INK, 0, H - 2, W, 2)
+  px(ctx, INK, 0, 0, 2, H)
+  px(ctx, INK, W - 2, 0, 2, H)
+}
+
+interface Tower {
+  x: number
+  w: number
+  h: number
+  body: string
+  win: string
+  roof: 'flat' | 'ant' | 'step' | 'spire'
+}
+
+function tower(ctx: CanvasRenderingContext2D, b: Tower, ground: number, time: number): void {
+  const top = ground - b.h
+  px(ctx, b.body, b.x, top, b.w, b.h)
+  px(ctx, '#05030a', b.x, ground - 2, b.w, 2)
+  px(ctx, '#3a3050', b.x, top, b.w, 2)
+  if (b.roof === 'ant') {
+    const ax = b.x + ((b.w / 2) | 0)
+    px(ctx, '#2a2040', ax, top - 14, 2, 14)
+    px(ctx, MAGENTA, ax - 2, top - 16, 6, 2)
+    px(ctx, CYAN, ax - 1, top - 8, 4, 1)
+  } else if (b.roof === 'step') {
+    px(ctx, b.body, b.x + 3, top - 6, b.w - 6, 6)
+    px(ctx, b.body, b.x + 7, top - 12, b.w - 14, 6)
+  } else if (b.roof === 'spire') {
+    px(ctx, PAPER, b.x + ((b.w / 2) | 0) - 1, top - 16, 3, 16)
+    px(ctx, GOLD, b.x + ((b.w / 2) | 0), top - 18, 1, 2)
+  }
+  for (let wy = top + 6; wy < ground - 5; wy += 7) {
+    for (let wx = b.x + 3; wx < b.x + b.w - 4; wx += 6) {
+      const flicker = hash(wx, wy) % 17 === Math.floor(time * 2) % 17
+      const on = hash(wx, wy) % 5 !== 0 && !flicker
+      px(ctx, on ? b.win : '#08060e', wx, wy, 3, 3)
+      if (on && hash(wx, wy) % 4 === 0) px(ctx, GOLD_HOT, wx, wy, 1, 1)
+    }
+  }
+}
+
+function cityBase(ctx: CanvasRenderingContext2D, time: number, evening: boolean): void {
+  if (evening) {
+    bands(ctx, ['#070814', '#101428', '#1a2048', '#243058', '#3a3868', '#6a5078'], 0, 86)
+    stars(ctx, 48, 50, PAPER, time)
+    disc(ctx, '#f4f0e6', 196, 28, 8)
+    disc(ctx, '#1a2048', 193, 26, 7)
+    dither(ctx, '#c8c0e0', 188, 20, 16, 16, 3)
+  } else {
+    bands(ctx, ['#140818', '#241030', '#4a1840', '#8a2838', '#e05830', '#ff9850', '#ffd090'], 0, 86)
+    disc(ctx, '#ffd090', 188, 58, 16)
+    disc(ctx, GOLD_HOT, 188, 58, 10)
+    disc(ctx, PAPER, 188, 58, 5)
+    dither(ctx, '#ffb060', 168, 42, 40, 32, 3)
+    for (let i = 0; i < 4; i++) {
+      const x = 20 + i * 36 + Math.sin(time + i) * 4
+      const y = 16 + (i % 3) * 6
+      px(ctx, INK, x, y, 4, 1)
+      px(ctx, INK, x + 1, y + 1, 2, 1)
+    }
+  }
+
+  px(ctx, evening ? '#241838' : '#3a2858', 0, 78, W, 16)
+  px(ctx, evening ? '#140c22' : '#2a1840', 0, 86, 80, 10)
+  px(ctx, evening ? '#140c22' : '#2a1840', 150, 84, 106, 12)
+
+  const ground = 118
+  const towers: Tower[] = [
+    { x: 2, w: 26, h: 62, body: '#120c1c', win: GOLD, roof: 'ant' },
+    { x: 30, w: 16, h: 40, body: '#1a1230', win: CYAN, roof: 'flat' },
+    { x: 48, w: 34, h: 78, body: '#0e0a16', win: GOLD, roof: 'step' },
+    { x: 84, w: 18, h: 48, body: '#221838', win: MAGENTA, roof: 'spire' },
+    { x: 104, w: 22, h: 58, body: '#160e24', win: CYAN, roof: 'ant' },
+    { x: 128, w: 14, h: 34, body: '#241430', win: GOLD, roof: 'flat' },
+    { x: 144, w: 40, h: 86, body: '#0c0814', win: evening ? CYAN : GOLD, roof: 'step' },
+    { x: 186, w: 20, h: 50, body: '#1a1028', win: MAGENTA, roof: 'ant' },
+    { x: 208, w: 28, h: 70, body: '#100c18', win: GOLD, roof: 'spire' },
+    { x: 238, w: 18, h: 44, body: '#1c1430', win: CYAN, roof: 'flat' },
   ]
-  for (const [x, top, w] of towers) {
-    block(ctx, INK, x, top, w, 36 - top + 8)
-    for (let wy = top + 3; wy < 34; wy += 4) {
-      for (let wx = x + 2; wx < x + w - 2; wx += 4) {
-        if ((wx + wy) % 8 === 0) block(ctx, lights, wx, wy, 2, 2)
-      }
-    }
+  for (const item of towers) tower(ctx, item, ground, time)
+
+  px(ctx, MAGENTA, 52, ground - 74, 10, 4)
+  px(ctx, CYAN, 148, ground - 80, 14, 3)
+  px(ctx, GOLD, 212, ground - 64, 8, 3)
+
+  px(ctx, '#2a2438', 0, ground, W, 8)
+  px(ctx, '#121018', 0, ground + 8, W, H - ground - 8)
+  for (let x = 8; x < W; x += 18) px(ctx, GOLD, x, ground + 16, 8, 2)
+
+  const carX = (40 + time * 18) % 220
+  px(ctx, CYAN, carX, ground + 10, 22, 8)
+  px(ctx, '#9eefff', carX + 4, ground + 11, 6, 4)
+  px(ctx, GOLD_HOT, carX + 20, ground + 12, 3, 2)
+  px(ctx, INK, carX + 2, ground + 16, 4, 3)
+  px(ctx, INK, carX + 15, ground + 16, 4, 3)
+
+  const car2 = 180 - ((time * 12) % 140)
+  px(ctx, MAGENTA, car2, ground + 4, 18, 7)
+  px(ctx, GOLD_HOT, car2 - 2, ground + 6, 3, 2)
+
+  px(ctx, '#3a2848', 70, ground + 20, 36, 4)
+  dither(ctx, evening ? CYAN : '#ffb060', 74, ground + 21, 28, 3, 2)
+
+  person(ctx, 18, ground - 14, '#c8b0e0', time, 0)
+  person(ctx, 96, ground - 14, GOLD, time, 1.4)
+  person(ctx, 230, ground - 14, CYAN, time, 2.2)
+  edge(ctx)
+}
+
+function drawCity(ctx: CanvasRenderingContext2D, time: number): void {
+  cityBase(ctx, time, false)
+}
+
+function drawEvening(ctx: CanvasRenderingContext2D, time: number): void {
+  cityBase(ctx, time, true)
+  px(ctx, GOLD, 154, 46, 3, 4)
+  px(ctx, GOLD_HOT, 155, 47, 1, 2)
+  edge(ctx)
+}
+
+function tree(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
+  px(ctx, '#5a3418', x - 1, y, 3, 16)
+  disc(ctx, '#146b38', x, y - 2, r)
+  disc(ctx, '#2f9a52', x - 2, y - 4, r - 3)
+  dither(ctx, '#8fd48a', x - r, y - r, r * 2, r, 3)
+}
+
+function drawDartmouth(ctx: CanvasRenderingContext2D, time: number): void {
+  bands(ctx, ['#67c4ff', '#8fd4ff', '#c6ecff', '#e8f7ff'], 0, 78)
+  disc(ctx, PAPER, 40, 22, 10)
+  disc(ctx, PAPER, 214, 18, 14)
+  disc(ctx, PAPER, 228, 20, 8)
+  disc(ctx, '#fff6d0', 210, 22, 7)
+  px(ctx, LAWN, 0, 96, W, 48)
+  dither(ctx, '#3aaa58', 0, 98, W, 40, 3)
+  px(ctx, '#d8c8a0', 112, 108, 32, 36)
+
+  const x = 58
+  const y = 64
+  px(ctx, BRICK, x, y, 140, 64)
+  px(ctx, '#f4f0e6', x, y, 140, 3)
+  for (let row = 0; row < 20; row++) {
+    const half = 3 + row
+    px(ctx, PAPER, 128 - half, y - 20 + row, half * 2, 1)
   }
-}
+  px(ctx, BRICK, 118, y - 32, 20, 14)
+  px(ctx, PAPER, 122, y - 40, 12, 10)
+  px(ctx, GOLD, 126, y - 46, 4, 6)
+  px(ctx, '#203040', 124, y - 36, 8, 6)
 
-function drawCity(ctx: CanvasRenderingContext2D): void {
-  skyline(ctx, GOLD)
-  block(ctx, PAPER, 118, 8, 6, 6)
-}
-
-function drawEvening(ctx: CanvasRenderingContext2D): void {
-  skyline(ctx, CYAN)
-  block(ctx, PAPER, 118, 8, 6, 6)
-  block(ctx, INK, 74, 18, 8, 6)
-}
-
-function drawDartmouth(ctx: CanvasRenderingContext2D): void {
-  block(ctx, '#3a2468', 0, 0, 160, 40)
-  block(ctx, '#1a4030', 0, 40, 160, 44)
-  block(ctx, PAPER, 58, 22, 44, 28)
-  block(ctx, NIGHT, 74, 34, 10, 16)
-  block(ctx, GOLD, 62, 26, 8, 6)
-  block(ctx, GOLD, 90, 26, 8, 6)
-  block(ctx, CYAN, 18, 48, 4, 8)
-  block(ctx, PAPER, 16, 44, 8, 4)
-  block(ctx, CYAN, 128, 50, 4, 8)
-  block(ctx, PAPER, 126, 46, 8, 4)
-}
-
-function drawLab(ctx: CanvasRenderingContext2D): void {
-  block(ctx, NIGHT, 0, 0, 160, 84)
-  block(ctx, '#1c1233', 18, 28, 70, 40)
-  block(ctx, CYAN, 24, 34, 58, 28)
-  for (let i = 0; i < 5; i++) block(ctx, i % 2 ? GOLD : MAGENTA, 28 + i * 10, 40, 6, 4)
-  block(ctx, GOLD, 108, 36, 28, 8)
-  block(ctx, GOLD, 112, 46, 20, 6)
-  block(ctx, CYAN, 116, 54, 12, 4)
-}
-
-function drawPaper(ctx: CanvasRenderingContext2D): void {
-  block(ctx, NIGHT, 0, 0, 160, 84)
-  block(ctx, PAPER, 48, 16, 64, 52)
-  block(ctx, INK, 56, 24, 48, 3)
-  block(ctx, INK, 56, 32, 40, 2)
-  block(ctx, INK, 56, 38, 44, 2)
-  block(ctx, GOLD, 56, 48, 28, 8)
-  block(ctx, CYAN, 18, 20, 16, 28)
-}
-
-function drawKitchen(ctx: CanvasRenderingContext2D): void {
-  block(ctx, '#241838', 0, 0, 160, 50)
-  block(ctx, '#3a2848', 0, 50, 160, 34)
-  block(ctx, INK, 58, 28, 46, 30)
-  block(ctx, CYAN, 62, 32, 38, 22)
-  block(ctx, GOLD, 70, 40, 22, 3)
-  block(ctx, PAPER, 40, 58, 8, 10)
-}
-
-function drawHalls(ctx: CanvasRenderingContext2D): void {
-  block(ctx, NIGHT, 0, 0, 160, 84)
-  block(ctx, '#1a1030', 0, 58, 160, 26)
   for (let i = 0; i < 6; i++) {
-    const x = 8 + i * 26
-    block(ctx, '#2a1848', x, 16, 18, 46)
-    for (let y = 20; y < 58; y += 6) {
-      block(ctx, i % 2 ? CYAN : GOLD, x + 3, y, 12, 2)
+    const wx = x + 10 + i * 22
+    px(ctx, PAPER, wx, y + 12, 12, 16)
+    px(ctx, '#16324a', wx + 2, y + 14, 8, 12)
+    px(ctx, GOLD_HOT, wx + 3, y + 20, 3, 4)
+  }
+  for (let i = 0; i < 5; i++) px(ctx, PAPER, x + 18 + i * 24, y + 36, 4, 28)
+  px(ctx, '#241810', x + 62, y + 36, 16, 28)
+  px(ctx, GOLD, x + 68, y + 46, 4, 6)
+
+  tree(ctx, 28, 96, 16)
+  tree(ctx, 228, 98, 18)
+  person(ctx, 92, 112, '#243044', time, 0.4)
+  person(ctx, 156, 114, '#6a3030', time, 1.6)
+  px(ctx, WOOD, 40, 118, 16, 3)
+  px(ctx, WOOD, 42, 116, 2, 8)
+  px(ctx, WOOD, 52, 116, 2, 8)
+  edge(ctx)
+}
+
+function monitor(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, bezel = INK): void {
+  px(ctx, bezel, x, y, w, h)
+  px(ctx, '#071820', x + 2, y + 2, w - 4, h - 6)
+}
+
+function drawLab(ctx: CanvasRenderingContext2D, time: number): void {
+  px(ctx, '#120c1c', 0, 0, W, H)
+  px(ctx, '#1a1430', 0, 108, W, 36)
+  px(ctx, '#2a2048', 0, 108, W, 3)
+  for (let i = 0; i < 3; i++) {
+    px(ctx, '#d8f6ff', 28 + i * 78, 8, 28, 4)
+    dither(ctx, CYAN, 20 + i * 78, 12, 44, 18, 3)
+  }
+
+  monitor(ctx, 18, 36, 78, 62)
+  for (let row = 0; row < 5; row++) {
+    for (let col = 0; col < 8; col++) {
+      const colors = [GOLD, CYAN, MAGENTA, '#e8d0ff', PAPER, '#ff8a3d', '#7dffb2', RED]
+      const color = colors[hash(col, row) % colors.length]!
+      px(ctx, color, 24 + col * 8, 42 + row * 9, 6, 7)
     }
+  }
+  const blink = Math.floor(time * 2) % 40
+  px(ctx, PAPER, 24 + (blink % 8) * 8, 42 + ((blink / 8) | 0) * 9, 6, 7)
+
+  monitor(ctx, 104, 48, 52, 50)
+  px(ctx, RED, 112, 58, 6, 28)
+  px(ctx, '#ff8a8a', 122, 66, 6, 20)
+  px(ctx, GOLD, 132, 78, 6, 8)
+  px(ctx, CYAN, 142, 54, 6, 32)
+  px(ctx, '#9eefff', 110, 86, 36, 2)
+
+  px(ctx, '#0c0c12', 176, 40, 58, 78)
+  px(ctx, '#242430', 180, 46, 50, 64)
+  for (let i = 0; i < 4; i++) {
+    const fy = 52 + i * 14
+    disc(ctx, INK, 196, fy + 4, 5)
+    disc(ctx, i % 2 ? CYAN : MAGENTA, 196, fy + 4, 2)
+    px(ctx, i % 2 ? GOLD : CYAN, 214, fy, 12, 3)
+    if (Math.floor(time * 8 + i) % 2 === 0) px(ctx, GOLD_HOT, 214, fy, 4, 3)
+  }
+  px(ctx, GOLD, 184, 112, 18, 4)
+  px(ctx, '#3a3a48', 168, 118, 8, 10)
+
+  px(ctx, WOOD, 16, 100, 150, 8)
+  px(ctx, '#3a2418', 24, 108, 4, 20)
+  px(ctx, '#3a2418', 150, 108, 4, 20)
+  person(ctx, 70, 86, '#1a2848', time, 0)
+  px(ctx, CYAN, 86, 78, 10, 2)
+  px(ctx, MAGENTA, 100, 84, 14, 2)
+  edge(ctx)
+}
+
+function drawPaper(ctx: CanvasRenderingContext2D, time: number): void {
+  px(ctx, '#100c18', 0, 0, W, H)
+  px(ctx, '#1a2848', 168, 16, 72, 64)
+  px(ctx, '#0c1018', 172, 20, 64, 56)
+  for (let i = 0; i < 5; i++) {
+    px(ctx, '#12101c', 178 + i * 12, 28, 8, 40)
+    if (hash(i, 4) % 2) px(ctx, GOLD, 180 + i * 12, 40, 3, 4)
+  }
+  for (let y = 22; y < 74; y += 3) {
+    if ((y + Math.floor(time * 10)) % 9 === 0) px(ctx, CYAN, 174, y, 60, 1)
+  }
+
+  for (let i = 0; i < 8; i++) {
+    px(ctx, '#ffd8a0', 28, 18 + i * 4, 8 + i * 10, 3)
+  }
+  px(ctx, GOLD, 24, 14, 8, 6)
+  px(ctx, PAPER, 46, 28, 108, 92)
+  px(ctx, '#e4dcc8', 46, 28, 108, 4)
+  px(ctx, INK, 56, 40, 72, 4)
+  px(ctx, INK, 56, 48, 48, 2)
+  for (let i = 0; i < 6; i++) px(ctx, '#5a564c', 56, 58 + i * 6, 88 - (i % 3) * 10, 2)
+  px(ctx, CYAN, 56, 96, 8, 14)
+  px(ctx, '#7ec8ff', 66, 102, 8, 8)
+  px(ctx, GOLD, 76, 90, 8, 20)
+  px(ctx, GOLD_HOT, 86, 84, 8, 26)
+  px(ctx, MAGENTA, 96, 78, 8, 32)
+  disc(ctx, GOLD, 132, 100, 8)
+  disc(ctx, RED, 132, 100, 5)
+  px(ctx, PAPER, 130, 98, 4, 4)
+
+  px(ctx, '#3a2418', 20, 124, 16, 10)
+  px(ctx, PAPER, 24, 120, 8, 6)
+  px(ctx, WOOD, 0, 118, W, 26)
+  px(ctx, '#4a2c18', 0, 118, W, 3)
+  edge(ctx)
+}
+
+function drawKitchen(ctx: CanvasRenderingContext2D, time: number): void {
+  px(ctx, '#241830', 0, 0, W, H)
+  px(ctx, '#3a2848', 0, 0, W, 8)
+  px(ctx, WOOD, 8, 14, 150, 26)
+  px(ctx, '#4a2818', 14, 18, 36, 16)
+  px(ctx, '#4a2818', 56, 18, 36, 16)
+  px(ctx, '#4a2818', 98, 18, 36, 16)
+  px(ctx, '#8a5a38', 16, 20, 32, 2)
+  px(ctx, '#8a5a38', 58, 20, 32, 2)
+  px(ctx, '#8a5a38', 100, 20, 32, 2)
+
+  px(ctx, '#101820', 176, 16, 64, 52)
+  px(ctx, WOOD, 170, 10, 76, 6)
+  px(ctx, WOOD, 170, 68, 76, 6)
+  px(ctx, WOOD, 170, 10, 6, 64)
+  px(ctx, WOOD, 240, 10, 6, 64)
+  for (let i = 0; i < 4; i++) {
+    px(ctx, '#16141e', 182 + i * 14, 28, 10, 26 + (i % 2) * 8)
+    if (hash(i, 8) % 2) px(ctx, GOLD, 184 + i * 14, 36, 3, 3)
+  }
+
+  px(ctx, '#e4e0d8', 10, 52, 34, 62)
+  px(ctx, '#c8c4bc', 10, 52, 34, 4)
+  px(ctx, '#b8b4ac', 14, 78, 26, 2)
+  px(ctx, GOLD, 22, 62, 4, 6)
+
+  px(ctx, '#c4a070', 0, 108, W, 10)
+  px(ctx, '#8a6848', 0, 108, W, 2)
+  px(ctx, WOOD, 0, 118, W, 26)
+  px(ctx, '#3a2418', 24, 122, 5, 22)
+  px(ctx, '#3a2418', 210, 122, 5, 22)
+
+  px(ctx, INK, 86, 64, 78, 52)
+  const glow = Math.sin(time * 4) > 0 ? '#143848' : '#0e2838'
+  px(ctx, glow, 90, 68, 70, 40)
+  px(ctx, PAPER, 98, 74, 26, 10)
+  px(ctx, CYAN, 128, 88, 26, 10)
+  px(ctx, GOLD, 100, 102, 18, 3)
+  if (Math.floor(time * 2) % 2 === 0) px(ctx, PAPER, 150, 100, 5, 2)
+  px(ctx, '#5a4030', 168, 92, 12, 16)
+  px(ctx, PAPER, 170, 88, 8, 6)
+  disc(ctx, '#2f8a4a', 204, 96, 6)
+  px(ctx, '#1f5a30', 202, 100, 4, 8)
+
+  person(ctx, 68, 90, '#1a2848', time, 0.3)
+  px(ctx, CYAN, 73, 93, 2, 2)
+  edge(ctx)
+}
+
+function rack(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, time: number, seed: number): void {
+  px(ctx, '#10182c', x, y, w, h)
+  px(ctx, '#243458', x, y, w, 2)
+  px(ctx, '#050810', x, y + 2, 2, h - 2)
+  const rows = Math.max(3, Math.floor((h - 6) / 5))
+  for (let i = 0; i < rows; i++) {
+    const yy = y + 4 + i * 5
+    const blink = hash(seed, i) % 7 === Math.floor(time * 4) % 7
+    const color = blink ? GOLD_HOT : i % 2 === 0 ? CYAN : GOLD
+    px(ctx, color, x + 3, yy, Math.max(2, w - 6), 2)
   }
 }
 
-function drawOrder(ctx: CanvasRenderingContext2D): void {
-  block(ctx, NIGHT, 0, 0, 160, 84)
-  block(ctx, PAPER, 30, 18, 8, 48)
-  block(ctx, PAPER, 48, 18, 8, 48)
-  block(ctx, PAPER, 104, 18, 8, 48)
-  block(ctx, PAPER, 122, 18, 8, 48)
-  block(ctx, RED, 70, 40, 8, 16)
-  block(ctx, RED, 84, 36, 8, 20)
-  block(ctx, GOLD, 66, 58, 30, 4)
+function drawHalls(ctx: CanvasRenderingContext2D, time: number): void {
+  px(ctx, '#070814', 0, 0, W, H)
+  px(ctx, '#101628', 0, 0, W, 18)
+  for (let i = 0; i < 4; i++) {
+    const w = 10 + i * 8
+    px(ctx, '#e8fbff', 128 - w / 2, 6 + i, w, 2)
+  }
+  px(ctx, '#10161f', 0, 108, W, 36)
+  for (let i = 0; i < 5; i++) {
+    const inset = 70 - i * 14
+    px(ctx, '#1a2838', inset, 112 + i * 6, W - inset * 2, 1)
+  }
+  for (let depth = 5; depth >= 0; depth--) {
+    const near = 1 - depth / 5
+    const w = 18 + near * 26
+    const h = 34 + near * 62
+    const y = 106 - h
+    const gap = 16 + near * 10
+    const left = 128 - gap - w - near * 40
+    const right = 128 + gap + near * 40
+    rack(ctx, left, y, w, h, time, depth + 1)
+    rack(ctx, right, y, w, h, time, depth + 11)
+  }
+  person(ctx, 120, 92, '#d0e8f0', time, 1)
+  px(ctx, '#d8c070', 196, 114, 40, 16)
+  px(ctx, GOLD, 200, 117, 32, 8)
+  px(ctx, INK, 208, 119, 16, 4)
+  for (let i = 0; i < 8; i++) px(ctx, '#8a7040', 198 + i * 5, 130, 2, 5)
+  edge(ctx)
 }
 
-function drawShip(ctx: CanvasRenderingContext2D): void {
-  block(ctx, NIGHT, 0, 0, 160, 84)
-  skyline(ctx, CYAN)
-  block(ctx, INK, 62, 40, 36, 24)
-  block(ctx, MAGENTA, 66, 44, 28, 14)
-  block(ctx, PAPER, 72, 48, 16, 3)
+function statute(ctx: CanvasRenderingContext2D, x: number, y: number, time: number, phase: number): void {
+  const bob = Math.sin(time * 4 + phase) > 0 ? 0 : 1
+  px(ctx, RED, x + 2, y + bob, 3, 3)
+  px(ctx, RED, x, y + 3 + bob, 7, 6)
+  px(ctx, '#ff8aa0', x + 1, y + 4 + bob, 5, 2)
+  px(ctx, RED, x + 1, y + 9 + bob, 2, 4)
+  px(ctx, RED, x + 4, y + 9 + bob, 2, 4)
 }
 
-function drawVeto(ctx: CanvasRenderingContext2D): void {
-  block(ctx, '#241428', 0, 0, 160, 84)
-  block(ctx, '#4a2848', 20, 20, 120, 48)
-  block(ctx, RED, 36, 30, 28, 32)
-  block(ctx, PAPER, 72, 34, 52, 6)
-  block(ctx, PAPER, 72, 46, 40, 4)
-  block(ctx, GOLD, 72, 56, 18, 4)
+function drawOrder(ctx: CanvasRenderingContext2D, time: number): void {
+  bands(ctx, ['#070814', '#101428', '#1c2040'], 0, 70)
+  stars(ctx, 30, 40, '#d0d4ee', time)
+  px(ctx, '#d8d2c4', 48, 36, 160, 70)
+  px(ctx, '#f4f0e6', 70, 28, 116, 12)
+  for (let i = 0; i < 6; i++) px(ctx, PAPER, 78 + i * 16, 40, 6, 40)
+  px(ctx, '#2a2418', 108, 62, 18, 28)
+  for (let row = 0; row < 2; row++) {
+    for (let col = 0; col < 4; col++) {
+      px(ctx, GOLD, 58 + col * 34, 46 + row * 22, 8, 10)
+      px(ctx, GOLD_HOT, 60 + col * 34, 48 + row * 22, 3, 4)
+    }
+  }
+  px(ctx, '#1c3a28', 0, 100, W, 44)
+  dither(ctx, '#2f6a40', 0, 104, W, 30, 3)
+  px(ctx, '#c8c0b0', 96, 100, 64, 6)
+
+  px(ctx, PAPER, 16, 78, 52, 58)
+  px(ctx, '#d8d0c0', 16, 78, 52, 4)
+  for (let i = 0; i < 5; i++) px(ctx, '#5a564c', 22, 88 + i * 6, 36 - (i % 2) * 8, 2)
+  disc(ctx, GOLD, 50, 118, 7)
+  disc(ctx, RED, 50, 118, 4)
+
+  statute(ctx, 62, 108, time, 0)
+  statute(ctx, 148, 104, time, 1)
+  statute(ctx, 176, 110, time, 2)
+  statute(ctx, 206, 100, time, 2.6)
+  edge(ctx)
 }
 
-function drawWeights(ctx: CanvasRenderingContext2D): void {
-  block(ctx, NIGHT, 0, 0, 160, 84)
-  block(ctx, '#102028', 24, 18, 112, 48)
-  block(ctx, CYAN, 32, 28, 40, 6)
-  block(ctx, GOLD, 32, 40, 70, 4)
-  block(ctx, PAPER, 32, 50, 54, 4)
-  block(ctx, MAGENTA, 108, 46, 16, 10)
+function drawShip(ctx: CanvasRenderingContext2D, time: number): void {
+  bands(ctx, ['#100818', '#1c1240', '#301848'], 0, 78)
+  stars(ctx, 24, 40, PAPER, time)
+  for (let i = 0; i < 6; i++) {
+    const x = 8 + i * 18
+    const broken = i < 3
+    px(ctx, broken ? '#3a2030' : GOLD, x, 40, 6, 70)
+    px(ctx, broken ? RED : GOLD_HOT, x, 40, 6, 3)
+    if (broken) px(ctx, INK, x + 1, 58, 4, 10)
+  }
+  px(ctx, '#1a1028', 0, 108, W, 36)
+
+  const x = 108 + Math.sin(time * 1.4) * 6
+  dither(ctx, CYAN, x - 8, 48, 92, 56, 2)
+  px(ctx, '#e8f6ff', x, 52, 70, 46)
+  px(ctx, CYAN, x + 4, 56, 62, 28)
+  px(ctx, INK, x + 10, 62, 28, 4)
+  px(ctx, INK, x + 10, 70, 40, 3)
+  px(ctx, GOLD, x + 44, 62, 16, 16)
+  px(ctx, INK, x + 48, 66, 8, 8)
+  px(ctx, MAGENTA, x, 92, 70, 6)
+  for (let i = 0; i < 4; i++) px(ctx, GOLD_HOT, x - 16 - i * 8, 70, 6, 2)
+  px(ctx, '#9aa0b8', 200, 96, 36, 16)
+  px(ctx, CYAN, 206, 100, 10, 6)
+  edge(ctx)
 }
 
-function drawWire(ctx: CanvasRenderingContext2D): void {
-  block(ctx, INK, 0, 0, 160, 84)
-  block(ctx, RED, 0, 30, 160, 22)
-  block(ctx, PAPER, 8, 36, 144, 4)
-  block(ctx, PAPER, 8, 44, 90, 3)
-  block(ctx, GOLD, 8, 8, 36, 8)
+function drawVeto(ctx: CanvasRenderingContext2D, time: number): void {
+  bands(ctx, ['#243048', '#4a6078', '#d8c8a8'], 0, 70)
+  px(ctx, PAPER, 150, 18, 70, 36)
+  disc(ctx, '#e8e0d4', 185, 18, 22)
+  px(ctx, '#e8e0d4', 168, 28, 34, 20)
+  px(ctx, '#b8b0a4', 178, 36, 4, 16)
+  px(ctx, '#b8b0a4', 188, 36, 4, 16)
+  px(ctx, GOLD, 182, 14, 6, 6)
+
+  px(ctx, '#6a4228', 0, 78, W, 66)
+  px(ctx, '#8a5a38', 0, 78, W, 6)
+  px(ctx, PAPER, 48, 40, 100, 78)
+  px(ctx, '#efe8dc', 48, 40, 100, 5)
+  for (let i = 0; i < 7; i++) px(ctx, '#6a655c', 58, 52 + i * 7, 78 - (i % 3) * 12, 2)
+  const stamp = 16 + (Math.sin(time * 3) > 0 ? 1 : 0)
+  disc(ctx, RED, 108, 86, stamp)
+  disc(ctx, PAPER, 108, 86, stamp - 5)
+  for (let i = -11; i <= 11; i++) px(ctx, RED, 107 + i, 85 + i, 3, 3)
+  px(ctx, '#1a1a1a', 170, 96, 40, 4)
+  px(ctx, GOLD, 206, 92, 6, 10)
+  px(ctx, '#f4f0e6', 36, 96, 10, 16)
+  dither(ctx, GOLD, 20, 70, 30, 20, 3)
+  edge(ctx)
 }
 
-function drawBlackout(ctx: CanvasRenderingContext2D): void {
-  block(ctx, INK, 0, 0, 160, 84)
-  block(ctx, GOLD, 76, 36, 8, 8)
-  block(ctx, '#3a2808', 74, 34, 12, 12)
+function drawWeights(ctx: CanvasRenderingContext2D, time: number): void {
+  px(ctx, INK, 0, 0, W, H)
+  px(ctx, '#101820', 16, 14, 150, 116)
+  px(ctx, '#061014', 20, 18, 142, 104)
+  px(ctx, CYAN, 20, 18, 142, 2)
+  for (let i = 0; i < 9; i++) {
+    const w = 40 + hash(i, 2) % 80
+    px(ctx, i % 3 === 0 ? GOLD : CYAN, 28, 28 + i * 10, w, 3)
+  }
+  if (Math.floor(time * 2) % 2 === 0) px(ctx, PAPER, 28, 112, 8, 3)
+
+  for (let i = 0; i < 4; i++) {
+    px(ctx, i < 2 ? '#4a2030' : RED, 176, 20 + i * 16, 8, 48)
+    if (i < 2) px(ctx, INK, 177, 36, 6, 8)
+  }
+  const lift = Math.sin(time * 2) * 3
+  for (let i = 0; i < 4; i++) {
+    const y = 36 + i * 12 + lift
+    px(ctx, GOLD, 196, y, 36 - i * 4, 8)
+    px(ctx, GOLD_HOT, 198, y + 2, 28 - i * 4, 3)
+  }
+  px(ctx, PAPER, 206, 78, 16, 18)
+  px(ctx, INK, 210, 82, 8, 3)
+  px(ctx, INK, 210, 88, 8, 8)
+  dither(ctx, CYAN, 180, 100, 60, 28, 2)
+  edge(ctx)
 }
 
-export function drawComic(ctx: CanvasRenderingContext2D, scene: SceneId): void {
+function node(ctx: CanvasRenderingContext2D, x: number, y: number, hot: boolean): void {
+  disc(ctx, hot ? RED : '#3a4460', x, y, hot ? 4 : 3)
+  if (hot) disc(ctx, GOLD_HOT, x, y, 1)
+}
+
+function link(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, color: string): void {
+  const steps = 12
+  for (let i = 0; i <= steps; i++) {
+    const u = i / steps
+    px(ctx, color, x0 + (x1 - x0) * u, y0 + (y1 - y0) * u, 2, 2)
+  }
+}
+
+function drawWire(ctx: CanvasRenderingContext2D, time: number): void {
+  px(ctx, '#06040c', 0, 0, W, H)
+  dither(ctx, '#140818', 0, 0, W, H, 4)
+  const pts: Array<[number, number]> = [
+    [28, 40],
+    [70, 28],
+    [108, 48],
+    [86, 78],
+    [140, 36],
+    [168, 70],
+    [200, 32],
+    [228, 58],
+    [150, 100],
+    [48, 108],
+    [112, 112],
+  ]
+  for (let i = 0; i < pts.length; i++) {
+    const a = pts[i]!
+    const b = pts[(i + 3) % pts.length]!
+    link(ctx, a[0], a[1], b[0], b[1], '#2a3148')
+  }
+  const pulse = Math.floor(time * 3) % pts.length
+  for (let i = 0; i < 5; i++) {
+    const a = pts[(pulse + i) % pts.length]!
+    const b = pts[(pulse + i + 1) % pts.length]!
+    link(ctx, a[0], a[1], b[0], b[1], i === 4 ? GOLD : RED)
+  }
+  pts.forEach((p, i) => node(ctx, p[0], p[1], (pulse + i) % 5 === 0))
+
+  px(ctx, '#14080c', 12, 96, 92, 36)
+  px(ctx, RED, 16, 100, 84, 2)
+  px(ctx, PAPER, 16, 108, 60, 3)
+  px(ctx, '#ffb0b8', 16, 116, 40, 2)
+  px(ctx, GOLD, 16, 122, 24, 2)
+  edge(ctx)
+}
+
+function drawBlackout(ctx: CanvasRenderingContext2D, time: number): void {
+  px(ctx, INK, 0, 0, W, H)
+  const fade = 0.5 + Math.sin(time * 0.8) * 0.5
+  if (fade > 0.35) {
+    for (const [x, h] of [
+      [20, 28],
+      [48, 40],
+      [80, 22],
+      [110, 36],
+      [150, 18],
+      [180, 32],
+      [214, 24],
+    ] as Array<[number, number]>) {
+      px(ctx, '#100818', x, 90 - h, 16, h)
+    }
+  }
+  px(ctx, '#1a140c', 108, 70, 40, 22)
+  px(ctx, '#2a2010', 114, 76, 28, 10)
+  const glow = Math.sin(time * 2) > -0.2
+  px(ctx, glow ? GOLD : '#3a2808', 126, 80, 4, 4)
+  if (glow) {
+    px(ctx, GOLD_HOT, 127, 81, 2, 2)
+    dither(ctx, '#3a2808', 116, 72, 24, 20, 3)
+  }
+  px(ctx, '#140c08', 0, 108, W, 36)
+  edge(ctx)
+}
+
+export function drawComic(ctx: CanvasRenderingContext2D, scene: SceneId, time = 0): void {
   ctx.save()
+  ctx.setTransform(1, 0, 0, 1, 0, 0)
+  ctx.fillStyle = INK
+  ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height)
   ctx.imageSmoothingEnabled = false
-  ctx.setTransform(2, 0, 0, 2, 0, 0)
-  if (scene === 'city') drawCity(ctx)
-  else if (scene === 'evening') drawEvening(ctx)
-  else if (scene === 'dartmouth') drawDartmouth(ctx)
-  else if (scene === 'lab') drawLab(ctx)
-  else if (scene === 'paper') drawPaper(ctx)
-  else if (scene === 'kitchen') drawKitchen(ctx)
-  else if (scene === 'halls') drawHalls(ctx)
-  else if (scene === 'order') drawOrder(ctx)
-  else if (scene === 'ship') drawShip(ctx)
-  else if (scene === 'veto') drawVeto(ctx)
-  else if (scene === 'weights') drawWeights(ctx)
-  else if (scene === 'wire') drawWire(ctx)
-  else drawBlackout(ctx)
+  ctx.setTransform(4, 0, 0, 4, 0, 0)
+  if (scene === 'city') drawCity(ctx, time)
+  else if (scene === 'evening') drawEvening(ctx, time)
+  else if (scene === 'dartmouth') drawDartmouth(ctx, time)
+  else if (scene === 'lab') drawLab(ctx, time)
+  else if (scene === 'paper') drawPaper(ctx, time)
+  else if (scene === 'kitchen') drawKitchen(ctx, time)
+  else if (scene === 'halls') drawHalls(ctx, time)
+  else if (scene === 'order') drawOrder(ctx, time)
+  else if (scene === 'ship') drawShip(ctx, time)
+  else if (scene === 'veto') drawVeto(ctx, time)
+  else if (scene === 'weights') drawWeights(ctx, time)
+  else if (scene === 'wire') drawWire(ctx, time)
+  else drawBlackout(ctx, time)
   ctx.restore()
 }

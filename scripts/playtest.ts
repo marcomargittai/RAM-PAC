@@ -244,7 +244,10 @@ for (let level = 0; level < 3; level++) {
   clearLevel(run)
   const clearedMode: string = run.mode
   if (clearedMode !== 'cleared') fail(`level ${level} did not clear after ${rams} RAM (${clearedMode})`)
-  if (level < 2) update(run, 0.05, { dir: null, start: true, pause: false })
+  if (level < 2) {
+    run.modeTimer = 0
+    update(run, 0.05, { dir: null, start: true, pause: false })
+  }
   advanceUntil(run, 3, level < 2 ? ['ready'] : ['win'])
   if (level < 2) {
     if (mode(run) !== 'ready' || run.levelIndex !== level + 1) fail(`next level failed from ${level} (${mode(run)} ${run.levelIndex})`)

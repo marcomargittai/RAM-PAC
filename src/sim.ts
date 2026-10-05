@@ -109,6 +109,7 @@ export interface Game {
 
 export const WIN_CUT_AT = 3.2
 export const WIN_CARD_AT = 4
+export const CLEAR_HOLD = 2.2
 export const CAUGHT_HOLD = 1.05
 export const SEAL_HOLD = 2.15
 
@@ -674,21 +675,21 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
   game.time += step
   if (game.mode === 'ready' || game.mode === 'cleared') {
     const last = game.levelIndex >= LEVELS.length - 1
-    if (game.mode === 'ready' || last) game.modeTimer -= step
-    if (game.mode === 'cleared' && last) game.ending += step
+    if (game.modeTimer > 0) game.modeTimer -= step
     stepFx(game, step)
-    const advance = game.mode === 'ready' ? game.modeTimer <= 0 : last ? game.modeTimer <= 0 : input.start
-    if (advance) {
-      if (game.mode === 'ready') game.mode = 'play'
-      else if (last) {
+    if (game.mode === 'ready') {
+      if (game.modeTimer <= 0) game.mode = 'play'
+    } else if (last) {
+      if (game.modeTimer <= 0) {
         game.mode = 'win'
+        game.ending = 0
         events.won = true
-      } else {
-        loadLevel(game, game.levelIndex + 1)
-        game.entry = 'next'
-        game.mode = 'ready'
-        game.modeTimer = 1.7
       }
+    } else if (input.start && game.modeTimer <= 0) {
+      loadLevel(game, game.levelIndex + 1)
+      game.entry = 'next'
+      game.mode = 'ready'
+      game.modeTimer = 1.7
     }
     return events
   }
@@ -748,9 +749,11 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
   if (game.dots.length === 0) {
     events.cleared = true
     game.mode = 'cleared'
-    const last = game.levelIndex >= LEVELS.length - 1
-    game.modeTimer = last ? 0.04 : 1.8
-    if (last) game.ending = 0
+    game.modeTimer = CLEAR_HOLD
+    game.ending = 0
+    game.shake = 8
+    burst(game, game.player.x + 0.5, game.player.y + 0.5, '#ffb000', 16, 5)
+    burst(game, game.player.x + 0.5, game.player.y + 0.5, '#3ad7ff', 10, 3.5)
     game.score += 500
     stepFx(game, step)
     return events
