@@ -28,18 +28,22 @@
           <canvas id="board" width="532" height="476" aria-label="RAM PAC maze"></canvas>
           <div id="overlay" class="overlay">
             <div class="card" id="ov-card">
-              <canvas id="comic" width="1024" height="576" hidden></canvas>
-              <p id="ov-kicker" class="eyebrow"></p>
-              <h2 id="ov-title"></h2>
-              <p id="ov-body"></p>
-              <p id="ov-loud" class="loud" hidden></p>
-              <ul id="pills" class="pills">
-                <li>RAM</li>
-                <li>THE LAW</li>
-                <li>SURGE</li>
-                <li>WIN</li>
-              </ul>
-              <button id="ov-action" type="button">Press start</button>
+              <div class="screen">
+                <canvas id="comic" width="1024" height="576" hidden></canvas>
+                <div class="caption">
+                  <p id="ov-kicker" class="eyebrow"></p>
+                  <h2 id="ov-title"></h2>
+                  <p id="ov-body"></p>
+                  <p id="ov-loud" class="loud" hidden></p>
+                  <ul id="pills" class="pills">
+                    <li>RAM</li>
+                    <li>THE LAW</li>
+                    <li>SURGE</li>
+                    <li>WIN</li>
+                  </ul>
+                  <button id="ov-action" type="button">Press start</button>
+                </div>
+              </div>
             </div>
           </div>
         </section>

@@ -180,25 +180,27 @@ canvas {
   background: rgba(16, 8, 24, 0.72);
 }
 
+.screen,
+.caption {
+  display: contents;
+}
+
 .overlay.cinema {
   position: fixed;
   inset: 0;
   z-index: 60;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
-  padding: 2.2vh 3vw 2.4vh;
+  padding: 8vh 5vw;
   background:
     radial-gradient(ellipse at center, #24143c 0%, #07040f 68%);
 }
 
 .overlay.cinema .card {
-  width: min(1280px, 100%);
-  height: 100%;
+  width: auto;
+  height: auto;
   max-height: none;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
   margin: 0;
   padding: 0;
   border: none;
@@ -207,43 +209,80 @@ canvas {
   text-align: left;
 }
 
-.overlay.cinema .card {
-  justify-content: center;
+.overlay.cinema .screen {
+  display: block;
+  position: relative;
+  width: min(92vw, calc(84vh * 16 / 9));
 }
 
 .overlay.cinema #comic {
-  flex: 0 0 auto;
-  align-self: center;
-  width: min(100%, calc((100vh - 220px) * 16 / 9));
+  display: block;
+  width: 100%;
   height: auto;
-  max-height: calc(100vh - 220px);
+  max-height: 84vh;
   aspect-ratio: 16 / 9;
   margin: 0;
   object-fit: fill;
   background: #07040f;
   border: 4px solid var(--phosphor);
   box-shadow:
-    0 0 0 8px #14081c,
+    0 0 0 10px #14081c,
     0 0 42px rgba(58, 215, 255, 0.28);
 }
 
-.overlay.cinema .card h2 {
-  font-size: clamp(16px, 2.6vw, 30px);
-  line-height: 1.45;
-  margin: 0;
+.overlay.cinema .caption {
+  display: grid;
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "kicker action"
+    "year action"
+    "body action";
+  column-gap: 22px;
+  row-gap: 8px;
+  align-items: end;
+  padding: 16px 18px 14px;
+  background: rgba(7, 4, 15, 0.9);
+  border: 3px solid var(--phosphor);
+  box-shadow: 0 0 0 4px #100818;
 }
 
-.overlay.cinema .card p {
-  font-size: clamp(11px, 1.45vw, 16px);
+.overlay.cinema #ov-kicker {
+  grid-area: kicker;
+  margin: 0;
+  color: var(--phosphor-mid);
+  font-size: clamp(11px, 1.3vw, 14px);
+  letter-spacing: 0.06em;
+}
+
+.overlay.cinema #ov-title {
+  grid-area: year;
+  margin: 0;
+  color: var(--phosphor-hot);
+  font-size: clamp(22px, 3.2vw, 40px);
+  line-height: 1.35;
+  text-shadow: 0 0 10px rgba(255, 46, 147, 0.55);
+}
+
+.overlay.cinema #ov-body {
+  grid-area: body;
+  margin: 0;
+  max-width: none;
+  color: #f4f0e6;
+  font-size: clamp(13px, 1.55vw, 18px);
   line-height: 1.65;
-  max-width: 68ch;
+  text-shadow: 0 2px 0 #07040f;
 }
 
 .overlay.cinema #ov-action {
-  align-self: flex-end;
-  min-width: 180px;
-  min-height: 48px;
-  padding: 12px 18px;
+  grid-area: action;
+  align-self: end;
+  min-width: 168px;
+  min-height: 52px;
+  padding: 14px 18px;
   font-size: 12px;
 }
 
@@ -565,16 +604,42 @@ body.surge .crt {
 
 @media (max-width: 860px) {
   .overlay.cinema {
-    padding: 12px 10px 18px;
+    padding: 4vh 12px;
+  }
+
+  .overlay.cinema .screen {
+    width: 100%;
+    height: 84vh;
   }
 
   .overlay.cinema #comic {
     width: 100%;
-    height: 58vh;
-    max-height: 58vh;
+    height: 100%;
+    max-height: none;
     aspect-ratio: auto;
     object-fit: cover;
-    object-position: center;
+    object-position: center center;
+  }
+
+  .overlay.cinema .caption {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "kicker"
+      "year"
+      "body"
+      "action";
+    padding: 12px;
+  }
+
+  .overlay.cinema #ov-title { font-size: 20px; }
+  .overlay.cinema #ov-body { font-size: 12px; }
+  .overlay.cinema #ov-action {
+    justify-self: end;
+    min-width: 140px;
+    min-height: 44px;
   }
 
   .layout { grid-template-columns: 1fr; }
