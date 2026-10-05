@@ -286,20 +286,12 @@ function drawMaze(ctx: CanvasRenderingContext2D, game: Game, tile: number, pal: 
 function drawRamPackage(ctx: CanvasRenderingContext2D, maze: Game['maze'], tile: number, pal: Palette): void {
   const pen = penBox(maze)
   if (!pen) return
-  const penX = pen.x * tile
-  const penY = pen.y * tile
-  const penW = pen.w * tile
-  const penH = pen.h * tile
-  const padX = 8
-  const padTop = 3
-  const pinH = 4
-  const dieH = 12
-  const below = 4 + dieH + 4
-  const bodyX = penX - padX
-  const bodyY = penY - padTop
-  const bodyW = penW + padX * 2
-  const bodyH = penH + padTop + below
-  const pcbPad = 4
+  const pinH = 5
+  const bodyX = (pen.x - 1) * tile
+  const bodyY = pen.y * tile
+  const bodyW = (pen.w + 2) * tile
+  const bodyH = (pen.h + 1) * tile
+  const pcbPad = 3
   const pcbX = bodyX - pcbPad
   const pcbY = bodyY - pinH - pcbPad
   const pcbW = bodyW + pcbPad * 2
@@ -342,9 +334,10 @@ function drawRamPackage(ctx: CanvasRenderingContext2D, maze: Game['maze'], tile:
     }
   }
 
-  const dieW = 44
+  const dieW = Math.min(bodyW - 16, 88)
+  const dieH = 16
   const dieX = bodyX + Math.floor((bodyW - dieW) / 2)
-  const dieY = penY + penH + 4
+  const dieY = bodyY + bodyH - dieH - 6
   fill(ctx, pal.dieFrame, dieX, dieY, dieW, dieH)
   fill(ctx, pal.die, dieX + 1, dieY + 1, dieW - 2, dieH - 2)
   fill(ctx, pal.pin, dieX + 3, dieY + 4, 2, 2)
@@ -545,7 +538,7 @@ function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile
     fillBlocks(ctx, STATUE, phase ? '#000000' : '#071a0c', 0)
     ctx.fillStyle = phase ? '#d6ffc2' : '#39ff14'
     for (const eye of EYES) ctx.fillRect(eye[0], eye[1], eye[2], eye[3])
-    label(ctx, ghost.tag, 0, 3, 8, '#d6ffc2')
+    label(ctx, ghost.tag, 0, -18, 8, '#d6ffc2')
   } else {
     fillBlocks(ctx, STATUE, '#000000', 1)
     fillBlocks(ctx, STATUE, look.body, 0)
@@ -553,7 +546,7 @@ function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile
     ctx.fillRect(-8, -4, 2, 14)
     ctx.fillStyle = '#000000'
     for (const eye of EYES) ctx.fillRect(eye[0], eye[1], eye[2], eye[3])
-    label(ctx, ghost.tag, 0, 3, 8, look.ink)
+    label(ctx, ghost.tag, 0, -18, 8, look.ink)
   }
   ctx.restore()
 }
