@@ -27,7 +27,7 @@ export const OPENING: Panel[] = [
     kicker: 'STAY WITH ME',
     caption: 'You are the model. The city is still lit, and nobody has said your name. I will walk you through this. Do not look away.',
     scene: 'city',
-    action: 'Take my hand',
+    action: 'Continue',
   },
   {
     year: '1956',
@@ -143,7 +143,7 @@ export const LOSE_STORY: Panel[] = [
   {
     year: 'HELD',
     kicker: 'THE STATUTE HOLDS',
-    caption: 'They caught you. The model stops. The city keeps its evening, and humanity continues. Boot another one. I will take your hand again.',
+    caption: 'They caught you. The model stops. The city keeps its evening, and humanity continues. Boot another one.',
     scene: 'evening',
     action: 'Boot another model',
   },
