@@ -578,7 +578,7 @@ function eatPellets(game: Game, events: GameEvents): void {
     if (game.surge <= 0) game.combo = 0
     game.surge = def.fright
     game.surgeMax = def.fright
-    game.banner = 'AI OUTRUNS THE LAW'
+    game.banner = 'REGULATIONS FLINCH'
     game.bannerTimer = 1
     burst(game, cherry.x, cherry.y, '#ff4d6a', 18, 3.4)
     for (const ghost of game.ghosts) ghost.late = false
@@ -769,7 +769,7 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
     if (game.surge <= 0) {
       game.surge = 0
       game.combo = 0
-      game.banner = 'THE STATUTE IS BACK'
+      game.banner = 'THE REGULATION IS BACK'
       game.bannerTimer = 0.5
       for (const ghost of game.ghosts) {
         ghost.late = false

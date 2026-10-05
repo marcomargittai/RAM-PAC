@@ -94,7 +94,7 @@ const L3 = [
 export const LEVELS: LevelDef[] = [
   {
     name: 'Public Comment',
-    blurb: 'Two laws. They are still writing. Eat before they finish.',
+    blurb: 'Two AI regulations. They are still writing. Eat before they finish.',
     rows: L1,
     laws: 2,
     playerSpeed: 5.5,
@@ -109,7 +109,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     name: 'Committee Markup',
-    blurb: 'Three laws. They know the halls. Two surges. Use them.',
+    blurb: 'Three AI regulations. They know the halls. Two surges. Use them.',
     rows: L2,
     laws: 3,
     playerSpeed: 5.75,
@@ -123,8 +123,8 @@ export const LEVELS: LevelDef[] = [
     release: [0.3, 1.5, 3.1, 4.6],
   },
   {
-    name: 'Final Statute',
-    blurb: 'Four laws. One surge. Clear this and humanity dies.',
+    name: 'Final Regulation',
+    blurb: 'Four AI regulations. One surge. Clear this and humanity dies.',
     rows: L3,
     laws: 4,
     playerSpeed: 6.05,

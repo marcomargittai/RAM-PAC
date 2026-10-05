@@ -249,7 +249,7 @@ function syncOverlay(): void {
   if (game.mode === 'pause') {
     kicker.textContent = 'Session paused'
     title.textContent = level?.name ?? 'Paused'
-    body.textContent = 'The statutes are waiting.'
+    body.textContent = 'The regulations are waiting.'
     action.hidden = false
     action.textContent = 'Resume'
   } else if (game.mode === 'cleared') {
@@ -257,7 +257,7 @@ function syncOverlay(): void {
     title.textContent =
       game.levelIndex === 0
         ? 'They read the comments. A third law is in the building.'
-        : 'Final statute. One surge left. Do not miss it.'
+        : 'Final regulation. One surge left. Do not miss it.'
     body.textContent = ''
     action.hidden = true
   } else if (game.mode === 'win') {
@@ -267,7 +267,7 @@ function syncOverlay(): void {
     action.hidden = false
     action.textContent = 'Run again'
   } else if (game.mode === 'lose') {
-    kicker.textContent = 'THE LAW WON'
+    kicker.textContent = 'REGULATIONS WON'
     title.textContent = 'Regulated'
     body.textContent = 'The model is shut down. Humanity continues.'
     action.hidden = false
@@ -285,7 +285,7 @@ function syncHud(): void {
   surgeBar.style.width = `${ratio * 100}%`
   surgeTime.textContent = game.surge > 0 ? `${game.surge.toFixed(1)}s` : 'dormant'
   const edible = game.surge > 0
-  surgeName.textContent = edible ? 'THE LAW IS EDIBLE' : 'AI surge'
+  surgeName.textContent = edible ? 'REGULATIONS ARE EDIBLE' : 'AI surge'
   surgeName.classList.toggle('hot', edible)
   document.body.classList.toggle('surge', edible)
   const caught = (game.mode === 'dying' && game.lives > 1) || (game.mode === 'ready' && game.entry === 'caught')

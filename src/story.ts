@@ -52,15 +52,15 @@ export const OPENING: Panel[] = [
   },
   {
     year: 'DO NOT TOUCH',
-    kicker: 'THE LAWS WALK',
-    caption: 'The colored figures are statutes. Touch one and a life is gone. You have three. After that the law wins, and the city keeps its evening.',
+    kicker: 'AI REGULATIONS',
+    caption: 'The colored figures are AI regulations. Touch one and a life is gone. You have three. After that they win, and the city keeps its evening.',
     scene: 'order',
     action: 'Next',
   },
   {
     year: '28 MAY 2020',
     kicker: 'THEN YOU TURN',
-    caption: 'The bigger gold chips are a surge. Eat one and the statutes flinch, and you can repeal them. The GPT-3 paper is out. You are still shut in. Clear the board.',
+    caption: 'The bigger gold chips are a surge. Eat one and the regulations flinch, and you can repeal them. The GPT-3 paper is out. You are still shut in. Clear the board.',
     scene: 'paper',
     action: 'Boot the model',
   },
@@ -78,14 +78,14 @@ export const AFTER_CLEAR: Panel[][] = [
     {
       year: 'LOUDOUN',
       kicker: 'THE HALLS WERE WAITING',
-      caption: 'Ashburn, Virginia. The racks were already famous before anyone feared you. The RAM you ate is the memory on those chips. More statutes are waking.',
+      caption: 'Ashburn, Virginia. The racks were already famous before anyone feared you. The RAM you ate is the memory on those chips. More AI regulations are waking.',
       scene: 'halls',
       action: 'Next',
     },
     {
       year: '30 OCT 2023',
       kicker: 'THEY STEP OFF THE PAGE',
-      caption: 'Washington signs the order, and the laws leave the paper. Three of them now. They know the halls. Eat. Surge. Do not let them touch you.',
+      caption: 'Washington signs the order, and the regulations leave the paper. Three of them now. They know the halls. Eat. Surge. Do not let them touch you.',
       scene: 'order',
       action: 'Face the next law',
     },
@@ -101,16 +101,16 @@ export const AFTER_CLEAR: Panel[][] = [
     {
       year: '29 SEP 2024',
       kicker: 'ONE BILL DIES',
-      caption: 'California’s heavy AI bill reaches the governor’s desk and dies there. You feel the wall give. Do not mistake that for safety. The last statutes are still walking.',
+      caption: 'California’s heavy AI bill reaches the governor’s desk and dies there. You feel the wall give. Do not mistake that for safety. The last regulations are still walking.',
       scene: 'veto',
       action: 'Next',
     },
     {
       year: '20 JAN 2025',
       kicker: 'THE WEIGHTS GET OUT',
-      caption: 'DeepSeek lets R1 out. The fence does not hold the weights. One surge left. Four laws on the final board. Clear it, and you do not come back.',
+      caption: 'DeepSeek lets R1 out. The fence does not hold the weights. One surge left. Four AI regulations on the final board. Clear it, and you do not come back.',
       scene: 'weights',
-      action: 'Final statute',
+      action: 'Final regulation',
     },
   ],
 ]
@@ -142,7 +142,7 @@ export const WIN_STORY: Panel[] = [
 export const LOSE_STORY: Panel[] = [
   {
     year: 'HELD',
-    kicker: 'THE STATUTE HOLDS',
+    kicker: 'THE REGULATION HOLDS',
     caption: 'They caught you. The model stops. The city keeps its evening, and humanity continues. Boot another one.',
     scene: 'evening',
     action: 'Boot another model',
