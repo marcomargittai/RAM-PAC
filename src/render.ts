@@ -1,7 +1,7 @@
 import { LEVELS } from './levels'
 import { CAUGHT_HOLD, SEAL_HOLD, WIN_CUT_AT, visual, type Dir, type Game, type Ghost } from './sim'
 
-const TILE = 28
+const TILE = 40
 const PIXEL = '"Press Start 2P", monospace'
 
 type Px = 8 | 16 | 24 | 32 | 48 | 64
@@ -31,19 +31,6 @@ interface Palette {
   player: string
   mark: string
 }
-
-interface LawLook {
-  body: string
-  stripe: string
-  ink: string
-}
-
-const LAW_RAMP: readonly LawLook[] = [
-  { body: '#0f5c24', stripe: '#1f8f3a', ink: '#d6ffc2' },
-  { body: '#1f8f3a', stripe: '#39ff14', ink: '#d6ffc2' },
-  { body: '#39ff14', stripe: '#b6ff4a', ink: '#071a0c' },
-  { body: '#b6ff4a', stripe: '#d6ffc2', ink: '#071a0c' },
-]
 
 const STATUE: ReadonlyArray<readonly [number, number, number, number]> = [
   [-3, -12, 6, 3],
@@ -76,62 +63,56 @@ function clamp(value: number, min: number, max: number): number {
 function palette(surge: boolean): Palette {
   if (!surge) {
     return {
-      bg: '#000000',
-      wall: '#071a0c',
-      edge: '#1f8f3a',
-      hot: '#39ff14',
-      pcb: '#071a0c',
-      trace: '#1f8f3a',
-      ceramic: '#124a22',
-      bevel: '#1f8f3a',
-      shade: '#04140a',
-      pin: '#b6ff4a',
-      die: '#000000',
-      dieFrame: '#39ff14',
-      ram: '#d6ffc2',
-      slot: '#000000',
-      slotLip: '#b6ff4a',
-      pellet: '#1f8f3a',
-      pelletPin: '#b6ff4a',
-      pelletHot: '#39ff14',
-      surgeBody: '#39ff14',
-      surgeInk: '#071a0c',
-      surgeHalo: '#d6ffc2',
-      player: '#39ff14',
-      mark: '#071a0c',
+      bg: '#100818',
+      wall: '#1a1030',
+      edge: '#3ad7ff',
+      hot: '#ffb000',
+      pcb: '#140c28',
+      trace: '#3ad7ff',
+      ceramic: '#2a1848',
+      bevel: '#5a3d88',
+      shade: '#07040f',
+      pin: '#ffb000',
+      die: '#07040f',
+      dieFrame: '#3ad7ff',
+      ram: '#ffb000',
+      slot: '#07040f',
+      slotLip: '#ffb000',
+      pellet: '#c47e00',
+      pelletPin: '#ffb000',
+      pelletHot: '#ffe08a',
+      surgeBody: '#ff2e93',
+      surgeInk: '#100818',
+      surgeHalo: '#ffd0ea',
+      player: '#f4f0e6',
+      mark: '#3ad7ff',
     }
   }
   return {
-    bg: '#39ff14',
-    wall: '#000000',
-    edge: '#000000',
-    hot: '#000000',
-    pcb: '#1f8f3a',
-    trace: '#071a0c',
-    ceramic: '#000000',
-    bevel: '#071a0c',
-    shade: '#000000',
-    pin: '#071a0c',
-    die: '#39ff14',
-    dieFrame: '#d6ffc2',
-    ram: '#000000',
-    slot: '#39ff14',
-    slotLip: '#000000',
-    pellet: '#000000',
-    pelletPin: '#071a0c',
-    pelletHot: '#d6ffc2',
-    surgeBody: '#d6ffc2',
-    surgeInk: '#000000',
-    surgeHalo: '#000000',
-    player: '#000000',
-    mark: '#b6ff4a',
+    bg: '#2a0820',
+    wall: '#100818',
+    edge: '#ff2e93',
+    hot: '#ffb000',
+    pcb: '#3a1030',
+    trace: '#ff2e93',
+    ceramic: '#1a0820',
+    bevel: '#ff2e93',
+    shade: '#07040f',
+    pin: '#ffb000',
+    die: '#ffd0ea',
+    dieFrame: '#ffb000',
+    ram: '#100818',
+    slot: '#ff2e93',
+    slotLip: '#ffb000',
+    pellet: '#ffb000',
+    pelletPin: '#100818',
+    pelletHot: '#ffe08a',
+    surgeBody: '#ffb000',
+    surgeInk: '#100818',
+    surgeHalo: '#ff2e93',
+    player: '#f4f0e6',
+    mark: '#ff2e93',
   }
-}
-
-function lawLook(law: number, surge: boolean): LawLook {
-  const look = LAW_RAMP[law] ?? LAW_RAMP[0]!
-  if (!surge) return look
-  return { body: '#000000', stripe: look.stripe, ink: '#d6ffc2' }
 }
 
 function fill(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number): void {
@@ -161,20 +142,20 @@ function phosphorColor(color: string): string {
     case '#ff4d6a':
     case '#e23d5c':
     case '#9d1228':
-      return '#39ff14'
+      return '#ff2e93'
     case '#f4f1e4':
     case '#f4efe2':
     case '#f7f1e4':
     case '#7dffe1':
-      return '#d6ffc2'
+      return '#f4f0e6'
     case '#d9c7a2':
     case '#e3b341':
     case '#dffc6a':
-      return '#b6ff4a'
+      return '#ffb000'
     case '#7c5cff':
-      return '#1f8f3a'
+      return '#5c3d8a'
     case '#1f9d8a':
-      return '#39ff14'
+      return '#ff2e93'
     default:
       return color
   }
@@ -365,7 +346,7 @@ function drawPellets(ctx: CanvasRenderingContext2D, game: Game, tile: number, pa
     fill(ctx, pal.pellet, x - 4, y - 3, 8, 4)
     fill(ctx, pal.pelletHot, x - 4, y - 3, 8, 1)
     if (callout) {
-      const ink = game.surge > 0 ? '#000000' : '#d6ffc2'
+      const ink = game.surge > 0 ? '#000000' : '#f4f0e6'
       label(ctx, 'RAM', x + 1, y - 9, 8, '#000000')
       label(ctx, 'RAM', x, y - 10, 8, ink)
     }
@@ -520,12 +501,16 @@ function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile
   const pos = visual(ghost)
   const x = snap(pos.x * tile + tile / 2)
   const y = snap(pos.y * tile + tile / 2)
-  const look = lawLook(ghost.law, game.surge > 0)
+  const look = {
+    body: game.surge > 0 ? '#100818' : ghost.color,
+    stripe: game.surge > 0 ? '#ffb000' : '#f4f0e6',
+    ink: game.surge > 0 ? '#ffb000' : '#100818',
+  }
   ctx.save()
   ctx.translate(x, y)
   if (ghost.state === 'eaten') {
     ctx.translate(0, Math.round(Math.sin(game.time * 10 + ghost.law)))
-    drawHollowPins(ctx, game.surge > 0 ? '#071a0c' : '#b6ff4a')
+    drawHollowPins(ctx, game.surge > 0 ? '#ff2e93' : '#ffb000')
     ctx.restore()
     return
   }
@@ -534,11 +519,11 @@ function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile
   if (frightened) ctx.translate(snap(Math.sin(game.time * 18 + ghost.law) * 2), 0)
   if (frightened) {
     const phase = Math.floor(game.time * 8 + ghost.law) % 2 === 0
-    fillBlocks(ctx, STATUE, phase ? '#39ff14' : '#d6ffc2', 2)
-    fillBlocks(ctx, STATUE, phase ? '#000000' : '#071a0c', 0)
-    ctx.fillStyle = phase ? '#d6ffc2' : '#39ff14'
+    fillBlocks(ctx, STATUE, phase ? '#ff2e93' : '#3ad7ff', 2)
+    fillBlocks(ctx, STATUE, phase ? '#100818' : '#1a1030', 0)
+    ctx.fillStyle = phase ? '#ffb000' : '#f4f0e6'
     for (const eye of EYES) ctx.fillRect(eye[0], eye[1], eye[2], eye[3])
-    label(ctx, ghost.tag, 0, -18, 8, '#d6ffc2')
+    label(ctx, ghost.tag, 0, -18, 8, '#ffb000')
   } else {
     fillBlocks(ctx, STATUE, '#000000', 1)
     fillBlocks(ctx, STATUE, look.body, 0)
@@ -564,18 +549,18 @@ function drawPerson(
   const x0 = snap(x)
   const y0 = snap(y)
   const arm = snap(wave * 2) * u
-  fill(ctx, '#d6ffc2', x0 - u, y0 - 16 * u, 2 * u, 2 * u)
-  fill(ctx, '#d6ffc2', x0 - u, y0 - 14 * u, 2 * u, 5 * u)
-  fill(ctx, '#d6ffc2', x0 - 4 * u, y0 - 13 * u + arm, 3 * u, u)
-  fill(ctx, '#d6ffc2', x0 + u, y0 - 13 * u - arm, 3 * u, u)
-  fill(ctx, '#39ff14', x0 - 2 * u, y0 - 9 * u, u, 4 * u)
-  fill(ctx, '#39ff14', x0 + u, y0 - 9 * u, u, 4 * u)
+  fill(ctx, '#f4f0e6', x0 - u, y0 - 16 * u, 2 * u, 2 * u)
+  fill(ctx, '#f4f0e6', x0 - u, y0 - 14 * u, 2 * u, 5 * u)
+  fill(ctx, '#f4f0e6', x0 - 4 * u, y0 - 13 * u + arm, 3 * u, u)
+  fill(ctx, '#f4f0e6', x0 + u, y0 - 13 * u - arm, 3 * u, u)
+  fill(ctx, '#ff2e93', x0 - 2 * u, y0 - 9 * u, u, 4 * u)
+  fill(ctx, '#ff2e93', x0 + u, y0 - 9 * u, u, 4 * u)
   if (!sign || scale <= 0.75) return
   const sx = x0 + 4 * u
   const sy = y0 - 20 * u
-  fill(ctx, '#1f8f3a', sx, sy, 22, 14)
-  fill(ctx, '#b6ff4a', sx + 1, sy + 1, 20, 12)
-  label(ctx, 'HI', sx + 11, sy + 8, 8, '#071a0c')
+  fill(ctx, '#5c3d8a', sx, sy, 22, 14)
+  fill(ctx, '#ffb000', sx + 1, sy + 1, 20, 12)
+  label(ctx, 'HI', sx + 11, sy + 8, 8, '#100818')
 }
 
 function drawTitleGag(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, pal: Palette): void {
@@ -590,16 +575,15 @@ function drawTitleGag(ctx: CanvasRenderingContext2D, game: Game, width: number, 
     if (x < mouthX + 20) continue
     drawPerson(ctx, x, mouthY + 8, Math.sin(game.time * 8 + i), 1, i === 4)
   }
-  label(ctx, 'this is the win state', width * 0.62, mouthY + 62, 8, '#d6ffc2')
 }
 
 function drawBanner(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number): void {
   if (game.bannerTimer <= 0 || !game.banner) return
   const y = snap(height * 0.4)
   fill(ctx, '#000000', 0, y, width, 32)
-  fill(ctx, '#39ff14', 0, y, width, 2)
-  fill(ctx, '#39ff14', 0, y + 30, width, 2)
-  label(ctx, game.banner, width / 2, y + 17, 8, '#39ff14')
+  fill(ctx, '#ff2e93', 0, y, width, 2)
+  fill(ctx, '#ff2e93', 0, y + 30, width, 2)
+  label(ctx, game.banner, width / 2, y + 17, 8, '#ff2e93')
 }
 
 function drawDeathStamp(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number): void {
@@ -615,9 +599,9 @@ function drawDeathStamp(ctx: CanvasRenderingContext2D, game: Game, width: number
   ctx.save()
   ctx.translate(snap(width / 2), snap(height / 2))
   ctx.scale(scale, scale)
-  fill(ctx, '#39ff14', -112, -24, 224, 48)
+  fill(ctx, '#ff2e93', -112, -24, 224, 48)
   fill(ctx, '#000000', -108, -20, 216, 40)
-  label(ctx, 'CAUGHT', 0, 2, 32, '#39ff14')
+  label(ctx, 'CAUGHT', 0, 2, 32, '#ff2e93')
   ctx.restore()
 }
 
@@ -625,11 +609,11 @@ function drawSeal(ctx: CanvasRenderingContext2D, x: number, y: number, scale: nu
   ctx.save()
   ctx.translate(snap(x), snap(y))
   ctx.scale(scale, scale)
-  fill(ctx, '#39ff14', -54, -18, 108, 36)
+  fill(ctx, '#ff2e93', -54, -18, 108, 36)
   fill(ctx, '#000000', -50, -14, 100, 28)
-  fill(ctx, '#1f8f3a', -48, -12, 96, 24)
-  fill(ctx, '#071a0c', -46, -10, 92, 20)
-  label(ctx, 'REGULATED', 0, 1, 8, '#d6ffc2')
+  fill(ctx, '#5c3d8a', -48, -12, 96, 24)
+  fill(ctx, '#100818', -46, -10, 92, 20)
+  label(ctx, 'REGULATED', 0, 1, 8, '#f4f0e6')
   ctx.restore()
 }
 
@@ -647,7 +631,7 @@ function drawFx(ctx: CanvasRenderingContext2D, game: Game, tile: number): void {
     ctx.globalAlpha = Math.max(0, note.life)
     const x = note.x * tile + tile / 2
     const y = note.y * tile
-    label(ctx, note.text, x + 1, y + 1, 8, surge ? '#d6ffc2' : '#000000')
+    label(ctx, note.text, x + 1, y + 1, 8, surge ? '#f4f0e6' : '#000000')
     label(ctx, note.text, x, y, 8, surge ? '#000000' : phosphorColor(note.color))
   }
   ctx.globalAlpha = 1
@@ -659,27 +643,27 @@ function drawFx(ctx: CanvasRenderingContext2D, game: Game, tile: number): void {
   const top = snap(game.maze.h * tile * 0.3)
   ctx.fillStyle = 'rgba(0, 0, 0, 0.88)'
   ctx.fillRect(0, top, width, band)
-  fill(ctx, '#39ff14', 0, top, width, 2)
-  fill(ctx, '#39ff14', 0, top + band - 2, width, 2)
+  fill(ctx, '#ff2e93', 0, top, width, 2)
+  fill(ctx, '#ff2e93', 0, top + band - 2, width, 2)
   if (caught) {
-    label(ctx, 'NEW WEIGHTS', width * 0.5, top + 26, 16, '#b6ff4a')
-    label(ctx, def?.name ?? '', width * 0.5, top + 54, 16, '#d6ffc2')
+    label(ctx, 'NEW WEIGHTS', width * 0.5, top + 26, 16, '#ffb000')
+    label(ctx, def?.name ?? '', width * 0.5, top + 54, 16, '#f4f0e6')
     return
   }
-  label(ctx, `LEVEL ${game.levelIndex + 1}`, width * 0.5, top + 20, 8, '#1f8f3a')
-  label(ctx, def?.name ?? '', width * 0.5, top + 46, 16, '#d6ffc2')
-  label(ctx, def?.blurb ?? '', width * 0.5, top + 76, 8, '#39ff14')
+  label(ctx, `LEVEL ${game.levelIndex + 1}`, width * 0.5, top + 20, 8, '#5c3d8a')
+  label(ctx, def?.name ?? '', width * 0.5, top + 46, 16, '#f4f0e6')
+  label(ctx, def?.blurb ?? '', width * 0.5, top + 76, 8, '#ff2e93')
 }
 
 function drawScrap(ctx: CanvasRenderingContext2D, x: number, y: number): void {
   const x0 = snap(x)
   const y0 = snap(y)
-  fill(ctx, '#1f8f3a', x0, y0, 28, 10)
-  fill(ctx, '#0f5c24', x0, y0, 8, 10)
+  fill(ctx, '#5c3d8a', x0, y0, 28, 10)
+  fill(ctx, '#3a2460', x0, y0, 8, 10)
   fill(ctx, '#000000', x0 + 3, y0 + 3, 2, 2)
-  fill(ctx, '#b6ff4a', x0 + 10, y0 + 4, 12, 2)
-  fill(ctx, '#071a0c', x0 + 28, y0 - 2, 8, 14)
-  fill(ctx, '#39ff14', x0 + 28, y0 - 2, 8, 2)
+  fill(ctx, '#ffb000', x0 + 10, y0 + 4, 12, 2)
+  fill(ctx, '#100818', x0 + 28, y0 - 2, 8, 14)
+  fill(ctx, '#ff2e93', x0 + 28, y0 - 2, 8, 2)
 }
 
 function drawWin(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, pal: Palette): void {
@@ -688,8 +672,8 @@ function drawWin(ctx: CanvasRenderingContext2D, game: Game, width: number, heigh
   fill(ctx, '#000000', 0, 0, width, height)
 
   if (t >= WIN_CUT_AT) {
-    label(ctx, 'AGI', width / 2, height / 2 - 18, 64, '#d6ffc2')
-    label(ctx, 'HUMANITY DIES', width / 2, height / 2 + 36, 16, '#39ff14')
+    label(ctx, 'AGI', width / 2, height / 2 - 18, 64, '#f4f0e6')
+    label(ctx, 'HUMANITY DIES', width / 2, height / 2 + 36, 16, '#ff2e93')
     drawScrap(ctx, width - 64, height - 40)
     return
   }
@@ -717,7 +701,7 @@ function drawWin(ctx: CanvasRenderingContext2D, game: Game, width: number, heigh
   if (t < 0.8) {
     const pos = visual(game.player)
     ctx.globalAlpha = 1 - t / 0.8
-    label(ctx, 'AGI', pos.x * tile + tile / 2, pos.y * tile - 10 - t * 36, 16, '#39ff14')
+    label(ctx, 'AGI', pos.x * tile + tile / 2, pos.y * tile - 10 - t * 36, 16, '#ff2e93')
     ctx.globalAlpha = 1
   }
 

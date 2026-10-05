@@ -2,17 +2,17 @@
 
 :root {
   color-scheme: dark;
-  --bg: #03140c;
-  --bg-2: #06210f;
-  --ink: #b6ff9a;
-  --muted: #7dff6b;
-  --phosphor: #39ff14;
-  --phosphor-mid: #7dff6b;
-  --phosphor-hot: #b6ff9a;
-  --pcb: #0c3a1c;
-  --ram: #39ff14;
-  --surge: #7dff6b;
-  --line: #0c3a1c;
+  --bg: #100818;
+  --bg-2: #1c1233;
+  --ink: #f4f0e6;
+  --muted: #c9b8e8;
+  --phosphor: #3ad7ff;
+  --phosphor-mid: #ffb000;
+  --phosphor-hot: #ff2e93;
+  --pcb: #3a2460;
+  --ram: #ffb000;
+  --surge: #ff2e93;
+  --line: #3a2460;
   --font-pixel: "Press Start 2P", "Silkscreen", ui-monospace, monospace;
   font-family: var(--font-pixel);
   image-rendering: pixelated;
@@ -44,7 +44,7 @@ button, input {
 }
 
 #app {
-  width: min(1120px, calc(100% - 24px));
+  width: min(1440px, calc(100% - 16px));
   margin: 0 auto;
   padding: 18px 0 28px;
 }
@@ -65,7 +65,7 @@ h1, h2 {
   letter-spacing: 0.02em;
   margin: 0;
   color: var(--phosphor);
-  text-shadow: 0 0 8px rgba(57, 255, 20, 0.7);
+  text-shadow: 0 0 8px rgba(58, 215, 255, 0.7);
 }
 
 h1 {
@@ -95,7 +95,7 @@ button {
   font-size: 10px;
   line-height: 1.5;
   color: var(--phosphor-mid);
-  box-shadow: 0 0 8px rgba(57, 255, 20, 0.28);
+  box-shadow: 0 0 8px rgba(58, 215, 255, 0.28);
 }
 
 button:hover, button:focus-visible {
@@ -103,7 +103,7 @@ button:hover, button:focus-visible {
   outline: none;
   color: var(--phosphor-hot);
   background: #0c3a1c;
-  box-shadow: 0 0 14px rgba(57, 255, 20, 0.65);
+  box-shadow: 0 0 14px rgba(58, 215, 255, 0.65);
 }
 
 .layout {
@@ -116,14 +116,14 @@ button:hover, button:focus-visible {
 .stage {
   position: relative;
   justify-self: center;
-  border: 14px solid #021208;
+  border: 14px solid #14081c;
   border-radius: 46px / 34px;
-  background: #010704;
+  background: #07040f;
   box-shadow:
     inset 0 0 0 2px var(--pcb),
     inset 0 0 32px rgba(0, 0, 0, 0.72),
     0 0 0 2px var(--phosphor),
-    0 0 18px rgba(57, 255, 20, 0.55);
+    0 0 18px rgba(58, 215, 255, 0.55);
   overflow: hidden;
 }
 
@@ -136,33 +136,33 @@ button:hover, button:focus-visible {
   z-index: 4;
   box-shadow:
     inset 0 0 42px rgba(0, 0, 0, 0.62),
-    inset 0 0 12px rgba(57, 255, 20, 0.28);
+    inset 0 0 12px rgba(58, 215, 255, 0.28);
 }
 
 body.surge {
-  background-color: #145c22;
+  background-color: #4a1030;
   color: var(--phosphor-hot);
 }
 
 body.surge .stage {
-  border-color: #eaffe4;
+  border-color: #ffd0ea;
   box-shadow:
-    inset 0 0 0 2px #eaffe4,
+    inset 0 0 0 2px #ffd0ea,
     inset 0 0 36px rgba(182, 255, 154, 0.72),
-    0 0 0 2px #eaffe4,
-    0 0 28px #39ff14,
-    0 0 72px rgba(57, 255, 20, 0.95);
+    0 0 0 2px #ffd0ea,
+    0 0 28px #3ad7ff,
+    0 0 72px rgba(58, 215, 255, 0.95);
 }
 
 body.surge header,
 body.surge .panel {
   border-color: var(--phosphor-hot);
-  box-shadow: 0 0 18px rgba(57, 255, 20, 0.55);
+  box-shadow: 0 0 18px rgba(58, 215, 255, 0.55);
 }
 
 body.surge #surge-bar {
-  background: #eaffe4;
-  box-shadow: 0 0 14px #eaffe4;
+  background: #ffd0ea;
+  box-shadow: 0 0 14px #ffd0ea;
 }
 
 canvas {
@@ -177,19 +177,31 @@ canvas {
   display: grid;
   place-items: center;
   padding: 16px;
-  background: rgba(1, 8, 4, 0.62);
+  background: rgba(16, 8, 24, 0.72);
 }
 
 .overlay[hidden] { display: none; }
 
+#comic {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 0 12px;
+  image-rendering: pixelated;
+  background: #100818;
+  border: 2px solid var(--phosphor);
+}
+
+#comic[hidden] { display: none; }
+
 .card {
-  width: min(440px, 100%);
-  background: rgba(4, 20, 12, 0.94);
+  width: min(520px, 100%);
+  background: rgba(16, 8, 28, 0.94);
   border: 2px solid var(--phosphor);
   border-radius: 2px;
   padding: 16px 14px 14px;
   text-align: left;
-  box-shadow: 0 0 16px rgba(57, 255, 20, 0.32);
+  box-shadow: 0 0 16px rgba(58, 215, 255, 0.32);
 }
 
 .card h2 {
@@ -211,7 +223,7 @@ canvas {
   line-height: 1.65;
   color: var(--phosphor);
   margin: 0 0 8px;
-  text-shadow: 0 0 8px rgba(57, 255, 20, 0.85);
+  text-shadow: 0 0 8px rgba(58, 215, 255, 0.85);
 }
 
 .loud[hidden] { display: none; }
@@ -250,7 +262,7 @@ canvas {
   border-radius: 2px;
   padding: 6px 8px;
   color: var(--phosphor);
-  background: #04140c;
+  background: #14081f;
   font-size: 10px;
   line-height: 1.55;
 }
@@ -260,7 +272,7 @@ canvas {
   border: 2px solid var(--pcb);
   border-radius: 2px;
   padding: 14px;
-  box-shadow: 0 0 12px rgba(57, 255, 20, 0.16);
+  box-shadow: 0 0 12px rgba(58, 215, 255, 0.16);
 }
 
 .stats {
@@ -289,7 +301,7 @@ canvas {
   font-size: 13px;
   line-height: 1.55;
   color: var(--ram);
-  text-shadow: 0 0 6px rgba(57, 255, 20, 0.55);
+  text-shadow: 0 0 6px rgba(58, 215, 255, 0.55);
 }
 
 .stats div:nth-child(3) { grid-column: 1 / -1; }
@@ -303,7 +315,7 @@ canvas {
 .surge-track {
   margin-top: 8px;
   height: 10px;
-  background: #010704;
+  background: #07040f;
   border: 2px solid var(--pcb);
   border-radius: 2px;
 }
@@ -312,7 +324,7 @@ canvas {
   height: 100%;
   width: 0;
   background: var(--phosphor);
-  box-shadow: 0 0 8px rgba(57, 255, 20, 0.85);
+  box-shadow: 0 0 8px rgba(58, 215, 255, 0.85);
 }
 
 #surge-name.hot {
@@ -331,7 +343,7 @@ canvas {
   padding: 8px 10px;
   border: 2px solid var(--phosphor);
   border-radius: 2px;
-  background: #010704;
+  background: #07040f;
   color: var(--phosphor-mid);
   font-size: 10px;
   font-weight: 400;
@@ -347,9 +359,9 @@ canvas {
 
 .ticker.caught {
   color: #b6ff9a;
-  background: #010704;
-  border-color: #39ff14;
-  box-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
+  background: #07040f;
+  border-color: #3ad7ff;
+  box-shadow: 0 0 10px rgba(58, 215, 255, 0.5);
 }
 
 .panel-label { margin: 16px 0 8px; }
@@ -375,11 +387,11 @@ canvas {
   height: 12px;
   grid-row: 1 / span 2;
   border-radius: 2px;
-  box-shadow: 0 0 4px rgba(57, 255, 20, 0.35);
+  box-shadow: 0 0 4px rgba(58, 215, 255, 0.35);
 }
 
 #laws span {
-  font-size: 10px;
+  font-size: 8px;
   line-height: 1.55;
   color: var(--phosphor-hot);
 }
@@ -422,7 +434,7 @@ canvas {
   inset: 0;
   pointer-events: none;
   z-index: 80;
-  background-color: rgba(57, 255, 20, 0.05);
+  background-color: rgba(58, 215, 255, 0.05);
   background-image:
     repeating-linear-gradient(
       to bottom,
@@ -434,7 +446,7 @@ canvas {
 }
 
 body.surge .crt {
-  background-color: rgba(125, 255, 107, 0.16);
+  background-color: rgba(255, 46, 147, 0.14);
 }
 
 @keyframes crt-flicker {

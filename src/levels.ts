@@ -9,10 +9,10 @@ export interface LawDef {
 }
 
 export const LAWS: LawDef[] = [
-  { name: 'Compute Act', tag: 'ACT', color: '#1f8f3a', personality: 'chase', scatter: { x: 17, y: 1 } },
-  { name: 'Export Ban', tag: 'BAN', color: '#39ff14', personality: 'ambush', scatter: { x: 1, y: 1 } },
-  { name: 'Safety Bill', tag: 'BILL', color: '#7dff6b', personality: 'flank', scatter: { x: 17, y: 15 } },
-  { name: 'Model Cap', tag: 'CAP', color: '#b6ff4a', personality: 'patrol', scatter: { x: 1, y: 15 } },
+  { name: 'Compute Act', tag: 'ACT', color: '#ff2e93', personality: 'chase', scatter: { x: 17, y: 1 } },
+  { name: 'Export Ban', tag: 'BAN', color: '#3ad7ff', personality: 'ambush', scatter: { x: 1, y: 1 } },
+  { name: 'Safety Bill', tag: 'BILL', color: '#ffb000', personality: 'flank', scatter: { x: 17, y: 15 } },
+  { name: 'Model Cap', tag: 'CAP', color: '#e1062c', personality: 'patrol', scatter: { x: 1, y: 15 } },
 ]
 
 export interface LevelDef {

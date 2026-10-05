@@ -1,7 +1,9 @@
 import { Sfx } from './audio'
+import { drawComic } from './comic'
 import { LEVELS } from './levels'
 import { render, tileSize } from './render'
 import { WIN_CARD_AT, WIN_CUT_AT, createGame, stateLabel, update, type Dir, type Game } from './sim'
+import { AFTER_CLEAR, LOSE_STORY, OPENING, WIN_STORY, type Panel } from './story'
 import './style.css'
 
 const game: Game = createGame()
@@ -27,6 +29,8 @@ const ticker = document.querySelector<HTMLElement>('#ticker')!
 const lawsEl = document.querySelector<HTMLElement>('#laws')!
 const muteBtn = document.querySelector<HTMLButtonElement>('#mute')!
 const pauseBtn = document.querySelector<HTMLButtonElement>('#pause')!
+const comic = document.querySelector<HTMLCanvasElement>('#comic')!
+const comicCtx = comic.getContext('2d')!
 
 const held = new Set<Dir>()
 let lastDir: Dir | null = null
@@ -34,6 +38,8 @@ let startEdge = false
 let pauseEdge = false
 let overlaySig = ''
 let cutHeard = false
+let comicIndex = 0
+let comicKey = ''
 
 const KEY_DIRS: Record<string, Dir> = {
   ArrowLeft: 'left',
@@ -50,8 +56,26 @@ const KEY_DIRS: Record<string, Dir> = {
   S: 'down',
 }
 
+function storyPanels(): Panel[] | null {
+  if (game.mode === 'title') return OPENING
+  if (game.mode === 'cleared' && game.levelIndex < AFTER_CLEAR.length) return AFTER_CLEAR[game.levelIndex]!
+  if (game.mode === 'win' && game.ending >= WIN_CARD_AT) return WIN_STORY
+  if (game.mode === 'lose') return LOSE_STORY
+  return null
+}
+
+function advanceStory(): boolean {
+  const panels = storyPanels()
+  if (!panels || comicIndex >= panels.length - 1) return false
+  audio.unlock()
+  comicIndex += 1
+  overlaySig = ''
+  return true
+}
+
 function pressStart(): void {
   audio.unlock()
+  if (advanceStory()) return
   startEdge = true
 }
 
@@ -135,9 +159,9 @@ function fit(): void {
   const mw = game.maze.w * tile
   const mh = game.maze.h * tile
   const narrow = window.innerWidth <= 860
-  const maxW = Math.min(window.innerWidth - (narrow ? 28 : 340), 760)
-  const maxH = window.innerHeight - (narrow ? 300 : 150)
-  const scale = Math.max(0.42, Math.min(1.15, maxW / mw, maxH / mh))
+  const maxW = Math.min(window.innerWidth - (narrow ? 16 : 320), 980)
+  const maxH = window.innerHeight - (narrow ? 210 : 88)
+  const scale = Math.max(0.72, Math.min(1.22, maxW / mw, maxH / mh))
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   canvas.width = Math.floor(mw * dpr)
   canvas.height = Math.floor(mh * dpr)
@@ -148,7 +172,14 @@ function fit(): void {
 
 function syncOverlay(): void {
   const winCard = game.mode === 'win' && game.ending >= WIN_CARD_AT
-  const sig = `${game.mode}:${game.levelIndex}:${game.lives}:${game.entry}:${winCard}`
+  const storyKey = `${game.mode}:${game.levelIndex}:${winCard}`
+  if (storyKey !== comicKey) {
+    comicKey = storyKey
+    comicIndex = 0
+  }
+  const panels = storyPanels()
+  const panel = panels?.[Math.min(comicIndex, panels.length - 1)] ?? null
+  const sig = `${storyKey}:${game.lives}:${game.entry}:${comicIndex}`
   if (sig === overlaySig) return
   overlaySig = sig
   const skipClear = game.mode === 'cleared' && game.levelIndex >= LEVELS.length - 1
@@ -156,19 +187,24 @@ function syncOverlay(): void {
     !skipClear &&
     (game.mode === 'title' || game.mode === 'pause' || game.mode === 'lose' || game.mode === 'cleared' || winCard)
   overlay.hidden = !show
-  overlay.classList.toggle('gag', game.mode === 'title' || game.mode === 'lose')
-  pills.hidden = game.mode !== 'title'
-  loud.hidden = game.mode !== 'title'
-  card.classList.toggle('story', game.mode === 'cleared')
-  const level = LEVELS[game.levelIndex]
-  if (game.mode === 'title') {
-    kicker.textContent = 'YOU ARE THE MODEL'
-    title.textContent = 'RAM PAC'
-    body.textContent = 'Eat the RAM. The ghosts are laws. If they catch you, you are regulated and humanity continues.'
-    loud.textContent = 'Clear the last level and you are AGI. Humanity dies.'
+  overlay.classList.toggle('gag', false)
+  card.classList.toggle('story', false)
+  comic.hidden = !panel
+  if (panel) {
+    drawComic(comicCtx, panel.scene)
+    kicker.textContent = panel.kicker
+    title.textContent = panel.year
+    body.textContent = panel.caption
+    loud.hidden = true
+    pills.hidden = true
     action.hidden = false
-    action.textContent = 'Boot the model'
-  } else if (game.mode === 'pause') {
+    action.textContent = panel.action
+    return
+  }
+  pills.hidden = true
+  loud.hidden = true
+  const level = LEVELS[game.levelIndex]
+  if (game.mode === 'pause') {
     kicker.textContent = 'Session paused'
     title.textContent = level?.name ?? 'Paused'
     body.textContent = 'The statutes are waiting.'

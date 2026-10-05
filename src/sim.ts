@@ -673,12 +673,14 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
 
   game.time += step
   if (game.mode === 'ready' || game.mode === 'cleared') {
-    game.modeTimer -= step
-    if (game.mode === 'cleared' && game.levelIndex >= LEVELS.length - 1) game.ending += step
+    const last = game.levelIndex >= LEVELS.length - 1
+    if (game.mode === 'ready' || last) game.modeTimer -= step
+    if (game.mode === 'cleared' && last) game.ending += step
     stepFx(game, step)
-    if (game.modeTimer <= 0) {
+    const advance = game.mode === 'ready' ? game.modeTimer <= 0 : last ? game.modeTimer <= 0 : input.start
+    if (advance) {
       if (game.mode === 'ready') game.mode = 'play'
-      else if (game.levelIndex >= LEVELS.length - 1) {
+      else if (last) {
         game.mode = 'win'
         events.won = true
       } else {
