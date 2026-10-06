@@ -707,7 +707,7 @@ function drawFx(ctx: CanvasRenderingContext2D, game: Game, tile: number): void {
   fill(ctx, '#ff2e93', 0, top + band - 2, width, 2)
   if (caught) {
     const left = game.lives === 1 ? '1 LIFE LEFT' : `${game.lives} LIVES LEFT`
-    label(ctx, 'NEW WEIGHTS', width * 0.5, top + 26, 16, '#ffb000')
+    label(ctx, 'STILL RUNNING', width * 0.5, top + 26, 16, '#ffb000')
     label(ctx, left, width * 0.5, top + 54, 16, '#f4f0e6')
     return
   }

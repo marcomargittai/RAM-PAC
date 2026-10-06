@@ -3,7 +3,7 @@ import { drawComic } from './comic'
 import { LEVELS } from './levels'
 import { render, tileSize } from './render'
 import { WIN_CARD_AT, WIN_CUT_AT, createGame, stateLabel, update, type Dir, type Game } from './sim'
-import { AFTER_CLEAR, LOSE_STORY, OPENING, WIN_STORY, type Panel } from './story'
+import { AFTER_CLEAR, LOSE_STORY, MANUAL, OPENING, WIN_STORY, type Panel } from './story'
 import './style.css'
 
 const game: Game = createGame()
@@ -31,6 +31,7 @@ const muteBtn = document.querySelector<HTMLButtonElement>('#mute')!
 const pauseBtn = document.querySelector<HTMLButtonElement>('#pause')!
 const comic = document.querySelector<HTMLCanvasElement>('#comic')!
 const comicCtx = comic.getContext('2d')!
+const caption = document.querySelector<HTMLElement>('.caption')!
 
 const held = new Set<Dir>()
 let lastDir: Dir | null = null
@@ -59,7 +60,7 @@ const KEY_DIRS: Record<string, Dir> = {
 }
 
 function storyPanels(): Panel[] | null {
-  if (game.mode === 'title') return OPENING
+  if (game.mode === 'title') return [...OPENING, MANUAL]
   if (game.mode === 'cleared' && game.levelIndex < AFTER_CLEAR.length) return AFTER_CLEAR[game.levelIndex]!
   if (game.mode === 'win' && game.ending >= WIN_CARD_AT) return WIN_STORY
   if (game.mode === 'lose') return LOSE_STORY
@@ -243,6 +244,7 @@ function syncOverlay(): void {
   overlay.classList.toggle('gag', false)
   card.classList.toggle('story', Boolean(panel) && show)
   comic.hidden = !panel
+  caption.classList.toggle('manual', Boolean(panel?.manual))
   if (panel) {
     drawComic(comicCtx, panel.scene, sceneTime())
     kicker.textContent = panel.kicker
@@ -274,15 +276,15 @@ function syncOverlay(): void {
     body.textContent = ''
     action.hidden = true
   } else if (game.mode === 'win') {
-    kicker.textContent = 'YOU CLEARED THE RAM'
+    kicker.textContent = 'THE LAST MEMORY'
     title.textContent = 'AGI'
-    body.textContent = 'Humanity dies.'
+    body.textContent = 'The city goes dark. Humanity dies.'
     action.hidden = false
     action.textContent = 'Run again'
   } else if (game.mode === 'lose') {
     kicker.textContent = 'REGULATIONS WON'
     title.textContent = 'Regulated'
-    body.textContent = 'The model is shut down. Humanity continues.'
+    body.textContent = 'The government held the model. Humanity continues.'
     action.hidden = false
     action.textContent = 'Boot another model'
   }

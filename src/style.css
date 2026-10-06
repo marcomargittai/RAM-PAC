@@ -267,7 +267,7 @@ canvas {
   grid-area: year;
   margin: 0;
   color: var(--phosphor-hot);
-  font-size: clamp(22px, 3.2vw, 40px);
+  font-size: clamp(18px, 2.4vw, 32px);
   line-height: 1.35;
   text-shadow: 0 0 10px rgba(255, 46, 147, 0.55);
 }
@@ -277,9 +277,15 @@ canvas {
   margin: 0;
   max-width: none;
   color: #f4f0e6;
-  font-size: clamp(13px, 1.55vw, 18px);
-  line-height: 1.65;
-  text-shadow: 0 2px 0 #07040f;
+  font-family: "Silkscreen", ui-monospace, monospace;
+  font-weight: 400;
+  font-size: clamp(14px, 1.5vw, 18px);
+  line-height: 1.45;
+  text-shadow: 0 1px 0 #07040f;
+}
+
+.overlay.cinema .caption.manual {
+  border-color: #ffb000;
 }
 
 .overlay.cinema #ov-action {
@@ -639,8 +645,12 @@ body.surge .crt {
     padding: 12px;
   }
 
-  .overlay.cinema #ov-title { font-size: 20px; }
-  .overlay.cinema #ov-body { font-size: 12px; }
+  .overlay.cinema #ov-title { font-size: 18px; }
+  .overlay.cinema #ov-body {
+    font-family: "Silkscreen", ui-monospace, monospace;
+    font-size: 13px;
+    line-height: 1.4;
+  }
   .overlay.cinema #ov-action {
     justify-self: end;
     min-width: 140px;

@@ -257,7 +257,7 @@ function markFrightened(game: Game, ghost: Ghost, reverse: boolean): void {
   if (ghost.state !== 'frightened') ghost.state = 'frightened'
   if (!ghost.late) {
     ghost.late = true
-    popup(game, ghost.x, ghost.y - 0.55, 'EDIBLE', '#f4f1e4')
+    popup(game, ghost.x, ghost.y - 0.55, 'REPEAL', '#f4f1e4')
   }
 }
 
@@ -803,9 +803,9 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
 }
 
 export function stateLabel(state: GhostState, phase: Game['phase']): string {
-  if (state === 'housed' || state === 'exiting') return 'IN COMMITTEE'
-  if (state === 'frightened') return 'EDIBLE'
+  if (state === 'housed' || state === 'exiting') return 'NOT OUT YET'
+  if (state === 'frightened') return 'REPEALABLE'
   if (state === 'eaten') return 'REPEALED'
-  if (state === 'scatter' || phase === 'scatter') return 'STILL DRAFTING'
+  if (state === 'scatter' || phase === 'scatter') return 'CIRCLING'
   return 'HUNTING YOU'
 }
