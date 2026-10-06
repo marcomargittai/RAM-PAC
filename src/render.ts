@@ -60,59 +60,182 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
 }
 
-function palette(surge: boolean): Palette {
+function palette(surge: boolean, level: number): Palette {
+  const era = Math.min(2, Math.max(0, level))
+  if (era === 0) {
+    if (!surge) {
+      return {
+        bg: '#1a1a1a',
+        wall: '#2c2c2c',
+        edge: '#d8d8d8',
+        hot: '#f4f4f4',
+        pcb: '#222222',
+        trace: '#bdbdbd',
+        ceramic: '#333333',
+        bevel: '#6a6a6a',
+        shade: '#111111',
+        pin: '#e8e8e8',
+        die: '#111111',
+        dieFrame: '#d8d8d8',
+        ram: '#f4f4f4',
+        slot: '#111111',
+        slotLip: '#e8e8e8',
+        pellet: '#8a8a8a',
+        pelletPin: '#f4f4f4',
+        pelletHot: '#ffffff',
+        surgeBody: '#e8e8e8',
+        surgeInk: '#111111',
+        surgeHalo: '#ffffff',
+        player: '#f4f4f4',
+        mark: '#9a9a9a',
+      }
+    }
+    return {
+      bg: '#1a1a1a',
+      wall: '#050505',
+      edge: '#f4f4f4',
+      hot: '#ffffff',
+      pcb: '#222222',
+      trace: '#f4f4f4',
+      ceramic: '#111111',
+      bevel: '#d0d0d0',
+      shade: '#000000',
+      pin: '#ffffff',
+      die: '#f4f4f4',
+      dieFrame: '#ffffff',
+      ram: '#111111',
+      slot: '#f4f4f4',
+      slotLip: '#ffffff',
+      pellet: '#f4f4f4',
+      pelletPin: '#111111',
+      pelletHot: '#ffffff',
+      surgeBody: '#ffffff',
+      surgeInk: '#111111',
+      surgeHalo: '#f4f4f4',
+      player: '#ffffff',
+      mark: '#111111',
+    }
+  }
+  if (era === 1) {
+    if (!surge) {
+      return {
+        bg: '#031208',
+        wall: '#0c2814',
+        edge: '#46ff2a',
+        hot: '#ff4fd8',
+        pcb: '#062413',
+        trace: '#d2ff4a',
+        ceramic: '#145214',
+        bevel: '#46ff2a',
+        shade: '#021006',
+        pin: '#d2ff4a',
+        die: '#021006',
+        dieFrame: '#ff4fd8',
+        ram: '#d6ff6a',
+        slot: '#021006',
+        slotLip: '#46ff2a',
+        pellet: '#1f7a32',
+        pelletPin: '#d2ff4a',
+        pelletHot: '#f4ffb0',
+        surgeBody: '#ff4fd8',
+        surgeInk: '#041208',
+        surgeHalo: '#d2ff4a',
+        player: '#d6ff6a',
+        mark: '#ff4fd8',
+      }
+    }
+    return {
+      bg: '#143018',
+      wall: '#041208',
+      edge: '#ff4fd8',
+      hot: '#d2ff4a',
+      pcb: '#1d4a22',
+      trace: '#ff4fd8',
+      ceramic: '#062413',
+      bevel: '#ff4fd8',
+      shade: '#021006',
+      pin: '#d2ff4a',
+      die: '#f4ffb0',
+      dieFrame: '#ff4fd8',
+      ram: '#041208',
+      slot: '#ff4fd8',
+      slotLip: '#d2ff4a',
+      pellet: '#d2ff4a',
+      pelletPin: '#041208',
+      pelletHot: '#ffffff',
+      surgeBody: '#d2ff4a',
+      surgeInk: '#041208',
+      surgeHalo: '#ff4fd8',
+      player: '#f4ffb0',
+      mark: '#ff4fd8',
+    }
+  }
   if (!surge) {
     return {
-      bg: '#100818',
-      wall: '#1a1030',
-      edge: '#3ad7ff',
-      hot: '#ffb000',
-      pcb: '#140c28',
-      trace: '#3ad7ff',
-      ceramic: '#2a1848',
-      bevel: '#5a3d88',
-      shade: '#07040f',
-      pin: '#ffb000',
-      die: '#07040f',
-      dieFrame: '#3ad7ff',
-      ram: '#ffb000',
-      slot: '#07040f',
-      slotLip: '#ffb000',
-      pellet: '#c47e00',
-      pelletPin: '#ffb000',
-      pelletHot: '#ffe08a',
-      surgeBody: '#ff2e93',
-      surgeInk: '#100818',
+      bg: '#1a1034',
+      wall: '#2a1848',
+      edge: '#5ce8ff',
+      hot: '#ffc44d',
+      pcb: '#241445',
+      trace: '#5ce8ff',
+      ceramic: '#3a2468',
+      bevel: '#7a5cb0',
+      shade: '#0c0818',
+      pin: '#ffc44d',
+      die: '#0c0818',
+      dieFrame: '#5ce8ff',
+      ram: '#ffc44d',
+      slot: '#0c0818',
+      slotLip: '#ffc44d',
+      pellet: '#e09a20',
+      pelletPin: '#ffc44d',
+      pelletHot: '#fff0b8',
+      surgeBody: '#ff4d9a',
+      surgeInk: '#1a1034',
       surgeHalo: '#ffd0ea',
-      player: '#f4f0e6',
-      mark: '#3ad7ff',
+      player: '#fff8ee',
+      mark: '#5ce8ff',
     }
   }
   return {
-    bg: '#2a0820',
-    wall: '#100818',
-    edge: '#ff2e93',
-    hot: '#ffb000',
-    pcb: '#3a1030',
-    trace: '#ff2e93',
-    ceramic: '#1a0820',
-    bevel: '#ff2e93',
-    shade: '#07040f',
-    pin: '#ffb000',
-    die: '#ffd0ea',
-    dieFrame: '#ffb000',
-    ram: '#100818',
-    slot: '#ff2e93',
-    slotLip: '#ffb000',
-    pellet: '#ffb000',
-    pelletPin: '#100818',
-    pelletHot: '#ffe08a',
-    surgeBody: '#ffb000',
-    surgeInk: '#100818',
-    surgeHalo: '#ff2e93',
-    player: '#f4f0e6',
-    mark: '#ff2e93',
+    bg: '#3a1030',
+    wall: '#180818',
+    edge: '#ff4d9a',
+    hot: '#ffc44d',
+    pcb: '#4a1840',
+    trace: '#ff4d9a',
+    ceramic: '#2a1028',
+    bevel: '#ff4d9a',
+    shade: '#0c0818',
+    pin: '#ffc44d',
+    die: '#ffe0f0',
+    dieFrame: '#ffc44d',
+    ram: '#1a1034',
+    slot: '#ff4d9a',
+    slotLip: '#ffc44d',
+    pellet: '#ffc44d',
+    pelletPin: '#1a1034',
+    pelletHot: '#fff0b8',
+    surgeBody: '#ffc44d',
+    surgeInk: '#1a1034',
+    surgeHalo: '#ff4d9a',
+    player: '#fff8ee',
+    mark: '#ff4d9a',
   }
+}
+
+const ERA_COATS = [
+  ['#f4f4f4', '#8a8a8a', '#c8c8c8', '#5c5c5c'],
+  ['#46ff2a', '#ff4fd8', '#d2ff4a', '#14fff0'],
+  ['#ff2e93', '#3ad7ff', '#ffb000', '#e1062c'],
+]
+
+function eraOf(level: number): number {
+  return Math.min(2, Math.max(0, level))
+}
+
+function coatFor(level: number, index: number, fallback: string): string {
+  return ERA_COATS[eraOf(level)]?.[index] ?? fallback
 }
 
 function fill(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number): void {
@@ -192,7 +315,7 @@ export function render(ctx: CanvasRenderingContext2D, game: Game): void {
   const tile = TILE
   const width = game.maze.w * tile
   const height = game.maze.h * tile
-  const pal = palette(game.surge > 0)
+  const pal = palette(game.surge > 0, game.levelIndex)
   const cinematic = game.mode === 'win'
   if (cinematic) {
     drawWin(ctx, game, width, height, pal)
@@ -216,6 +339,7 @@ export function render(ctx: CanvasRenderingContext2D, game: Game): void {
   for (const ghost of game.ghosts) drawGhost(ctx, game, ghost, tile)
   drawPlayer(ctx, game, tile, pal)
   drawFx(ctx, game, tile)
+  drawEraPlate(ctx, game, width)
 
   if (game.mode === 'dying') fill(ctx, 'rgba(0, 0, 0, 0.4)', 0, 0, width, height)
 
@@ -229,11 +353,7 @@ export function render(ctx: CanvasRenderingContext2D, game: Game): void {
   if (game.mode === 'cleared' && game.modeTimer > 0) drawClearFanfare(ctx, game, width, height)
   drawBanner(ctx, game, width, height)
 
-  if (game.mode === 'title') {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.62)'
-    ctx.fillRect(0, 0, width, snap(height * 0.58))
-    drawTitleGag(ctx, game, width, height, pal)
-  }
+  if (game.mode === 'title') drawTitleGag(ctx, game, width, height, pal)
 }
 
 function drawMaze(ctx: CanvasRenderingContext2D, game: Game, tile: number, pal: Palette): void {
@@ -459,13 +579,70 @@ function drawAiMark(ctx: CanvasRenderingContext2D, cx: number, cy: number, dir: 
   }
 }
 
+const GLYPH_8BIT = ['111', '101', '111', '101', '111']
+
 function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, tile: number, pal: Palette): void {
+  const era = eraOf(game.levelIndex)
   const pos = visual(game.player)
   const x = pos.x * tile + tile / 2
   const y = pos.y * tile + tile / 2
   const moving = game.mode === 'play' && game.player.speed > 0
   const mouth = moving ? 0.14 + Math.abs(Math.sin(game.time * 14)) * 0.55 : 0.16
-  drawChomp(ctx, x, y, 14, game.player.dir, mouth, pal.player, pal.mark, 2)
+  const radius = [11, 14, 18][era] ?? 14
+  const mark = era === 2 ? pal.mark : null
+  drawChomp(ctx, x, y, radius, game.player.dir, mouth, pal.player, mark, 3)
+  if (era === 1) drawGlyph(ctx, x, y, game.player.dir, GLYPH_8BIT, pal.mark, 2)
+  if (era === 2) {
+    ctx.fillStyle = pal.mark
+    ctx.fillRect(snap(x) - 1, snap(y) - radius - 4, 2, 4)
+    ctx.fillRect(snap(x) - 3, snap(y) - radius - 6, 6, 2)
+  }
+}
+
+function drawGlyph(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  dir: Dir,
+  rows: string[],
+  color: string,
+  px: number,
+): void {
+  const w = rows[0]!.length * px
+  const h = rows.length * px
+  let ox = snap(x)
+  let oy = snap(y)
+  if (dir === 'right') {
+    ox = snap(x) - w - px
+    oy = snap(y) - Math.floor(h / 2)
+  } else if (dir === 'left') {
+    ox = snap(x) + px
+    oy = snap(y) - Math.floor(h / 2)
+  } else if (dir === 'up') {
+    ox = snap(x) - Math.floor(w / 2)
+    oy = snap(y) + px
+  } else {
+    ox = snap(x) - Math.floor(w / 2)
+    oy = snap(y) - h - px
+  }
+  ctx.fillStyle = color
+  for (let row = 0; row < rows.length; row++) {
+    const line = rows[row]!
+    for (let col = 0; col < line.length; col++) {
+      if (line[col] !== '1') continue
+      ctx.fillRect(ox + col * px, oy + row * px, px, px)
+    }
+  }
+}
+
+function drawEraPlate(ctx: CanvasRenderingContext2D, game: Game, width: number): void {
+  const era = eraOf(game.levelIndex)
+  const names = ['B&W', '8-BIT', 'NOW']
+  const ink = era === 0 ? '#d0d0d0' : era === 1 ? '#d2ff4a' : '#ffc44d'
+  label(ctx, `GEN ${era + 1} ${names[era]}`, 8, 14, 8, ink, 'left', 'middle')
+  for (let i = 0; i < 3; i++) {
+    fill(ctx, i <= era ? ink : '#000000', width - 36 + i * 10, 8, 8, 8)
+  }
 }
 
 function fillBlocks(
@@ -499,16 +676,20 @@ function drawHollowPins(ctx: CanvasRenderingContext2D, color: string): void {
 }
 
 function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile: number): void {
+  const era = eraOf(game.levelIndex)
   const pos = visual(ghost)
   const x = snap(pos.x * tile + tile / 2)
   const y = snap(pos.y * tile + tile / 2)
+  const body = coatFor(game.levelIndex, ghost.law, ghost.color)
   const look = {
-    body: game.surge > 0 ? '#100818' : ghost.color,
+    body: game.surge > 0 ? '#100818' : body,
     stripe: game.surge > 0 ? '#ffb000' : '#f4f0e6',
     ink: game.surge > 0 ? '#ffb000' : '#100818',
   }
   ctx.save()
   ctx.translate(x, y)
+  const scale = [0.82, 1, 1.15][era] ?? 1
+  ctx.scale(scale, scale)
   if (ghost.state === 'eaten') {
     ctx.translate(0, Math.round(Math.sin(game.time * 10 + ghost.law)))
     drawHollowPins(ctx, game.surge > 0 ? '#ff2e93' : '#ffb000')
@@ -521,7 +702,7 @@ function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile
   if (frightened) ctx.translate(snap(Math.sin(game.time * 18 + ghost.law) * 2), 0)
   if (frightened && warn && Math.floor(game.time * 14) % 2 === 0) {
     fillBlocks(ctx, STATUE, '#000000', 1)
-    fillBlocks(ctx, STATUE, ghost.color, 0)
+    fillBlocks(ctx, STATUE, body, 0)
     ctx.fillStyle = '#f4f0e6'
     ctx.fillRect(-8, -4, 2, 14)
     ctx.fillStyle = '#000000'

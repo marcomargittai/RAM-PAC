@@ -1,4 +1,5 @@
 import { LEVELS } from '../src/levels'
+import { AFTER_CLEAR, CHYRONS, LOSE_STORY, MANUAL, OPENING, WIN_STORY, chunkCopy } from '../src/story'
 import {
   ahead,
   canStep,
@@ -262,6 +263,226 @@ const walls = createGame()
 startRun(walls)
 walls.mode = 'play'
 assertWalls(walls)
+
+function assertChunks(label: string, caption: string): void {
+  const chunks = chunkCopy(caption)
+  const flat = chunks.join(' ')
+  const norm = caption.replace(/\s+/g, ' ').trim()
+  if (flat !== norm) fail(`${label} chunks dropped text`)
+  if (chunks.length < 1) fail(`${label} has no beats`)
+  for (const chunk of chunks) {
+    if (chunk.length > 58) fail(`${label} beat is ${chunk.length} chars: ${chunk}`)
+  }
+}
+
+const storyPanels = [...OPENING, MANUAL, ...AFTER_CLEAR.flat(), ...WIN_STORY, ...LOSE_STORY]
+for (const panel of storyPanels) {
+  assertChunks(panel.kicker, panel.caption)
+  if (/ghost/i.test(`${panel.kicker} ${panel.caption}`)) fail(`Pac-Man jargon in "${panel.kicker}"`)
+}
+const opening = storyPanels.find((panel) => panel.kicker === 'THE COLORED FIGURES')
+if (!opening) fail('government card missing')
+if (chunkCopy(opening.caption).length < 3) fail('government card should paginate')
+if (!CHYRONS['30 OCT 2023']?.includes('RANGERS')) fail('world series chyron missing')
+if (!CHYRONS['30 NOV 2022']?.includes('AUSTRALIA')) fail('world cup chyron missing')
+
+function reachLevel(level: number) {
+  const game = createGame()
+  startRun(game)
+  game.mode = 'play'
+  for (let i = 0; i < level; i++) {
+    game.dots = []
+    update(game, 0.05, { dir: null, start: false, pause: false })
+    game.modeTimer = 0
+    update(game, 0.05, { dir: null, start: true, pause: false })
+    for (let f = 0; f < 180 && game.mode !== 'play'; f++) {
+      update(game, 1 / 60, { dir: null, start: false, pause: false })
+    }
+  }
+  return game
+}
+
+function pinInWall(game: Game): void {
+  game.player.x = 0
+  game.player.y = 0
+  game.player.dir = 'up'
+  game.player.progress = 0
+  game.player.queued = null
+  game.mode = 'play'
+  game.lives = 3
+}
+
+for (let level = 0; level < 3; level++) {
+  const game = reachLevel(level)
+  if (game.ghosts.length !== [2, 3, 4][level]) fail(`level ${level} spawned ${game.ghosts.length}`)
+  const seenOut = game.ghosts.map(() => false)
+  for (let f = 0; f < 60 * 10; f++) {
+    pinInWall(game)
+    update(game, 1 / 60, { dir: null, start: false, pause: false })
+    game.ghosts.forEach((ghost, i) => {
+      const tile = game.maze.rows[ghost.y]?.[ghost.x]
+      if (ghost.state !== 'housed' && ghost.state !== 'eaten' && tile !== 'G' && tile !== 'd') seenOut[i] = true
+    })
+  }
+  if (seenOut.some((out) => !out)) {
+    fail(`level ${level} kept a regulation inside: ${game.ghosts.map((ghost, i) => `${ghost.name}:${seenOut[i]}`).join(' ')}`)
+  }
+}
+
+for (let level = 1; level < 3; level++) {
+  const game = reachLevel(level)
+  const spots = [
+    [1, 1],
+    [17, 1],
+    [4, 14],
+    [8, 1],
+  ] as const
+  for (const [x, y] of spots) {
+    const ghost = game.ghosts[0]!
+    for (const other of game.ghosts) {
+      other.state = 'housed'
+      other.release = 1e9
+      other.speed = 0
+    }
+    ghost.state = 'eaten'
+    ghost.x = x
+    ghost.y = y
+    ghost.dir = 'left'
+    ghost.progress = 0
+    let housed = false
+    for (let f = 0; f < 60 * 10 && !housed; f++) {
+      pinInWall(game)
+      for (const other of game.ghosts) {
+        if (other === ghost) continue
+        other.state = 'housed'
+        other.release = 1e9
+      }
+      update(game, 1 / 60, { dir: null, start: false, pause: false })
+      const state: string = ghost.state
+      housed = state === 'housed' || (ghost.x === ghost.homeX && ghost.y === ghost.homeY && state !== 'eaten')
+    }
+    if (!housed) fail(`level ${level} ${ghost.name} never returned from ${x},${y} (${ghost.state}@${ghost.x},${ghost.y})`)
+    let back = false
+    for (let f = 0; f < 60 * 8 && !back; f++) {
+      pinInWall(game)
+      for (const other of game.ghosts) {
+        if (other === ghost) continue
+        other.state = 'housed'
+        other.release = 1e9
+      }
+      update(game, 1 / 60, { dir: null, start: false, pause: false })
+      const tile = game.maze.rows[ghost.y]?.[ghost.x]
+      const state: string = ghost.state
+      back = state !== 'housed' && state !== 'eaten' && tile !== 'G' && tile !== 'd'
+    }
+    if (!back) fail(`level ${level} ${ghost.name} returned home but did not hunt again (${ghost.state}@${ghost.x},${ghost.y})`)
+  }
+}
+
+// Last board: a repealed spirit used to circle in the bottom corners and never respawn.
+{
+  const finalLevel = LEVELS.length - 1
+  const corners = [
+    [1, 15, 'left'],
+    [17, 15, 'right'],
+    [2, 15, 'left'],
+    [16, 15, 'right'],
+  ] as const
+  for (let law = 0; law < LEVELS[finalLevel]!.laws; law++) {
+    for (const [x, y, dir] of corners) {
+      const game = reachLevel(finalLevel)
+      const ghost = game.ghosts[law]!
+      for (const other of game.ghosts) {
+        other.state = 'housed'
+        other.release = 1e9
+      }
+      ghost.state = 'frightened'
+      ghost.x = x
+      ghost.y = y
+      ghost.dir = dir
+      ghost.progress = 0
+      game.surge = 4
+      game.player.x = x
+      game.player.y = y
+      game.player.progress = 0
+      game.player.dir = 'down'
+      game.player.queued = null
+      game.mode = 'play'
+      const repeal = update(game, 1 / 60, { dir: null, start: false, pause: false })
+      const repealedState: string = ghost.state
+      if (!repeal.repealed && repealedState !== 'eaten') {
+        fail(`final level ${ghost.name} was not repealed in the corner ${x},${y} (${repealedState})`)
+      }
+      let housed = false
+      let back = false
+      let cornerLoops = 0
+      for (let f = 0; f < 60 * 14 && !back; f++) {
+        pinInWall(game)
+        game.surge = 0
+        for (const other of game.ghosts) {
+          if (other !== ghost) {
+            other.state = 'housed'
+            other.release = 1e9
+          }
+        }
+        update(game, 1 / 60, { dir: null, start: false, pause: false })
+        const state: string = ghost.state
+        if (ghost.y >= 14 && state === 'eaten') cornerLoops++
+        if (!housed && state === 'housed') housed = true
+        const tile = game.maze.rows[ghost.y]?.[ghost.x]
+        if (housed && state !== 'housed' && state !== 'eaten' && tile !== 'G' && tile !== 'd') back = true
+      }
+      if (!housed || !back) {
+        fail(
+          `final level ${ghost.name} spirit circled the bottom corner from ${x},${y} (${ghost.state}@${ghost.x},${ghost.y}, corner frames ${cornerLoops})`,
+        )
+      }
+    }
+  }
+}
+
+for (let level = 0; level < 3; level++) {
+  const game = reachLevel(level)
+  for (const ghost of game.ghosts) {
+    ghost.state = 'housed'
+    ghost.release = 1e9
+  }
+  const hunter = game.ghosts[0]!
+  hunter.state = 'chase'
+  hunter.x = game.maze.exit.x
+  hunter.y = game.maze.exit.y
+  hunter.progress = 0
+  hunter.dir = 'left'
+  game.phase = 'chase'
+  game.phaseTimer = 999
+  game.player.x = 1
+  game.player.y = 1
+  game.player.dir = 'up'
+  game.player.progress = 0
+  game.mode = 'play'
+  let responded = false
+  for (let f = 0; f < 60 * 12; f++) {
+    game.phase = 'chase'
+    game.phaseTimer = 999
+    for (const ghost of game.ghosts) {
+      if (ghost !== hunter) {
+        ghost.state = 'housed'
+        ghost.release = 1e9
+      }
+    }
+    const modeBefore: string = game.mode
+    if (modeBefore !== 'play' && modeBefore !== 'dying') game.mode = 'play'
+    const events = update(game, 1 / 60, { dir: null, start: false, pause: false })
+    const modeAfter: string = game.mode
+    if (events.died || modeAfter === 'dying') {
+      responded = true
+      break
+    }
+  }
+  if (!responded) {
+    fail(`level ${level} chase did not reach the player (${hunter.state}@${hunter.x},${hunter.y})`)
+  }
+}
 
 console.log('playtest ok', {
   score: run.score,

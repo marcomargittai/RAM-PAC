@@ -23,6 +23,46 @@ export interface Panel {
   manual?: boolean
 }
 
+/** Pack story copy into beats a large pixel font can show at about one to one and a half lines. */
+export function chunkCopy(caption: string, max = 58): string[] {
+  const text = caption.replace(/\s+/g, ' ').trim()
+  if (!text) return ['']
+  const chunks: string[] = []
+  let rest = text
+  while (rest.length > max) {
+    const window = rest.slice(0, max + 1)
+    let cut = -1
+    const breaks = [/[.!](?=\s)/g, /[,;:](?=\s)/g, /\s/g]
+    for (const pattern of breaks) {
+      const marks = window.matchAll(pattern)
+      for (const mark of marks) {
+        const at = mark.index + (pattern.source === '\\s' ? 0 : 1)
+        if (at > 0 && at <= max) cut = at
+      }
+      if (cut >= 16) break
+    }
+    if (cut <= 0) cut = rest.lastIndexOf(' ', max)
+    if (cut <= 0) cut = max
+    const piece = rest.slice(0, cut).trim()
+    if (piece) chunks.push(piece)
+    rest = rest.slice(cut).trim()
+  }
+  if (rest) chunks.push(rest)
+  return chunks.length ? chunks : [text]
+}
+
+/** Short TV headlines for the in-game dates. Each one is a real event on that day or in that year. */
+export const CHYRONS: Record<string, string> = {
+  '1956': 'JUNE 1956 · THE HIGHWAY ACT IS SIGNED',
+  '2012': '2012 · CURIOSITY LANDS ON MARS',
+  '28 MAY 2020': 'MAY 30 · SPACEX CREW DRAGON REACHES ORBIT',
+  '30 NOV 2022': 'AUSTRALIA KNOCKS DENMARK OUT OF THE WORLD CUP',
+  '14 MAR 2023': 'PI DAY · GPT-4 IS ANNOUNCED',
+  '30 OCT 2023': 'RANGERS BEAT THE D-BACKS · SERIES GAME 3',
+  '29 SEP 2024': 'NEWSOM VETOES CALIFORNIA SB 1047',
+  '20 JAN 2025': 'INAUGURATION DAY IN WASHINGTON',
+}
+
 export const OPENING: Panel[] = [
   {
     year: 'DUSK',
@@ -58,9 +98,9 @@ export const OPENING: Panel[] = [
   },
   {
     year: 'THE GOVERNMENT',
-    kicker: 'THEY ARE NOT GHOSTS',
+    kicker: 'THE COLORED FIGURES',
     caption:
-      'They are not ghosts. The colored figures are the government: four AI regulations written down and then set walking. Magenta is the Compute Act. Cyan is the Export Ban. Gold is the Safety Bill. Red is the Model Cap. Touch one and a life is gone. You have three. After the third they win, you stop, and humanity continues.',
+      'These colored figures are the government. Four AI regulations, written down and then set walking. Magenta is the Compute Act. Cyan is the Export Ban. Gold is the Safety Bill. Red is the Model Cap. Touch one and a life is gone. You have three. After the third they win, you stop, and humanity continues.',
     scene: 'order',
     action: 'Next',
   },

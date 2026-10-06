@@ -116,15 +116,36 @@ button:hover, button:focus-visible {
 .stage {
   position: relative;
   justify-self: center;
-  border: 14px solid #14081c;
-  border-radius: 46px / 34px;
+  padding-bottom: 22px;
+  border-width: 22px 28px 26px;
+  border-style: solid;
+  border-color: #1a1024;
+  border-radius: 36px 36px 22px 22px;
   background: #07040f;
   box-shadow:
-    inset 0 0 0 2px var(--pcb),
-    inset 0 0 32px rgba(0, 0, 0, 0.72),
-    0 0 0 2px var(--phosphor),
-    0 0 18px rgba(58, 215, 255, 0.55);
+    inset 0 0 0 3px #3a2460,
+    0 0 0 3px var(--phosphor),
+    0 0 22px rgba(58, 215, 255, 0.45),
+    0 16px 0 #07040f;
   overflow: hidden;
+}
+
+.stage::after {
+  content: "RAM PAC  ·  CH 03  ·  LIVE";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  height: 22px;
+  padding: 6px 20px 0;
+  background: #07040f;
+  color: var(--phosphor-mid);
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  text-align: center;
+  pointer-events: none;
+  border-top: 2px solid var(--pcb);
 }
 
 .stage::before {
@@ -134,9 +155,7 @@ button:hover, button:focus-visible {
   border-radius: inherit;
   pointer-events: none;
   z-index: 4;
-  box-shadow:
-    inset 0 0 42px rgba(0, 0, 0, 0.62),
-    inset 0 0 12px rgba(58, 215, 255, 0.28);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.06);
 }
 
 body.surge {
@@ -245,7 +264,9 @@ canvas {
   grid-template-areas:
     "kicker action"
     "year action"
-    "body action";
+    "chyron action"
+    "body action"
+    "progress action";
   column-gap: 22px;
   row-gap: 8px;
   align-items: end;
@@ -272,17 +293,54 @@ canvas {
   text-shadow: 0 0 10px rgba(255, 46, 147, 0.55);
 }
 
+.overlay.cinema #ov-chyron {
+  grid-area: chyron;
+}
+
+.chyron {
+  margin: 0;
+  justify-self: start;
+  max-width: 100%;
+  padding: 4px 8px;
+  background: #07040f;
+  border: 2px solid var(--phosphor-mid);
+  color: var(--phosphor-mid);
+  font-family: "Press Start 2P", "Silkscreen", ui-monospace, monospace;
+  font-size: 8px;
+  line-height: 1.6;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  box-shadow: 0 0 10px rgba(255, 176, 0, 0.28);
+}
+
+.chyron[hidden] { display: none; }
+
 .overlay.cinema #ov-body {
   grid-area: body;
   margin: 0;
-  max-width: none;
+  max-width: 38ch;
   color: #f4f0e6;
   font-family: "Silkscreen", ui-monospace, monospace;
   font-weight: 400;
   font-size: clamp(14px, 1.5vw, 18px);
-  line-height: 1.45;
+  line-height: 1.35;
   text-shadow: 0 1px 0 #07040f;
 }
+
+.overlay.cinema #ov-progress {
+  grid-area: progress;
+}
+
+.beat {
+  margin: 0;
+  color: var(--phosphor);
+  font-family: "Press Start 2P", "Silkscreen", ui-monospace, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  line-height: 1.6;
+}
+
+.beat[hidden] { display: none; }
 
 .overlay.cinema .caption.manual {
   border-color: #ffb000;
@@ -587,15 +645,49 @@ canvas {
   inset: 0;
   pointer-events: none;
   z-index: 80;
-  background-color: rgba(58, 215, 255, 0.05);
-  background-image:
-    repeating-linear-gradient(
-      to bottom,
-      transparent 0 2px,
-      rgba(0, 0, 0, 0.38) 2px 3px
-    ),
-    radial-gradient(ellipse at center, transparent 42%, rgba(0, 0, 0, 0.72) 100%);
-  animation: crt-flicker 0.18s steps(2, end) infinite;
+  background-color: transparent;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0 2px,
+    rgba(0, 0, 0, 0.28) 2px 3px
+  );
+  animation: crt-flicker 0.16s steps(2, end) infinite;
+}
+
+body[data-era="0"] {
+  --bg: #161616;
+  --bg-2: #222222;
+  --ink: #f2f2f2;
+  --muted: #b0b0b0;
+  --phosphor: #f4f4f4;
+  --phosphor-mid: #d0d0d0;
+  --phosphor-hot: #ffffff;
+  --pcb: #3a3a3a;
+  --ram: #ffffff;
+  --surge: #ffffff;
+  --line: #3a3a3a;
+}
+
+body[data-era="0"] .crt {
+  background-color: rgba(255, 255, 255, 0.03);
+}
+
+body[data-era="1"] {
+  --bg: #031208;
+  --bg-2: #062413;
+  --ink: #e4ffc4;
+  --muted: #8fdf78;
+  --phosphor: #46ff2a;
+  --phosphor-mid: #d2ff4a;
+  --phosphor-hot: #ff4fd8;
+  --pcb: #145214;
+  --ram: #d6ff6a;
+  --surge: #ff4fd8;
+  --line: #145214;
+}
+
+body[data-era="1"] .crt {
+  background-color: rgba(57, 255, 20, 0.05);
 }
 
 body.surge .crt {
@@ -640,7 +732,9 @@ body.surge .crt {
     grid-template-areas:
       "kicker"
       "year"
+      "chyron"
       "body"
+      "progress"
       "action";
     padding: 12px;
   }

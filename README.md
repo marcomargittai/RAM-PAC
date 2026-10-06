@@ -22,8 +22,9 @@ npm run preview
 
 ## Controls
 
-- Arrow keys or WASD to turn
-- P or Escape pauses, M mutes, Enter or Space starts
+- Arrow keys or WASD to turn. On a story card, they also advance the line.
+- P or Escape pauses, M mutes, Enter or Space advances one story line
+- Skip (or `]`) jumps the rest of the current card. The card shows `1 / 3` so you can skip on purpose.
 - Swipe the maze, or use the on-screen pad
 
 ## Levels

@@ -509,6 +509,69 @@ function patrolLocked(game: Game, ghost: Ghost, player: { x: number; y: number }
   return dist2(game.maze, ghost.x, ghost.y, player.x, player.y) < reach * reach
 }
 
+const UNREACHABLE = 1e9
+
+function floodDist(maze: Maze, tx: number, ty: number, who: Who): number[][] {
+  const dist = Array.from({ length: maze.h }, () => Array<number>(maze.w).fill(UNREACHABLE))
+  let gx = Math.max(0, Math.min(maze.w - 1, Math.round(tx)))
+  let gy = Math.max(0, Math.min(maze.h - 1, Math.round(ty)))
+  if (!walkable(maze, gx, gy, who)) {
+    let best = Infinity
+    let found = false
+    for (let y = 0; y < maze.h; y++) {
+      for (let x = 0; x < maze.w; x++) {
+        if (!walkable(maze, x, y, who)) continue
+        const score = (x - tx) ** 2 + (y - ty) ** 2
+        if (score < best) {
+          best = score
+          gx = x
+          gy = y
+          found = true
+        }
+      }
+    }
+    if (!found) return dist
+  }
+  const queue: Array<{ x: number; y: number }> = [{ x: gx, y: gy }]
+  dist[gy]![gx] = 0
+  for (let i = 0; i < queue.length; i++) {
+    const cell = queue[i]!
+    const base = dist[cell.y]![cell.x]!
+    for (const dir of DIR_ORDER) {
+      const next = ahead(maze, cell.x, cell.y, dir)
+      if (!next || !walkable(maze, next.x, next.y, who)) continue
+      if (dist[next.y]![next.x]! <= base + 1) continue
+      dist[next.y]![next.x] = base + 1
+      queue.push(next)
+    }
+  }
+  return dist
+}
+
+function chooseDir(maze: Maze, actor: Actor, tx: number, ty: number, who: Who, allowReverse: boolean): Dir {
+  const options = DIR_ORDER.filter((dir) => canStep(maze, actor.x, actor.y, dir, who))
+  if (!options.length) return actor.dir
+  const dist = floodDist(maze, tx, ty, who)
+  const here = dist[actor.y]?.[actor.x] ?? UNREACHABLE
+  const score = (dir: Dir): number => {
+    const next = ahead(maze, actor.x, actor.y, dir)
+    if (!next) return UNREACHABLE
+    return dist[next.y]?.[next.x] ?? UNREACHABLE
+  }
+  const better = (dir: Dir, best: Dir): boolean => score(dir) < score(best)
+  if (allowReverse) return options.reduce((best, dir) => (better(dir, best) ? dir : best))
+  const back = opposite(actor.dir)
+  const forward = options.filter((dir) => dir !== back)
+  const pool = forward.length ? forward : options
+  let best = pool[0]!
+  for (const dir of pool) if (better(dir, best)) best = dir
+  if (score(best) >= here) {
+    const rev = options.find((dir) => dir === back)
+    if (rev && score(rev) < here) return rev
+  }
+  return best
+}
+
 function pickGhost(game: Game, ghost: Ghost): Dir {
   if (ghost.state === 'eaten' && ghost.x === ghost.homeX && ghost.y === ghost.homeY) {
     ghost.state = 'housed'
@@ -521,25 +584,15 @@ function pickGhost(game: Game, ghost: Ghost): Dir {
   const who = ghostWho(game, ghost)
   const leaving = onHouseTile(game.maze, ghost.x, ghost.y) && ghost.state !== 'eaten'
   const frightened = ghost.state === 'frightened' && !leaving
-  let options = DIR_ORDER.filter((dir) => dir !== opposite(ghost.dir) && canStep(game.maze, ghost.x, ghost.y, dir, who))
-  if (!options.length) {
-    options = DIR_ORDER.filter((dir) => canStep(game.maze, ghost.x, ghost.y, dir, who))
-  }
+  const options = DIR_ORDER.filter((dir) => canStep(game.maze, ghost.x, ghost.y, dir, who))
   if (!options.length) return ghost.dir
-  if (frightened) return options[Math.floor(Math.random() * options.length)]!
-  const target = ghostTarget(game, ghost)
-  let best = options[0]!
-  let bestDist = Infinity
-  for (const dir of options) {
-    const next = ahead(game.maze, ghost.x, ghost.y, dir)
-    if (!next) continue
-    const d = dist2(game.maze, next.x, next.y, target.x, target.y)
-    if (d < bestDist) {
-      bestDist = d
-      best = dir
-    }
+  if (frightened) {
+    const forward = options.filter((dir) => dir !== opposite(ghost.dir))
+    const pool = forward.length ? forward : options
+    return pool[Math.floor(Math.random() * pool.length)]!
   }
-  return best
+  const target = ghostTarget(game, ghost)
+  return chooseDir(game.maze, ghost, target.x, target.y, who, ghost.state === 'eaten')
 }
 
 function applySpeeds(game: Game): void {
