@@ -90,27 +90,28 @@ interface Tower {
   roof: 'flat' | 'ant' | 'step' | 'spire'
 }
 
-function tower(ctx: CanvasRenderingContext2D, b: Tower, ground: number, time: number): void {
+function tower(ctx: CanvasRenderingContext2D, b: Tower, ground: number, time: number, lit = 1): void {
   const top = ground - b.h
   px(ctx, b.body, b.x, top, b.w, b.h)
   px(ctx, '#05030a', b.x, ground - 2, b.w, 2)
   px(ctx, '#3a3050', b.x, top, b.w, 2)
+  const accent = lit > 0.2
   if (b.roof === 'ant') {
     const ax = b.x + ((b.w / 2) | 0)
     px(ctx, '#2a2040', ax, top - 14, 2, 14)
-    px(ctx, MAGENTA, ax - 2, top - 16, 6, 2)
-    px(ctx, CYAN, ax - 1, top - 8, 4, 1)
+    px(ctx, accent ? MAGENTA : '#140810', ax - 2, top - 16, 6, 2)
+    px(ctx, accent ? CYAN : '#0c1218', ax - 1, top - 8, 4, 1)
   } else if (b.roof === 'step') {
     px(ctx, b.body, b.x + 3, top - 6, b.w - 6, 6)
     px(ctx, b.body, b.x + 7, top - 12, b.w - 14, 6)
   } else if (b.roof === 'spire') {
-    px(ctx, PAPER, b.x + ((b.w / 2) | 0) - 1, top - 16, 3, 16)
-    px(ctx, GOLD, b.x + ((b.w / 2) | 0), top - 18, 1, 2)
+    px(ctx, accent ? PAPER : '#16141c', b.x + ((b.w / 2) | 0) - 1, top - 16, 3, 16)
+    px(ctx, accent ? GOLD : '#2a1c08', b.x + ((b.w / 2) | 0), top - 18, 1, 2)
   }
   for (let wy = top + 6; wy < ground - 5; wy += 7) {
     for (let wx = b.x + 3; wx < b.x + b.w - 4; wx += 6) {
       const flicker = hash(wx, wy) % 17 === Math.floor(time * 2) % 17
-      const on = hash(wx, wy) % 5 !== 0 && !flicker
+      const on = lit > 0 && hash(wx, wy) % 1000 < lit * 1000 && hash(wx, wy) % 5 !== 0 && !flicker
       px(ctx, on ? b.win : '#08060e', wx, wy, 3, 3)
       if (on && hash(wx, wy) % 4 === 0) px(ctx, GOLD_HOT, wx, wy, 1, 1)
     }
@@ -600,29 +601,27 @@ function drawWire(ctx: CanvasRenderingContext2D, time: number): void {
 
 function drawBlackout(ctx: CanvasRenderingContext2D, time: number): void {
   px(ctx, INK, 0, 0, W, H)
-  const fade = 0.5 + Math.sin(time * 0.8) * 0.5
-  if (fade > 0.35) {
-    for (const [x, h] of [
-      [20, 28],
-      [48, 40],
-      [80, 22],
-      [110, 36],
-      [150, 18],
-      [180, 32],
-      [214, 24],
-    ] as Array<[number, number]>) {
-      px(ctx, '#100818', x, 90 - h, 16, h)
-    }
-  }
-  px(ctx, '#1a140c', 108, 70, 40, 22)
-  px(ctx, '#2a2010', 114, 76, 28, 10)
-  const glow = Math.sin(time * 2) > -0.2
-  px(ctx, glow ? GOLD : '#3a2808', 126, 80, 4, 4)
-  if (glow) {
-    px(ctx, GOLD_HOT, 127, 81, 2, 2)
-    dither(ctx, '#3a2808', 116, 72, 24, 20, 3)
-  }
-  px(ctx, '#140c08', 0, 108, W, 36)
+  bands(ctx, ['#05030a', '#070410', '#090812', '#0c0a14'], 0, 90)
+  const ground = 118
+  const lit = Math.max(0, 1 - time * 0.18)
+  const towers: Tower[] = [
+    { x: 2, w: 26, h: 62, body: '#0c0812', win: GOLD, roof: 'ant' },
+    { x: 30, w: 16, h: 40, body: '#100c18', win: CYAN, roof: 'flat' },
+    { x: 48, w: 34, h: 78, body: '#08060e', win: GOLD, roof: 'step' },
+    { x: 84, w: 18, h: 48, body: '#120c1a', win: MAGENTA, roof: 'spire' },
+    { x: 104, w: 22, h: 58, body: '#0e0a14', win: CYAN, roof: 'ant' },
+    { x: 128, w: 14, h: 34, body: '#140e1c', win: GOLD, roof: 'flat' },
+    { x: 144, w: 40, h: 86, body: '#07050c', win: GOLD, roof: 'step' },
+    { x: 186, w: 20, h: 50, body: '#100c16', win: MAGENTA, roof: 'ant' },
+    { x: 208, w: 28, h: 70, body: '#0a0810', win: GOLD, roof: 'spire' },
+    { x: 238, w: 18, h: 44, body: '#120e18', win: CYAN, roof: 'flat' },
+  ]
+  for (const item of towers) tower(ctx, item, ground, time, lit)
+  px(ctx, '#08060c', 0, ground, W, H - ground)
+  const die = 160
+  const last = lit > 0.04 || Math.sin(time * 1.4) > 0.15
+  px(ctx, last ? GOLD : '#2a1c08', die, ground - 48, 2, 2)
+  if (last && lit < 0.35) px(ctx, GOLD_HOT, die, ground - 48, 1, 1)
   edge(ctx)
 }
 

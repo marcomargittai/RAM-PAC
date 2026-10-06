@@ -40,6 +40,8 @@ let overlaySig = ''
 let cutHeard = false
 let comicIndex = 0
 let comicKey = ''
+let sceneStamp = ''
+let sceneAt = 0
 
 const KEY_DIRS: Record<string, Dir> = {
   ArrowLeft: 'left',
@@ -205,6 +207,17 @@ function fit(): void {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 }
 
+function sceneTime(): number {
+  const panels = storyPanels()
+  const panel = panels?.[Math.min(comicIndex, panels.length - 1)]
+  const stamp = panel ? `${game.mode}:${game.levelIndex}:${comicIndex}:${panel.scene}` : ''
+  if (stamp !== sceneStamp) {
+    sceneStamp = stamp
+    sceneAt = game.time
+  }
+  return game.time - sceneAt
+}
+
 function syncOverlay(): void {
   const winCard = game.mode === 'win' && game.ending >= WIN_CARD_AT
   const storyKey = `${game.mode}:${game.levelIndex}:${winCard}`
@@ -229,7 +242,7 @@ function syncOverlay(): void {
   card.classList.toggle('story', Boolean(panel) && show)
   comic.hidden = !panel
   if (panel) {
-    drawComic(comicCtx, panel.scene, game.time)
+    drawComic(comicCtx, panel.scene, sceneTime())
     kicker.textContent = panel.kicker
     title.textContent = panel.year
     body.textContent = panel.caption
@@ -251,9 +264,11 @@ function syncOverlay(): void {
   } else if (game.mode === 'cleared') {
     kicker.textContent = level?.name ?? ''
     title.textContent =
-      game.levelIndex === 0
-        ? 'They read the comments. A third law is in the building.'
-        : 'Final regulation. One surge left. Do not miss it.'
+      game.levelIndex >= LEVELS.length - 1
+        ? 'The board is empty.'
+        : game.levelIndex === 0
+          ? 'A third regulation is in the building.'
+          : 'The last board is next.'
     body.textContent = ''
     action.hidden = true
   } else if (game.mode === 'win') {
@@ -310,14 +325,18 @@ function frame(now: number): void {
   render(ctx, game)
   syncOverlay()
   const livePanel = storyPanels()?.[Math.min(comicIndex, (storyPanels()?.length ?? 1) - 1)]
-  if (livePanel && !overlay.hidden && !comic.hidden) drawComic(comicCtx, livePanel.scene, game.time)
+  if (livePanel && !overlay.hidden && !comic.hidden) drawComic(comicCtx, livePanel.scene, sceneTime())
   syncHud()
-  const playing = game.mode === 'play'
+  const bed =
+    game.mode === 'play' || game.mode === 'ready' || game.mode === 'cleared'
+      ? 'play'
+      : game.mode === 'win' || game.mode === 'lose' || game.mode === 'dying'
+        ? 'end'
+        : 'menu'
   audio.frame(dt, {
-    play: playing,
+    bed,
     moving: events.moved,
     surge: game.surge > 0,
-    ramRatio: game.ramsTotal ? game.dots.length / game.ramsTotal : 1,
   })
   if (events.ateRam) audio.ram()
   if (events.ateCherry) audio.cherry()

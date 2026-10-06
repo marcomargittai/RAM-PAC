@@ -235,7 +235,7 @@ startRun(run)
 advanceUntil(run, 3, ['play'])
 if (mode(run) !== 'play') fail(`ready did not start play (${mode(run)})`)
 const counts = [2, 3, 4]
-const cherries = [4, 2, 1]
+const cherries = [4, 2, 2]
 for (let level = 0; level < 3; level++) {
   if (run.levelIndex !== level) fail(`expected level ${level}, saw ${run.levelIndex}`)
   if (run.ghosts.length !== counts[level]) fail(`level ${level} ghost count ${run.ghosts.length}`)

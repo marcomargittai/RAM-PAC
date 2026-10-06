@@ -545,14 +545,12 @@ function pickGhost(game: Game, ghost: Ghost): Dir {
 function applySpeeds(game: Game): void {
   const def = levelDef(game.levelIndex)
   game.player.speed = def.playerSpeed
-  const scarce = game.dots.length < game.ramsTotal * 0.22
   for (const ghost of game.ghosts) {
     if (ghost.state === 'housed') ghost.speed = 0
     else if (ghost.state === 'eaten') ghost.speed = def.eatenSpeed
     else if (ghost.state === 'frightened') ghost.speed = def.frightSpeed
     else {
       ghost.speed = def.ghostSpeed
-      if (game.levelIndex === 2 && ghost.personality === 'chase' && scarce) ghost.speed += 0.25
     }
   }
 }
