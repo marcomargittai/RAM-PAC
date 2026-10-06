@@ -302,7 +302,7 @@ function syncHud(): void {
   surgeBar.style.width = `${ratio * 100}%`
   surgeTime.textContent = game.surge > 0 ? `${game.surge.toFixed(1)}s` : 'dormant'
   const edible = game.surge > 0
-  surgeName.textContent = edible ? 'REGULATIONS ARE EDIBLE' : 'AI surge'
+  surgeName.textContent = edible ? 'REPEAL THEM' : 'AI surge'
   surgeName.classList.toggle('hot', edible)
   document.body.classList.toggle('surge', edible)
   const caught = (game.mode === 'dying' && game.lives > 1) || (game.mode === 'ready' && game.entry === 'caught')

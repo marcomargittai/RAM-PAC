@@ -188,18 +188,61 @@ function cityBase(ctx: CanvasRenderingContext2D, time: number, evening: boolean,
   edge(ctx)
 }
 
+function skyline(ctx: CanvasRenderingContext2D, time: number, living: boolean): void {
+  if (living) {
+    bands(ctx, ['#07040f', '#140818', '#3a1020', '#6a2810', '#c45a18', '#ffb000'], 0, 70)
+    disc(ctx, GOLD, 128, 24, 18)
+    disc(ctx, GOLD_HOT, 128, 24, 10)
+    disc(ctx, PAPER, 128, 24, 4)
+  } else {
+    px(ctx, '#07040f', 0, 0, W, H)
+    disc(ctx, '#2a1808', 128, 24, 10)
+  }
+
+  const ground = 72
+  const body = living ? '#100818' : '#1c1430'
+  const win = living ? GOLD : GOLD
+  const towers: Tower[] = [
+    { x: 4, w: 18, h: 26, body, win, roof: 'flat' },
+    { x: 24, w: 22, h: 40, body, win, roof: 'step' },
+    { x: 48, w: 16, h: 22, body, win, roof: 'flat' },
+    { x: 66, w: 22, h: 34, body, win: living ? GOLD_HOT : GOLD, roof: 'flat' },
+    { x: 168, w: 20, h: 32, body, win: living ? CYAN : GOLD, roof: 'flat' },
+    { x: 190, w: 16, h: 22, body, win, roof: 'flat' },
+    { x: 208, w: 26, h: 44, body, win: living ? CYAN : GOLD, roof: 'step' },
+    { x: 236, w: 16, h: 24, body, win, roof: 'flat' },
+  ]
+  const lit = living ? 1 : 0
+  for (const item of towers) tower(ctx, item, ground, time, lit)
+  if (!living) {
+    const embers: Array<[number, number]> = [
+      [30, 48],
+      [52, 40],
+      [188, 46],
+      [214, 38],
+    ]
+    embers.forEach((spot, i) => {
+      if (time < 0.35 + i * 0.45) px(ctx, GOLD, spot[0], spot[1], 2, 2)
+    })
+  }
+  px(ctx, living ? '#3a2208' : '#140c18', 0, ground, W, 3)
+  px(ctx, living ? GOLD : '#2a1808', 0, ground, W, 1)
+}
+
+function model(ctx: CanvasRenderingContext2D, x: number, y: number, time: number): void {
+  const breath = Math.sin(time * 1.4) > 0 ? 0 : 1
+  px(ctx, '#0c0614', x + 8, y, 14, 12)
+  px(ctx, '#0c0614', x, y + 12, 30, 10)
+  px(ctx, '#0c0614', x + 5, y + 22, 20, 20 + breath)
+  px(ctx, GOLD, x + 14, y + 14, 2, 26)
+  px(ctx, PAPER, x + 11, y + 13, 8, 2)
+  px(ctx, '#0c0614', x + 6, y + 42, 6, 12)
+  px(ctx, '#0c0614', x + 18, y + 42, 6, 12)
+}
+
 function drawCity(ctx: CanvasRenderingContext2D, time: number): void {
-  cityBase(ctx, time, false, false)
-  const x = 156
-  const y = 8
-  px(ctx, '#f0d2b0', x + 4, y, 6, 5)
-  px(ctx, INK, x + 4, y, 6, 2)
-  px(ctx, GOLD, x + 5, y + 2, 1, 1)
-  px(ctx, GOLD, x + 8, y + 2, 1, 1)
-  px(ctx, '#12081c', x + 2, y + 5, 10, 12)
-  px(ctx, GOLD, x + 5, y + 9, 4, 3)
-  px(ctx, INK, x + 3, y + 17, 3, 6)
-  px(ctx, INK, x + 8, y + 17, 3, 6)
+  skyline(ctx, time, true)
+  model(ctx, 112, 16, time)
   edge(ctx)
 }
 
@@ -274,23 +317,23 @@ function drawLab(ctx: CanvasRenderingContext2D, time: number): void {
     dither(ctx, CYAN, 20 + i * 78, 12, 44, 18, 3)
   }
 
-  monitor(ctx, 18, 36, 78, 62)
+  monitor(ctx, 16, 40, 52, 48)
+  px(ctx, RED, 24, 50, 6, 24)
+  px(ctx, '#ff8a8a', 34, 58, 6, 16)
+  px(ctx, GOLD, 44, 66, 6, 8)
+  px(ctx, CYAN, 54, 48, 6, 26)
+
+  monitor(ctx, 88, 18, 80, 58)
+  const eaten = Math.floor(time * 2) % 8
   for (let row = 0; row < 5; row++) {
     for (let col = 0; col < 8; col++) {
       const colors = [GOLD, CYAN, MAGENTA, '#e8d0ff', PAPER, '#ff8a3d', '#7dffb2', RED]
-      const color = colors[hash(col, row) % colors.length]!
-      px(ctx, color, 24 + col * 8, 42 + row * 9, 6, 7)
+      const swallowed = col > 7 - eaten
+      const color = swallowed ? GOLD : colors[hash(col, row) % colors.length]!
+      px(ctx, color, 94 + col * 9, 24 + row * 9, 7, 7)
+      if (swallowed) px(ctx, GOLD_HOT, 94 + col * 9, 24 + row * 9, 7, 2)
     }
   }
-  const blink = Math.floor(time * 2) % 40
-  px(ctx, PAPER, 24 + (blink % 8) * 8, 42 + ((blink / 8) | 0) * 9, 6, 7)
-
-  monitor(ctx, 104, 48, 52, 50)
-  px(ctx, RED, 112, 58, 6, 28)
-  px(ctx, '#ff8a8a', 122, 66, 6, 20)
-  px(ctx, GOLD, 132, 78, 6, 8)
-  px(ctx, CYAN, 142, 54, 6, 32)
-  px(ctx, '#9eefff', 110, 86, 36, 2)
 
   px(ctx, '#0c0c12', 176, 40, 58, 78)
   px(ctx, '#242430', 180, 46, 50, 64)
@@ -307,9 +350,7 @@ function drawLab(ctx: CanvasRenderingContext2D, time: number): void {
   px(ctx, WOOD, 16, 100, 150, 8)
   px(ctx, '#3a2418', 24, 108, 4, 20)
   px(ctx, '#3a2418', 150, 108, 4, 20)
-  person(ctx, 70, 86, '#1a2848', time, 0)
-  px(ctx, CYAN, 86, 78, 10, 2)
-  px(ctx, MAGENTA, 100, 84, 14, 2)
+  person(ctx, 78, 48, '#1a2848', time, 0)
   edge(ctx)
 }
 
@@ -329,19 +370,18 @@ function drawPaper(ctx: CanvasRenderingContext2D, time: number): void {
     px(ctx, '#ffd8a0', 28, 18 + i * 4, 8 + i * 10, 3)
   }
   px(ctx, GOLD, 24, 14, 8, 6)
-  px(ctx, PAPER, 46, 28, 108, 92)
-  px(ctx, '#e4dcc8', 46, 28, 108, 4)
-  px(ctx, INK, 56, 40, 72, 4)
-  px(ctx, INK, 56, 48, 48, 2)
-  for (let i = 0; i < 6; i++) px(ctx, '#5a564c', 56, 58 + i * 6, 88 - (i % 3) * 10, 2)
-  px(ctx, CYAN, 56, 96, 8, 14)
-  px(ctx, '#7ec8ff', 66, 102, 8, 8)
-  px(ctx, GOLD, 76, 90, 8, 20)
-  px(ctx, GOLD_HOT, 86, 84, 8, 26)
-  px(ctx, MAGENTA, 96, 78, 8, 32)
-  disc(ctx, GOLD, 132, 100, 8)
-  disc(ctx, RED, 132, 100, 5)
-  px(ctx, PAPER, 130, 98, 4, 4)
+  px(ctx, PAPER, 72, 16, 92, 62)
+  px(ctx, '#e4dcc8', 72, 16, 92, 3)
+  px(ctx, INK, 88, 24, 64, 3)
+  px(ctx, INK, 88, 30, 40, 2)
+  for (let i = 0; i < 3; i++) px(ctx, '#5a564c', 88, 38 + i * 5, 72 - (i % 2) * 12, 2)
+  px(ctx, CYAN, 88, 54, 6, 16)
+  px(ctx, GOLD, 98, 46, 6, 24)
+  px(ctx, GOLD_HOT, 108, 38, 6, 32)
+  px(ctx, MAGENTA, 118, 30, 6, 40)
+  disc(ctx, GOLD, 150, 58, 7)
+  disc(ctx, RED, 150, 58, 4)
+  px(ctx, PAPER, 148, 56, 4, 4)
 
   px(ctx, '#3a2418', 20, 124, 16, 10)
   px(ctx, PAPER, 24, 120, 8, 6)
@@ -421,34 +461,35 @@ function rack(
   }
 }
 
+function die(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+  for (let i = 4; i < w - 4; i += 6) {
+    px(ctx, GOLD, x + i, y - 3, 2, 3)
+    px(ctx, GOLD, x + i, y + h, 2, 3)
+  }
+  px(ctx, GOLD, x, y, w, h)
+  px(ctx, '#3a2808', x, y + ((h / 2) | 0) - 2, 3, 4)
+  px(ctx, GOLD_HOT, x + 6, y + 3, w - 12, h - 6)
+  px(ctx, PAPER, x + 8, y + 5, Math.max(6, (w / 3) | 0), 2)
+}
+
 function drawHalls(ctx: CanvasRenderingContext2D, time: number): void {
-  px(ctx, '#070814', 0, 0, W, H)
-  px(ctx, '#101628', 0, 0, W, 18)
-  for (let i = 0; i < 4; i++) {
-    const w = 10 + i * 8
-    px(ctx, '#e8fbff', 128 - w / 2, 6 + i, w, 2)
+  px(ctx, '#07040f', 0, 0, W, H)
+  px(ctx, '#140818', 0, 0, W, 10)
+  rack(ctx, 8, 16, 28, 56, time, 1, 0.7)
+  rack(ctx, 40, 22, 22, 46, time, 2, 0.45)
+  rack(ctx, 194, 22, 22, 46, time, 3, 0.45)
+  rack(ctx, 220, 16, 28, 56, time, 4, 0.7)
+  for (const [x, y] of [
+    [68, 36],
+    [78, 42],
+    [88, 48],
+    [168, 40],
+    [176, 46],
+  ] as Array<[number, number]>) {
+    px(ctx, GOLD, x, y, 1, 1)
   }
-  px(ctx, '#10161f', 0, 108, W, 36)
-  for (let i = 0; i < 5; i++) {
-    const inset = 70 - i * 14
-    px(ctx, '#1a2838', inset, 112 + i * 6, W - inset * 2, 1)
-  }
-  for (let depth = 5; depth >= 0; depth--) {
-    const near = 1 - depth / 5
-    const w = 18 + near * 26
-    const h = 34 + near * 62
-    const y = 106 - h
-    const gap = 16 + near * 10
-    const left = 128 - gap - w - near * 40
-    const right = 128 + gap + near * 40
-    rack(ctx, left, y, w, h, time, depth + 1, depth / 5)
-    rack(ctx, right, y, w, h, time, depth + 11, depth / 5)
-  }
-  const glow = 8 + Math.sin(time * 2.4) * 2
-  disc(ctx, '#3a2808', 128, 72, glow + 10)
-  disc(ctx, GOLD, 128, 72, glow)
-  disc(ctx, GOLD_HOT, 128, 70, 3)
-  person(ctx, 28, 58, '#6a7890', time, 0.4)
+  die(ctx, 96, 34, 40, 16)
+  official(ctx, 146, 28, PAPER, time, 0.4)
   edge(ctx)
 }
 
@@ -463,36 +504,17 @@ function official(ctx: CanvasRenderingContext2D, x: number, y: number, coat: str
 }
 
 function drawOrder(ctx: CanvasRenderingContext2D, time: number): void {
-  bands(ctx, ['#070814', '#101428', '#1a2040', '#243058'], 0, 78)
-  stars(ctx, 20, 36, '#d0d4ee', time)
-  px(ctx, '#1a2840', 0, 108, W, 36)
-  px(ctx, '#2a2418', 0, 102, W, 8)
-
-  const x = 78
-  const y = 40
-  px(ctx, PAPER, x, y, 100, 62)
-  for (let row = 0; row < 16; row++) {
-    const half = 8 + row * 2
-    px(ctx, PAPER, 128 - half, y - 18 + row, half * 2, 1)
-  }
-  for (let i = 0; i < 5; i++) {
-    px(ctx, '#d8d0c4', x + 8 + i * 18, y + 8, 8, 54)
-    px(ctx, '#2a2418', x + 10 + i * 18, y + 18, 4, 28)
-  }
-  px(ctx, '#2a2418', 116, y + 36, 24, 26)
-  px(ctx, GOLD, 124, y + 46, 8, 6)
-
-  px(ctx, '#c8c0b0', 70, 96, 116, 6)
-  px(ctx, '#b0a898', 58, 102, 140, 6)
-  px(ctx, PAPER, 18, 78, 48, 40)
-  for (let i = 0; i < 4; i++) px(ctx, '#5a564c', 24, 86 + i * 6, 32 - (i % 2) * 6, 2)
-  disc(ctx, GOLD, 52, 104, 6)
-  disc(ctx, RED, 52, 104, 3)
-
-  official(ctx, 36, 48, MAGENTA, time, 0)
-  official(ctx, 98, 52, CYAN, time, 1.1)
-  official(ctx, 146, 48, GOLD, time, 2)
-  official(ctx, 188, 56, RED, time, 2.6)
+  px(ctx, '#07040f', 0, 0, W, H)
+  px(ctx, PAPER, 104, 8, 48, 22)
+  px(ctx, '#5a564c', 110, 12, 26, 2)
+  px(ctx, '#5a564c', 110, 16, 18, 1)
+  px(ctx, GOLD, 110, 20, 14, 2)
+  disc(ctx, GOLD, 140, 18, 5)
+  disc(ctx, RED, 140, 18, 2)
+  official(ctx, 96, 36, MAGENTA, time, 0)
+  official(ctx, 114, 34, CYAN, time, 1)
+  official(ctx, 132, 36, GOLD, time, 1.6)
+  official(ctx, 150, 32, RED, time, 2.2)
   edge(ctx)
 }
 
@@ -627,64 +649,33 @@ function drawWire(ctx: CanvasRenderingContext2D, time: number): void {
 }
 
 function drawBlackout(ctx: CanvasRenderingContext2D, time: number): void {
-  px(ctx, INK, 0, 0, W, H)
-  bands(ctx, ['#05030a', '#070410', '#090812', '#0c0a14'], 0, 90)
-  const ground = 118
-  const lit = Math.max(0, 1 - time * 0.18)
-  const towers: Tower[] = [
-    { x: 2, w: 26, h: 62, body: '#0c0812', win: GOLD, roof: 'ant' },
-    { x: 30, w: 16, h: 40, body: '#100c18', win: CYAN, roof: 'flat' },
-    { x: 48, w: 34, h: 78, body: '#08060e', win: GOLD, roof: 'step' },
-    { x: 84, w: 18, h: 48, body: '#120c1a', win: MAGENTA, roof: 'spire' },
-    { x: 104, w: 22, h: 58, body: '#0e0a14', win: CYAN, roof: 'ant' },
-    { x: 128, w: 14, h: 34, body: '#140e1c', win: GOLD, roof: 'flat' },
-    { x: 144, w: 40, h: 86, body: '#07050c', win: GOLD, roof: 'step' },
-    { x: 186, w: 20, h: 50, body: '#100c16', win: MAGENTA, roof: 'ant' },
-    { x: 208, w: 28, h: 70, body: '#0a0810', win: GOLD, roof: 'spire' },
-    { x: 238, w: 18, h: 44, body: '#120e18', win: CYAN, roof: 'flat' },
-  ]
-  const focusX = 164
-  const focusY = 78
-  for (const item of towers) {
-    const cx = item.x + item.w / 2
-    const cy = ground - item.h / 2
-    const dist = Math.hypot(cx - focusX, cy - focusY) / 150
-    const local = Math.max(0, 1 - time * 0.16 - dist * 0.7)
-    tower(ctx, item, ground, time, local)
-  }
-  px(ctx, '#08060c', 0, ground, W, H - ground)
-  const last = lit > 0.02
-  px(ctx, '#2a1c08', focusX - 3, focusY - 1, 8, 6)
-  px(ctx, last ? GOLD : '#2a1c08', focusX, focusY, 3, 3)
-  if (last) px(ctx, GOLD_HOT, focusX + 1, focusY + 1, 1, 1)
+  skyline(ctx, time, false)
+  die(ctx, 114, 40, 28, 14)
+  px(ctx, GOLD, 108, 52, 2, 2)
+  px(ctx, GOLD, 148, 48, 2, 2)
   edge(ctx)
 }
 
 function drawManual(ctx: CanvasRenderingContext2D, time: number): void {
   px(ctx, INK, 0, 0, W, H)
-  px(ctx, '#12081c', 24, 16, 208, 112)
-  px(ctx, '#3a2460', 24, 16, 208, 2)
-  px(ctx, '#3a2460', 24, 126, 208, 2)
-  px(ctx, '#3a2460', 24, 16, 2, 112)
-  px(ctx, '#3a2460', 230, 16, 2, 112)
-  for (let i = 0; i < 8; i++) {
-    const x = 48 + i * 20
-    const y = 40 + (i % 3) * 16
-    const eaten = i < Math.floor(time * 2) % 8
-    px(ctx, eaten ? '#3a2808' : GOLD, x, y, 6, 4)
-    if (!eaten) px(ctx, GOLD_HOT, x, y, 6, 1)
+  px(ctx, '#12081c', 88, 8, 80, 70)
+  px(ctx, '#3a2460', 88, 8, 80, 2)
+  px(ctx, '#3a2460', 88, 76, 80, 2)
+  px(ctx, '#3a2460', 88, 8, 2, 70)
+  px(ctx, '#3a2460', 166, 8, 2, 70)
+  for (let i = 0; i < 5; i++) {
+    const eaten = i < Math.floor(time * 2) % 5
+    const x = 100 + i * 12
+    px(ctx, eaten ? '#3a2808' : GOLD, x, 18, 6, 4)
+    if (!eaten) px(ctx, GOLD_HOT, x, 18, 6, 1)
   }
-  px(ctx, GOLD, 112, 70, 14, 10)
-  px(ctx, INK, 116, 73, 6, 4)
-  px(ctx, GOLD, 108, 62, 6, 4)
-  px(ctx, GOLD, 124, 62, 6, 4)
-  official(ctx, 40, 36, MAGENTA, time, 0)
-  official(ctx, 72, 48, CYAN, time, 1)
-  official(ctx, 156, 48, GOLD, time, 2)
-  official(ctx, 190, 36, RED, time, 3)
+  die(ctx, 112, 30, 32, 14)
+  official(ctx, 96, 50, MAGENTA, time, 0)
+  official(ctx, 114, 50, CYAN, time, 1)
+  official(ctx, 132, 50, GOLD, time, 2)
+  official(ctx, 150, 50, RED, time, 3)
   const bob = Math.sin(time * 3) > 0 ? 0 : 2
-  px(ctx, PAPER, 118, 28 + bob, 10, 6)
-  px(ctx, PAPER, 121, 24 + bob, 4, 4)
+  px(ctx, PAPER, 122, 16 + bob, 8, 4)
   edge(ctx)
 }
 
