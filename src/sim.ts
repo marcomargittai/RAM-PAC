@@ -257,7 +257,7 @@ function markFrightened(game: Game, ghost: Ghost, reverse: boolean): void {
   if (ghost.state !== 'frightened') ghost.state = 'frightened'
   if (!ghost.late) {
     ghost.late = true
-    popup(game, ghost.x, ghost.y - 0.55, 'TOO LATE', '#f4f1e4')
+    popup(game, ghost.x, ghost.y - 0.55, 'EDIBLE', '#f4f1e4')
   }
 }
 
@@ -370,7 +370,7 @@ function loadLevel(game: Game, index: number): void {
   game.flash = 0
   game.banner = ''
   game.bannerTimer = 0
-  game.intro = index === 0 ? 1 : 0
+  game.intro = index === 0 ? 2.6 : 0
   game.callouts = index === 0 ? nearestCallouts(parsed.dots, parsed.player.x, parsed.player.y) : []
   game.ghosts = LAWS.slice(0, def.laws).map((law, i) => {
     const home = parsed.homes[i] ?? parsed.homes[parsed.homes.length - 1]!
@@ -577,7 +577,7 @@ function eatPellets(game: Game, events: GameEvents): void {
     game.surge = def.fright
     game.surgeMax = def.fright
     game.banner = 'REGULATIONS FLINCH'
-    game.bannerTimer = 1
+    game.bannerTimer = 0.55
     burst(game, cherry.x, cherry.y, '#ff4d6a', 18, 3.4)
     for (const ghost of game.ghosts) ghost.late = false
     for (const ghost of game.ghosts) markFrightened(game, ghost, true)
@@ -768,7 +768,7 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
       game.surge = 0
       game.combo = 0
       game.banner = 'THE REGULATION IS BACK'
-      game.bannerTimer = 0.5
+      game.bannerTimer = 1.15
       for (const ghost of game.ghosts) {
         ghost.late = false
         if (ghost.state === 'frightened') ghost.state = game.phase
@@ -804,7 +804,7 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
 
 export function stateLabel(state: GhostState, phase: Game['phase']): string {
   if (state === 'housed' || state === 'exiting') return 'IN COMMITTEE'
-  if (state === 'frightened') return 'TOO LATE'
+  if (state === 'frightened') return 'EDIBLE'
   if (state === 'eaten') return 'REPEALED'
   if (state === 'scatter' || phase === 'scatter') return 'STILL DRAFTING'
   return 'HUNTING YOU'

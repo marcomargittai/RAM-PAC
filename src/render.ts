@@ -517,9 +517,18 @@ function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile
   }
 
   const frightened = ghost.state === 'frightened'
+  const warn = frightened && game.surge > 0 && game.surge < 2
   if (frightened) ctx.translate(snap(Math.sin(game.time * 18 + ghost.law) * 2), 0)
-  if (frightened) {
-    const phase = Math.floor(game.time * 8 + ghost.law) % 2 === 0
+  if (frightened && warn && Math.floor(game.time * 14) % 2 === 0) {
+    fillBlocks(ctx, STATUE, '#000000', 1)
+    fillBlocks(ctx, STATUE, ghost.color, 0)
+    ctx.fillStyle = '#f4f0e6'
+    ctx.fillRect(-8, -4, 2, 14)
+    ctx.fillStyle = '#000000'
+    for (const eye of EYES) ctx.fillRect(eye[0], eye[1], eye[2], eye[3])
+    label(ctx, ghost.tag, 0, -18, 8, '#100818')
+  } else if (frightened) {
+    const phase = Math.floor(game.time * (warn ? 14 : 8) + ghost.law) % 2 === 0
     fillBlocks(ctx, STATUE, phase ? '#ff2e93' : '#3ad7ff', 2)
     fillBlocks(ctx, STATUE, phase ? '#100818' : '#1a1030', 0)
     ctx.fillStyle = phase ? '#ffb000' : '#f4f0e6'
@@ -630,7 +639,7 @@ function drawClearFanfare(ctx: CanvasRenderingContext2D, game: Game, width: numb
 
 function drawBanner(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number): void {
   if (game.bannerTimer <= 0 || !game.banner) return
-  const y = snap(height * 0.4)
+  const y = snap(Math.min(12, height * 0.04))
   fill(ctx, '#000000', 0, y, width, 32)
   fill(ctx, '#ff2e93', 0, y, width, 2)
   fill(ctx, '#ff2e93', 0, y + 30, width, 2)
@@ -697,8 +706,9 @@ function drawFx(ctx: CanvasRenderingContext2D, game: Game, tile: number): void {
   fill(ctx, '#ff2e93', 0, top, width, 2)
   fill(ctx, '#ff2e93', 0, top + band - 2, width, 2)
   if (caught) {
+    const left = game.lives === 1 ? '1 LIFE LEFT' : `${game.lives} LIVES LEFT`
     label(ctx, 'NEW WEIGHTS', width * 0.5, top + 26, 16, '#ffb000')
-    label(ctx, def?.name ?? '', width * 0.5, top + 54, 16, '#f4f0e6')
+    label(ctx, left, width * 0.5, top + 54, 16, '#f4f0e6')
     return
   }
   label(ctx, `LEVEL ${game.levelIndex + 1}`, width * 0.5, top + 20, 8, '#5c3d8a')

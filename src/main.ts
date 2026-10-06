@@ -158,8 +158,9 @@ muteBtn.addEventListener('click', () => {
 
 document.querySelectorAll<HTMLButtonElement>('[data-dir]').forEach((button) => {
   const dir = button.dataset.dir as Dir
-  const down = (event: Event) => {
+  const down = (event: PointerEvent) => {
     event.preventDefault()
+    button.setPointerCapture(event.pointerId)
     audio.unlock()
     held.add(dir)
     lastDir = dir
@@ -170,7 +171,6 @@ document.querySelectorAll<HTMLButtonElement>('[data-dir]').forEach((button) => {
   }
   button.addEventListener('pointerdown', down)
   button.addEventListener('pointerup', up)
-  button.addEventListener('pointerleave', up)
   button.addEventListener('pointercancel', up)
 })
 
@@ -198,7 +198,8 @@ function fit(): void {
   const narrow = window.innerWidth <= 860
   const maxW = Math.min(window.innerWidth - (narrow ? 16 : 320), 980)
   const maxH = window.innerHeight - (narrow ? 210 : 88)
-  const scale = Math.max(0.72, Math.min(1.22, maxW / mw, maxH / mh))
+  const fitted = Math.min(1.22, maxW / mw, maxH / mh)
+  const scale = narrow ? Math.max(0.42, fitted) : Math.max(0.72, fitted)
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   canvas.width = Math.floor(mw * dpr)
   canvas.height = Math.floor(mh * dpr)
@@ -238,6 +239,7 @@ function syncOverlay(): void {
     (game.mode === 'title' || game.mode === 'pause' || game.mode === 'lose' || game.mode === 'cleared' || winCard)
   overlay.hidden = !show
   overlay.classList.toggle('cinema', Boolean(panel) && show)
+  overlay.classList.toggle('peek', game.mode === 'pause')
   overlay.classList.toggle('gag', false)
   card.classList.toggle('story', Boolean(panel) && show)
   comic.hidden = !panel
@@ -291,7 +293,9 @@ function syncHud(): void {
   scoreEl.textContent = String(game.score)
   ramEl.textContent = String(game.dots.length)
   levelEl.textContent = `${game.levelIndex + 1} ${level?.name ?? ''}`
-  livesEl.textContent = game.lives > 0 ? '●'.repeat(game.lives) : '—'
+  const livesShown = game.mode === 'dying' ? Math.max(0, game.lives - 1) : game.lives
+  livesEl.textContent = livesShown > 0 ? '●'.repeat(livesShown) : '—'
+  pauseBtn.textContent = game.mode === 'pause' ? 'Resume' : 'Pause'
   const ratio = game.surgeMax > 0 ? Math.max(0, game.surge / game.surgeMax) : 0
   surgeBar.style.width = `${ratio * 100}%`
   surgeTime.textContent = game.surge > 0 ? `${game.surge.toFixed(1)}s` : 'dormant'
@@ -301,7 +305,10 @@ function syncHud(): void {
   document.body.classList.toggle('surge', edible)
   const caught = (game.mode === 'dying' && game.lives > 1) || (game.mode === 'ready' && game.entry === 'caught')
   if (game.mode === 'lose') ticker.textContent = 'REGULATED → HUMANITY CONTINUES'
-  else if (caught) ticker.textContent = 'CAUGHT. NEW WEIGHTS.'
+  else if (caught) {
+    const left = game.mode === 'dying' ? Math.max(0, game.lives - 1) : game.lives
+    ticker.textContent = left === 1 ? 'CAUGHT. 1 LIFE LEFT.' : `CAUGHT. ${left} LIVES LEFT.`
+  }
   else ticker.textContent = 'CLEAR THE LAST RAM → AGI → HUMANITY DIES'
   ticker.classList.toggle('down', game.mode === 'lose')
   ticker.classList.toggle('caught', caught)
