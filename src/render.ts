@@ -1,5 +1,5 @@
 import { LEVELS } from './levels'
-import { CAUGHT_HOLD, CLEAR_HOLD, SEAL_HOLD, WIN_CUT_AT, visual, type Dir, type Game, type Ghost } from './sim'
+import { CAUGHT_HOLD, CLEAR_HOLD, SEAL_HOLD, WIN_CARD_AT, WIN_CUT_AT, visual, type Dir, type Game, type Ghost } from './sim'
 
 const TILE = 40
 const PIXEL = '"Press Start 2P", monospace'
@@ -32,21 +32,9 @@ interface Palette {
   mark: string
 }
 
-const STATUE: ReadonlyArray<readonly [number, number, number, number]> = [
-  [-3, -12, 6, 3],
-  [-4, -9, 8, 5],
-  [-8, -4, 16, 3],
-  [-6, -1, 12, 7],
-  [-8, 6, 16, 4],
-  [-6, 10, 12, 2],
-]
-
-const EYES: ReadonlyArray<readonly [number, number, number, number]> = [
-  [-3, -7, 2, 2],
-  [1, -7, 2, 2],
-]
-
 const AI_ROWS = ['11101', '10101', '11101', '10101', '10101']
+const PAGE = '#f4efe2'
+const PAGE_INK = '#1a1028'
 
 export function tileSize(): number {
   return TILE
@@ -65,177 +53,167 @@ function palette(surge: boolean, level: number): Palette {
   if (era === 0) {
     if (!surge) {
       return {
-        bg: '#1a1a1a',
-        wall: '#2c2c2c',
-        edge: '#d8d8d8',
-        hot: '#f4f4f4',
-        pcb: '#222222',
-        trace: '#bdbdbd',
-        ceramic: '#333333',
-        bevel: '#6a6a6a',
-        shade: '#111111',
-        pin: '#e8e8e8',
-        die: '#111111',
-        dieFrame: '#d8d8d8',
-        ram: '#f4f4f4',
-        slot: '#111111',
-        slotLip: '#e8e8e8',
-        pellet: '#8a8a8a',
-        pelletPin: '#f4f4f4',
-        pelletHot: '#ffffff',
-        surgeBody: '#e8e8e8',
-        surgeInk: '#111111',
-        surgeHalo: '#ffffff',
-        player: '#f4f4f4',
-        mark: '#9a9a9a',
+        bg: '#14081f',
+        wall: '#4b2a86',
+        edge: '#ffb020',
+        hot: '#ffe7a3',
+        pcb: '#241044',
+        trace: '#ffd36a',
+        ceramic: '#3a1f6e',
+        bevel: '#7d52c8',
+        shade: '#120818',
+        pin: '#c9a6ff',
+        die: '#14081f',
+        dieFrame: '#ffb020',
+        ram: '#ffd36a',
+        slot: '#120818',
+        slotLip: '#ffd36a',
+        pellet: '#ffd36a',
+        pelletPin: '#c9a6ff',
+        pelletHot: '#fff1b8',
+        surgeBody: '#ffb020',
+        surgeInk: '#14081f',
+        surgeHalo: '#c9a6ff',
+        player: '#ffe7a3',
+        mark: '#c9a6ff',
       }
     }
     return {
-      bg: '#1a1a1a',
-      wall: '#050505',
-      edge: '#f4f4f4',
-      hot: '#ffffff',
-      pcb: '#222222',
-      trace: '#f4f4f4',
-      ceramic: '#111111',
-      bevel: '#d0d0d0',
-      shade: '#000000',
-      pin: '#ffffff',
-      die: '#f4f4f4',
-      dieFrame: '#ffffff',
-      ram: '#111111',
-      slot: '#f4f4f4',
-      slotLip: '#ffffff',
-      pellet: '#f4f4f4',
-      pelletPin: '#111111',
-      pelletHot: '#ffffff',
-      surgeBody: '#ffffff',
-      surgeInk: '#111111',
-      surgeHalo: '#f4f4f4',
-      player: '#ffffff',
-      mark: '#111111',
+      bg: '#14081f',
+      wall: '#2a1458',
+      edge: '#c9a6ff',
+      hot: '#ffe7a3',
+      pcb: '#3a1868',
+      trace: '#c9a6ff',
+      ceramic: '#4b2a86',
+      bevel: '#ffb020',
+      shade: '#0c0414',
+      pin: '#ffd36a',
+      die: '#ffe7a3',
+      dieFrame: '#c9a6ff',
+      ram: '#2a1458',
+      slot: '#c9a6ff',
+      slotLip: '#ffd36a',
+      pellet: '#ffe7a3',
+      pelletPin: '#c9a6ff',
+      pelletHot: '#fff6d0',
+      surgeBody: '#c9a6ff',
+      surgeInk: '#14081f',
+      surgeHalo: '#ffb020',
+      player: '#ffe7a3',
+      mark: '#ffb020',
     }
   }
   if (era === 1) {
     if (!surge) {
       return {
-        bg: '#031208',
-        wall: '#0c2814',
-        edge: '#46ff2a',
-        hot: '#ff4fd8',
-        pcb: '#062413',
-        trace: '#d2ff4a',
-        ceramic: '#145214',
-        bevel: '#46ff2a',
-        shade: '#021006',
-        pin: '#d2ff4a',
-        die: '#021006',
-        dieFrame: '#ff4fd8',
-        ram: '#d6ff6a',
-        slot: '#021006',
-        slotLip: '#46ff2a',
-        pellet: '#1f7a32',
-        pelletPin: '#d2ff4a',
-        pelletHot: '#f4ffb0',
-        surgeBody: '#ff4fd8',
-        surgeInk: '#041208',
-        surgeHalo: '#d2ff4a',
-        player: '#d6ff6a',
-        mark: '#ff4fd8',
+        bg: '#140014',
+        wall: '#e012a0',
+        edge: '#b6ff2e',
+        hot: '#fff15a',
+        pcb: '#3a0032',
+        trace: '#b6ff2e',
+        ceramic: '#ff3cbe',
+        bevel: '#ff7ad2',
+        shade: '#4a0040',
+        pin: '#fff15a',
+        die: '#140014',
+        dieFrame: '#3dfff3',
+        ram: '#fff15a',
+        slot: '#140014',
+        slotLip: '#b6ff2e',
+        pellet: '#fff15a',
+        pelletPin: '#3dfff3',
+        pelletHot: '#fffce0',
+        surgeBody: '#3dfff3',
+        surgeInk: '#140014',
+        surgeHalo: '#b6ff2e',
+        player: '#3dfff3',
+        mark: '#b6ff2e',
       }
     }
     return {
-      bg: '#143018',
-      wall: '#041208',
-      edge: '#ff4fd8',
-      hot: '#d2ff4a',
-      pcb: '#1d4a22',
-      trace: '#ff4fd8',
-      ceramic: '#062413',
-      bevel: '#ff4fd8',
-      shade: '#021006',
-      pin: '#d2ff4a',
-      die: '#f4ffb0',
-      dieFrame: '#ff4fd8',
-      ram: '#041208',
-      slot: '#ff4fd8',
-      slotLip: '#d2ff4a',
-      pellet: '#d2ff4a',
-      pelletPin: '#041208',
-      pelletHot: '#ffffff',
-      surgeBody: '#d2ff4a',
-      surgeInk: '#041208',
-      surgeHalo: '#ff4fd8',
-      player: '#f4ffb0',
-      mark: '#ff4fd8',
+      bg: '#140014',
+      wall: '#2c0028',
+      edge: '#fff15a',
+      hot: '#b6ff2e',
+      pcb: '#e012a0',
+      trace: '#3dfff3',
+      ceramic: '#5a004c',
+      bevel: '#3dfff3',
+      shade: '#0c000a',
+      pin: '#b6ff2e',
+      die: '#fff15a',
+      dieFrame: '#3dfff3',
+      ram: '#140014',
+      slot: '#3dfff3',
+      slotLip: '#b6ff2e',
+      pellet: '#b6ff2e',
+      pelletPin: '#fff15a',
+      pelletHot: '#3dfff3',
+      surgeBody: '#b6ff2e',
+      surgeInk: '#140014',
+      surgeHalo: '#e012a0',
+      player: '#3dfff3',
+      mark: '#fff15a',
     }
   }
   if (!surge) {
     return {
-      bg: '#1a1034',
-      wall: '#2a1848',
-      edge: '#5ce8ff',
-      hot: '#ffc44d',
-      pcb: '#241445',
-      trace: '#5ce8ff',
-      ceramic: '#3a2468',
-      bevel: '#7a5cb0',
-      shade: '#0c0818',
-      pin: '#ffc44d',
-      die: '#0c0818',
-      dieFrame: '#5ce8ff',
-      ram: '#ffc44d',
-      slot: '#0c0818',
-      slotLip: '#ffc44d',
-      pellet: '#e09a20',
-      pelletPin: '#ffc44d',
-      pelletHot: '#fff0b8',
-      surgeBody: '#ff4d9a',
-      surgeInk: '#1a1034',
-      surgeHalo: '#ffd0ea',
-      player: '#fff8ee',
-      mark: '#5ce8ff',
+      bg: '#071422',
+      wall: '#16324a',
+      edge: '#8eb6ff',
+      hot: '#d5e4ff',
+      pcb: '#0d2840',
+      trace: '#8eb6ff',
+      ceramic: '#1f4d6e',
+      bevel: '#4d7eae',
+      shade: '#081420',
+      pin: '#ffe14a',
+      die: '#071422',
+      dieFrame: '#8eb6ff',
+      ram: '#ffe14a',
+      slot: '#081420',
+      slotLip: '#8eb6ff',
+      pellet: '#ffe14a',
+      pelletPin: '#f7f4ea',
+      pelletHot: '#fff4c2',
+      surgeBody: '#c9a6ff',
+      surgeInk: '#071422',
+      surgeHalo: '#8eb6ff',
+      player: '#f7f4ea',
+      mark: '#c9a6ff',
     }
   }
   return {
-    bg: '#3a1030',
-    wall: '#180818',
-    edge: '#ff4d9a',
-    hot: '#ffc44d',
-    pcb: '#4a1840',
-    trace: '#ff4d9a',
-    ceramic: '#2a1028',
-    bevel: '#ff4d9a',
-    shade: '#0c0818',
-    pin: '#ffc44d',
-    die: '#ffe0f0',
-    dieFrame: '#ffc44d',
-    ram: '#1a1034',
-    slot: '#ff4d9a',
-    slotLip: '#ffc44d',
-    pellet: '#ffc44d',
-    pelletPin: '#1a1034',
-    pelletHot: '#fff0b8',
-    surgeBody: '#ffc44d',
-    surgeInk: '#1a1034',
-    surgeHalo: '#ff4d9a',
-    player: '#fff8ee',
-    mark: '#ff4d9a',
+    bg: '#071422',
+    wall: '#10283c',
+    edge: '#c9a6ff',
+    hot: '#ffe14a',
+    pcb: '#1a4060',
+    trace: '#c9a6ff',
+    ceramic: '#16324a',
+    bevel: '#8eb6ff',
+    shade: '#061018',
+    pin: '#ffe14a',
+    die: '#f7f4ea',
+    dieFrame: '#c9a6ff',
+    ram: '#10283c',
+    slot: '#c9a6ff',
+    slotLip: '#ffe14a',
+    pellet: '#fff0a0',
+    pelletPin: '#c9a6ff',
+    pelletHot: '#ffffff',
+    surgeBody: '#ffe14a',
+    surgeInk: '#071422',
+    surgeHalo: '#c9a6ff',
+    player: '#f7f4ea',
+    mark: '#8eb6ff',
   }
 }
 
-const ERA_COATS = [
-  ['#f4f4f4', '#8a8a8a', '#c8c8c8', '#5c5c5c'],
-  ['#46ff2a', '#ff4fd8', '#d2ff4a', '#14fff0'],
-  ['#ff2e93', '#3ad7ff', '#ffb000', '#e1062c'],
-]
-
 function eraOf(level: number): number {
   return Math.min(2, Math.max(0, level))
-}
-
-function coatFor(level: number, index: number, fallback: string): string {
-  return ERA_COATS[eraOf(level)]?.[index] ?? fallback
 }
 
 function fill(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number): void {
@@ -340,8 +318,6 @@ export function render(ctx: CanvasRenderingContext2D, game: Game): void {
   drawPlayer(ctx, game, tile, pal)
   drawFx(ctx, game, tile)
   drawEraPlate(ctx, game, width)
-
-  if (game.mode === 'dying') fill(ctx, 'rgba(0, 0, 0, 0.4)', 0, 0, width, height)
 
   if (game.flash > 0.02) {
     ctx.fillStyle = `rgba(214, 255, 194, ${game.flash * 0.28})`
@@ -637,42 +613,70 @@ function drawGlyph(
 
 function drawEraPlate(ctx: CanvasRenderingContext2D, game: Game, width: number): void {
   const era = eraOf(game.levelIndex)
-  const names = ['B&W', '8-BIT', 'NOW']
-  const ink = era === 0 ? '#d0d0d0' : era === 1 ? '#d2ff4a' : '#ffc44d'
+  const names = ['DUSK', '8-BIT', 'NOW']
+  const ink = era === 0 ? '#ffb020' : era === 1 ? '#b6ff2e' : '#8eb6ff'
+  const dim = era === 0 ? '#3a2068' : era === 1 ? '#5a1848' : '#16324a'
   label(ctx, `GEN ${era + 1} ${names[era]}`, 8, 14, 8, ink, 'left', 'middle')
   for (let i = 0; i < 3; i++) {
-    fill(ctx, i <= era ? ink : '#000000', width - 36 + i * 10, 8, 8, 8)
+    fill(ctx, i <= era ? ink : dim, width - 36 + i * 10, 8, 8, 8)
   }
 }
 
-function fillBlocks(
-  ctx: CanvasRenderingContext2D,
-  blocks: ReadonlyArray<readonly [number, number, number, number]>,
-  color: string,
-  inflate: number,
-): void {
-  ctx.fillStyle = color
-  for (const [x, y, w, h] of blocks) {
-    ctx.fillRect(x - inflate, y - inflate, w + inflate * 2, h + inflate * 2)
+function drawEatenLaw(ctx: CanvasRenderingContext2D, color: string): void {
+  const x = -8
+  const y = -10
+  const w = 16
+  const h = 20
+  fill(ctx, color, x, y, w, 1)
+  fill(ctx, color, x, y + h - 1, w, 1)
+  fill(ctx, color, x, y, 1, h)
+  fill(ctx, color, x + w - 1, y, 1, h)
+  fill(ctx, color, x + 1, y + 2, w - 2, 1)
+  fill(ctx, color, x + 2, y + 1, 1, 3)
+  fill(ctx, color, x + w - 3, y + 1, 1, 3)
+  fill(ctx, color, 2, 4, 5, 1)
+  fill(ctx, color, 2, 8, 5, 1)
+  fill(ctx, color, 2, 4, 1, 5)
+  fill(ctx, color, 6, 4, 1, 5)
+}
+
+function drawHuntingEyes(ctx: CanvasRenderingContext2D, dir: Dir): void {
+  const lookX = dir === 'right' ? 1 : 0
+  const lookY = dir === 'down' ? 1 : 0
+  for (const ox of [-5, 1]) {
+    fill(ctx, PAGE_INK, ox, -6, 4, 4)
+    fill(ctx, '#fffef8', ox + 1, -5, 2, 2)
+    fill(ctx, PAGE_INK, ox + 1 + lookX, -5 + lookY, 1, 1)
   }
 }
 
-function drawHollowPins(ctx: CanvasRenderingContext2D, color: string): void {
-  ctx.globalAlpha = 0.5
-  ctx.fillStyle = color
-  const x = -6
-  const y = -4
-  const w = 12
-  const h = 8
-  ctx.fillRect(x, y, w, 1)
-  ctx.fillRect(x, y + h - 1, w, 1)
-  ctx.fillRect(x, y, 1, h)
-  ctx.fillRect(x + w - 1, y, 1, h)
-  for (const px of [-4, -1, 2]) {
-    ctx.fillRect(px, y - 3, 2, 3)
-    ctx.fillRect(px, y + h, 2, 3)
+function drawLiveLaw(ctx: CanvasRenderingContext2D, color: string, dir: Dir, frightened: boolean, flash: boolean): void {
+  const x = -8
+  const y = -10
+  const w = 16
+  const h = 20
+  const page = flash ? color : PAGE
+  const ink = flash ? PAGE : PAGE_INK
+  const seal = flash ? PAGE : color
+  const ribbon = flash ? PAGE : color
+  fill(ctx, page, x, y, w, h)
+  fill(ctx, PAGE_INK, x, y, w, 1)
+  fill(ctx, PAGE_INK, x, y + h - 1, w, 1)
+  fill(ctx, PAGE_INK, x, y, 1, h)
+  fill(ctx, PAGE_INK, x + w - 1, y, 1, h)
+  fill(ctx, ribbon, x + 1, y + 1, w - 2, 2)
+  fill(ctx, page, 4, y + 1, 3, 2)
+  fill(ctx, ribbon, x + 1, 0, 2, 8)
+  drawHuntingEyes(ctx, dir)
+  fill(ctx, ink, -4, -1, 10, 1)
+  fill(ctx, ink, -4, 1, 9, 1)
+  fill(ctx, ink, -4, 3, 4, 1)
+  fill(ctx, seal, 2, 3, 5, 5)
+  fill(ctx, page, 4, 5, 1, 1)
+  if (frightened) {
+    fill(ctx, page, 3, 3, 1, 5)
+    fill(ctx, page, 4, 6, 3, 1)
   }
-  ctx.globalAlpha = 1
 }
 
 function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile: number): void {
@@ -680,50 +684,22 @@ function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile
   const pos = visual(ghost)
   const x = snap(pos.x * tile + tile / 2)
   const y = snap(pos.y * tile + tile / 2)
-  const body = coatFor(game.levelIndex, ghost.law, ghost.color)
-  const look = {
-    body: game.surge > 0 ? '#100818' : body,
-    stripe: game.surge > 0 ? '#ffb000' : '#f4f0e6',
-    ink: game.surge > 0 ? '#ffb000' : '#100818',
-  }
+  const eaten = ghost.state === 'eaten'
+  const frightened = ghost.state === 'frightened'
   ctx.save()
   ctx.translate(x, y)
   const scale = [0.82, 1, 1.15][era] ?? 1
   ctx.scale(scale, scale)
-  if (ghost.state === 'eaten') {
-    ctx.translate(0, Math.round(Math.sin(game.time * 10 + ghost.law)))
-    drawHollowPins(ctx, game.surge > 0 ? '#ff2e93' : '#ffb000')
-    ctx.restore()
-    return
+  if (eaten) ctx.translate(0, Math.round(Math.sin(game.time * 10 + ghost.law)))
+  else if (frightened) ctx.translate(Math.round(Math.sin(game.time * 18 + ghost.law) * 2), 0)
+  else if (ghost.state !== 'housed') ctx.translate(0, Math.round(Math.sin(game.time * 8 + ghost.law * 2)))
+  if (eaten) drawEatenLaw(ctx, ghost.color)
+  else {
+    const warned = frightened && game.surge > 0 && game.surge < 2
+    const flash = frightened && Math.floor(game.time * (warned ? 14 : 8) + ghost.law) % 2 === 0
+    drawLiveLaw(ctx, ghost.color, ghost.dir, frightened, flash)
   }
-
-  const frightened = ghost.state === 'frightened'
-  const warn = frightened && game.surge > 0 && game.surge < 2
-  if (frightened) ctx.translate(snap(Math.sin(game.time * 18 + ghost.law) * 2), 0)
-  if (frightened && warn && Math.floor(game.time * 14) % 2 === 0) {
-    fillBlocks(ctx, STATUE, '#000000', 1)
-    fillBlocks(ctx, STATUE, body, 0)
-    ctx.fillStyle = '#f4f0e6'
-    ctx.fillRect(-8, -4, 2, 14)
-    ctx.fillStyle = '#000000'
-    for (const eye of EYES) ctx.fillRect(eye[0], eye[1], eye[2], eye[3])
-    label(ctx, ghost.tag, 0, -18, 8, '#100818')
-  } else if (frightened) {
-    const phase = Math.floor(game.time * (warn ? 14 : 8) + ghost.law) % 2 === 0
-    fillBlocks(ctx, STATUE, phase ? '#ff2e93' : '#3ad7ff', 2)
-    fillBlocks(ctx, STATUE, phase ? '#100818' : '#1a1030', 0)
-    ctx.fillStyle = phase ? '#ffb000' : '#f4f0e6'
-    for (const eye of EYES) ctx.fillRect(eye[0], eye[1], eye[2], eye[3])
-    label(ctx, ghost.tag, 0, -18, 8, '#ffb000')
-  } else {
-    fillBlocks(ctx, STATUE, '#000000', 1)
-    fillBlocks(ctx, STATUE, look.body, 0)
-    ctx.fillStyle = look.stripe
-    ctx.fillRect(-8, -4, 2, 14)
-    ctx.fillStyle = '#000000'
-    for (const eye of EYES) ctx.fillRect(eye[0], eye[1], eye[2], eye[3])
-    label(ctx, ghost.tag, 0, -18, 8, look.ink)
-  }
+  label(ctx, ghost.tag, 0, -17, 8, ghost.color)
   ctx.restore()
 }
 
@@ -897,67 +873,73 @@ function drawFx(ctx: CanvasRenderingContext2D, game: Game, tile: number): void {
   label(ctx, def?.blurb ?? '', width * 0.5, top + 76, 8, '#ff2e93')
 }
 
-function drawScrap(ctx: CanvasRenderingContext2D, x: number, y: number): void {
-  const x0 = snap(x)
-  const y0 = snap(y)
-  fill(ctx, '#5c3d8a', x0, y0, 28, 10)
-  fill(ctx, '#3a2460', x0, y0, 8, 10)
-  fill(ctx, '#000000', x0 + 3, y0 + 3, 2, 2)
-  fill(ctx, '#ffb000', x0 + 10, y0 + 4, 12, 2)
-  fill(ctx, '#100818', x0 + 28, y0 - 2, 8, 14)
-  fill(ctx, '#ff2e93', x0 + 28, y0 - 2, 8, 2)
+function drawBlackoutCity(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, t: number): void {
+  fill(ctx, '#05060c', 0, 0, width, height)
+  const tile = TILE
+  const { maze } = game
+  const faces: Array<{ x: number; y: number }> = []
+  for (let y = 0; y < maze.h; y++) {
+    for (let x = 0; x < maze.w; x++) {
+      if (!wallAt(maze, x, y)) continue
+      fill(ctx, '#0e1320', x * tile, y * tile, tile, tile)
+      if (!wallAt(maze, x, y - 1)) fill(ctx, '#1a2236', x * tile, y * tile, tile, 2)
+      if (y < maze.h - 1 && !wallAt(maze, x, y + 1)) faces.push({ x, y })
+    }
+  }
+  const colors = ['#ffe14a', '#8eb6ff', '#c9a6ff', '#ffb020']
+  const want = Math.min(7, faces.length)
+  const lights: Array<{ x: number; y: number; color: string }> = []
+  for (let i = 0; i < want; i++) {
+    const face = faces[Math.floor(((i + 0.5) * faces.length) / want)]!
+    lights.push({
+      x: face.x * tile + 8,
+      y: face.y * tile + 10,
+      color: colors[i % colors.length]!,
+    })
+  }
+  const span = Math.max(0.25, WIN_CARD_AT - WIN_CUT_AT)
+  const elapsed = t - WIN_CUT_AT
+  for (let i = 0; i < lights.length; i++) {
+    const offAt = ((i + 1) / lights.length) * span
+    if (elapsed >= offAt) continue
+    if (offAt - elapsed < 0.14 && Math.floor((t + i) * 16) % 2 === 0) continue
+    const light = lights[i]!
+    fill(ctx, light.color, light.x, light.y, 8, 6)
+    fill(ctx, light.color, light.x + 12, light.y + 12, 6, 5)
+  }
 }
 
 function drawWin(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, pal: Palette): void {
   const tile = TILE
   const t = game.ending
-  fill(ctx, '#000000', 0, 0, width, height)
-
   if (t >= WIN_CUT_AT) {
-    label(ctx, 'AGI', width / 2, height / 2 - 18, 64, '#f4f0e6')
-    label(ctx, 'HUMANITY DIES', width / 2, height / 2 + 36, 16, '#ff2e93')
-    drawScrap(ctx, width - 64, height - 40)
+    drawBlackoutCity(ctx, game, width, height, t)
     return
   }
 
-  const fold = clamp((t - 0.12) / 1.55, 0, 1)
-  const cx = snap(width / 2)
-  const cy = snap(height / 2)
-  ctx.save()
-  ctx.translate(cx, cy)
-  const shrink = 1 - fold * 0.96
-  ctx.scale(shrink, shrink)
-  ctx.translate(-cx, -cy)
-  ctx.globalAlpha = 1 - fold * 0.8
   fill(ctx, pal.bg, 0, 0, width, height)
   drawMaze(ctx, game, tile, pal)
   drawPellets(ctx, game, tile, pal)
   for (const ghost of game.ghosts) drawGhost(ctx, game, ghost, tile)
-  ctx.restore()
 
-  const chomp = 0.2 + Math.abs(Math.sin(game.time * 11)) * 0.5
-  const radius = tile * 0.5 + fold * Math.hypot(width, height) * 0.48
+  const cx = snap(width / 2)
+  const cy = snap(height / 2)
+  const grow = clamp(t / 6.6, 0, 1)
+  const eased = grow * grow * grow
+  const radius = 22 + eased * 280
+  const chomp = 0.18 + Math.abs(Math.sin(game.time * 5)) * 0.42
   const mark = radius < 90 ? pal.mark : null
   drawChomp(ctx, cx, cy, radius, 'right', chomp, pal.player, mark, radius > 36 ? 3 : 2)
 
-  if (t < 0.8) {
-    const pos = visual(game.player)
-    ctx.globalAlpha = 1 - t / 0.8
-    label(ctx, 'AGI', pos.x * tile + tile / 2, pos.y * tile - 10 - t * 36, 16, '#ff2e93')
-    ctx.globalAlpha = 1
-  }
-
-  if (t > 1.4) {
+  if (t >= 2 && t < 6) {
     const count = 7
     for (let i = 0; i < count; i++) {
-      const hi = i === count - 1
-      const begin = hi ? 2.15 : 1.5
-      const dur = hi ? 0.95 : 1.05
-      const u = clamp((t - begin) / dur, 0, 1)
-      if (u >= 1) continue
+      const begin = 2 + i * 0.12
+      const u = clamp((t - begin) / (6 - begin), 0, 1)
+      if (u <= 0 || u >= 1) continue
       const sx = ((i + 0.5) / count) * width
-      const sy = height * 0.74
-      drawPerson(ctx, sx + (cx - sx) * u, sy + (cy - sy) * u, Math.sin(t * 10 + i), 1 - u, hi)
+      const sy = height * 0.78
+      drawPerson(ctx, sx + (cx - sx) * u, sy + (cy - sy) * u, Math.sin(t * 7 + i), 1 - u * 0.72, i === count - 1)
     }
   }
 
@@ -970,18 +952,28 @@ function drawLose(ctx: CanvasRenderingContext2D, game: Game, width: number, heig
   drawMaze(ctx, game, tile, pal)
   drawPellets(ctx, game, tile, pal)
   for (const ghost of game.ghosts) drawGhost(ctx, game, ghost, tile)
+  drawPlayer(ctx, game, tile, pal)
   const pos = visual(game.player)
-  drawSeal(ctx, pos.x * tile + tile / 2, pos.y * tile + tile / 2, 1)
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.28)'
-  ctx.fillRect(0, 0, width, height)
+  const px = snap(pos.x * tile + tile / 2)
+  const py = snap(pos.y * tile + tile / 2)
+  const law = game.ghosts.find((ghost) => ghost.name === game.caughtName)
+  const ink = law?.color ?? '#ff2e93'
+  ctx.save()
+  ctx.translate(px, py)
+  ctx.scale(4, 4)
+  drawLiveLaw(ctx, ink, 'down', false, false)
+  label(ctx, law?.tag ?? 'LAW', 0, -17, 8, ink)
+  ctx.restore()
 
-  const count = 7
-  for (let i = 0; i < count; i++) {
-    const slot = 40 + i * ((width - 80) / (count - 1))
-    const u = clamp((game.ending - i * 0.1) / 1.5, 0, 1)
-    const eased = 1 - (1 - u) ** 3
-    const x = width + 36 + (slot - width - 36) * eased
-    const wave = u >= 1 ? Math.sin(game.time * 7 + i) : 0
-    drawPerson(ctx, x, height * 0.78, wave, 1, i === 3)
-  }
+  const plateW = 308
+  const plateH = game.caughtName ? 68 : 40
+  const plateY = py < height * 0.42 ? height - plateH - 18 : 16
+  const plateX = snap(width / 2 - plateW / 2)
+  fill(ctx, PAGE, plateX, plateY, plateW, plateH)
+  fill(ctx, ink, plateX, plateY, plateW, 5)
+  fill(ctx, ink, plateX, plateY, 5, plateH)
+  fill(ctx, PAGE_INK, plateX, plateY + plateH - 2, plateW, 2)
+  fill(ctx, PAGE_INK, plateX + plateW - 2, plateY, 2, plateH)
+  label(ctx, 'A LAW CAUGHT YOU', width / 2, plateY + 24, 16, PAGE_INK)
+  if (game.caughtName) label(ctx, game.caughtName.toUpperCase(), width / 2, plateY + 48, 16, ink)
 }

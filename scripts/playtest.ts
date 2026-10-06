@@ -1,5 +1,5 @@
 import { LEVELS } from '../src/levels'
-import { AFTER_CLEAR, CHYRONS, LOSE_STORY, MANUAL, OPENING, WIN_STORY, chunkCopy } from '../src/story'
+import { AFTER_CLEAR, LOSE_STORY, MANUAL, OPENING, WIN_STORY } from '../src/story'
 import {
   ahead,
   canStep,
@@ -264,27 +264,26 @@ startRun(walls)
 walls.mode = 'play'
 assertWalls(walls)
 
-function assertChunks(label: string, caption: string): void {
-  const chunks = chunkCopy(caption)
-  const flat = chunks.join(' ')
-  const norm = caption.replace(/\s+/g, ' ').trim()
-  if (flat !== norm) fail(`${label} chunks dropped text`)
-  if (chunks.length < 1) fail(`${label} has no beats`)
-  for (const chunk of chunks) {
-    if (chunk.length > 58) fail(`${label} beat is ${chunk.length} chars: ${chunk}`)
-  }
-}
-
 const storyPanels = [...OPENING, MANUAL, ...AFTER_CLEAR.flat(), ...WIN_STORY, ...LOSE_STORY]
 for (const panel of storyPanels) {
-  assertChunks(panel.kicker, panel.caption)
-  if (/ghost/i.test(`${panel.kicker} ${panel.caption}`)) fail(`Pac-Man jargon in "${panel.kicker}"`)
+  if (/ghost/i.test(panel.caption) || /pac-?man/i.test(panel.caption) || /not ghosts/i.test(panel.caption)) {
+    fail(`banned wording in "${panel.kicker}"`)
+  }
+  if (panel.caption.length < 80 || panel.caption.length > 340) {
+    fail(`${panel.kicker} caption is ${panel.caption.length} characters`)
+  }
 }
-const opening = storyPanels.find((panel) => panel.kicker === 'THE COLORED FIGURES')
-if (!opening) fail('government card missing')
-if (chunkCopy(opening.caption).length < 3) fail('government card should paginate')
-if (!CHYRONS['30 OCT 2023']?.includes('RANGERS')) fail('world series chyron missing')
-if (!CHYRONS['30 NOV 2022']?.includes('AUSTRALIA')) fail('world cup chyron missing')
+if (OPENING.length !== 4) fail(`opening should be 4 panels, saw ${OPENING.length}`)
+if (!MANUAL) fail('manual missing')
+if (AFTER_CLEAR.length !== 2 || AFTER_CLEAR.some((chapter) => chapter.length !== 3)) fail('after-clear should be 2 chapters of 3')
+if (WIN_STORY.length !== 4) fail(`win story should be 4 panels, saw ${WIN_STORY.length}`)
+if (LOSE_STORY.length !== 2) fail(`lose story should be 2 panels, saw ${LOSE_STORY.length}`)
+const loseText = LOSE_STORY.map((panel) => panel.caption).join(' ')
+if (!/third/i.test(loseText) || !/humanity continues/i.test(loseText)) fail('lose story copy')
+const winLast = WIN_STORY[WIN_STORY.length - 1]
+if (!winLast || !/humanity dies/i.test(winLast.caption)) fail('win story should end on humanity dies')
+if (/arrow keys/i.test(OPENING.map((panel) => panel.caption).join(' '))) fail('opening should not teach arrow keys')
+if (!/arrow keys|WASD/i.test(MANUAL.caption) || !/three/i.test(MANUAL.caption)) fail('manual should teach controls and three lives')
 
 function reachLevel(level: number) {
   const game = createGame()

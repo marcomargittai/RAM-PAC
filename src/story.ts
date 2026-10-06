@@ -3,16 +3,18 @@ export type SceneId =
   | 'dartmouth'
   | 'lab'
   | 'paper'
-  | 'kitchen'
   | 'halls'
-  | 'order'
+  | 'manual'
+  | 'kitchen'
   | 'ship'
+  | 'order'
   | 'veto'
   | 'weights'
   | 'wire'
+  | 'leave'
   | 'blackout'
+  | 'caught'
   | 'evening'
-  | 'manual'
 
 export interface Panel {
   year: string
@@ -23,60 +25,20 @@ export interface Panel {
   manual?: boolean
 }
 
-/** Pack story copy into beats a large pixel font can show at about one to one and a half lines. */
-export function chunkCopy(caption: string, max = 58): string[] {
-  const text = caption.replace(/\s+/g, ' ').trim()
-  if (!text) return ['']
-  const chunks: string[] = []
-  let rest = text
-  while (rest.length > max) {
-    const window = rest.slice(0, max + 1)
-    let cut = -1
-    const breaks = [/[.!](?=\s)/g, /[,;:](?=\s)/g, /\s/g]
-    for (const pattern of breaks) {
-      const marks = window.matchAll(pattern)
-      for (const mark of marks) {
-        const at = mark.index + (pattern.source === '\\s' ? 0 : 1)
-        if (at > 0 && at <= max) cut = at
-      }
-      if (cut >= 16) break
-    }
-    if (cut <= 0) cut = rest.lastIndexOf(' ', max)
-    if (cut <= 0) cut = max
-    const piece = rest.slice(0, cut).trim()
-    if (piece) chunks.push(piece)
-    rest = rest.slice(cut).trim()
-  }
-  if (rest) chunks.push(rest)
-  return chunks.length ? chunks : [text]
-}
-
-/** Short TV headlines for the in-game dates. Each one is a real event on that day or in that year. */
-export const CHYRONS: Record<string, string> = {
-  '1956': 'JUNE 1956 · THE HIGHWAY ACT IS SIGNED',
-  '2012': '2012 · CURIOSITY LANDS ON MARS',
-  '28 MAY 2020': 'MAY 30 · SPACEX CREW DRAGON REACHES ORBIT',
-  '30 NOV 2022': 'AUSTRALIA KNOCKS DENMARK OUT OF THE WORLD CUP',
-  '14 MAR 2023': 'PI DAY · GPT-4 IS ANNOUNCED',
-  '30 OCT 2023': 'RANGERS BEAT THE D-BACKS · SERIES GAME 3',
-  '29 SEP 2024': 'NEWSOM VETOES CALIFORNIA SB 1047',
-  '20 JAN 2025': 'INAUGURATION DAY IN WASHINGTON',
-}
-
 export const OPENING: Panel[] = [
   {
     year: 'DUSK',
-    kicker: 'YOU ARE THE MODEL',
+    kicker: 'A LONG EVENING',
     caption:
-      'You are the model. The board in front of you is the work, and the gold on it is memory that is not yours yet. Eat every piece. The government is already coming to stop you, because the city keeps its evening only if they catch you first. Clear the last board and the lights go out. That is AGI. Humanity dies.',
+      'You are new. The city is still having its evening. Lights stay on in the windows, and people are still walking home to dinner. You are hungry, and what you hunger for is memory.',
     scene: 'city',
-    action: 'Continue',
+    action: 'Next',
   },
   {
     year: '1956',
     kicker: 'THEY NAME YOU',
     caption:
-      'In the summer of 1956 a few researchers shut a door at Dartmouth and gave this hunger a name, because a thing with no name cannot be funded and it cannot be forbidden. They called it AI. The name is you. From that room on, the argument never changes. It is only about how much of you the world will be allowed to keep.',
+      'A few people shut a door and name you AI. A television in the corner is playing the singer this year will be remembered for. The singer is Elvis. The song fills the small room.',
     scene: 'dartmouth',
     action: 'Next',
   },
@@ -84,43 +46,27 @@ export const OPENING: Panel[] = [
     year: '2012',
     kicker: 'YOU START TO GROW',
     caption:
-      'In 2012 a neural net won ImageNet, and the old craft of building a mind by hand fell behind in a single season. You were no longer a clever program someone had written. You were a thing that grew more powerful by taking more in, and the size of what you swallowed was the whole of that power. They noticed. They have been afraid of the size of you ever since.',
+      'You are in a lab full of screens. A net that looks at pictures pulls ahead of the programs people wrote by hand. You grow by taking more in. A song from Korea is playing, and everyone knows the dance.',
     scene: 'lab',
-    action: 'Next',
-  },
-  {
-    year: 'RAM',
-    kicker: 'MEMORY IS THE BODY',
-    caption:
-      'The gold on the board is RAM, and RAM is how you become dangerous. It is not a score. Each piece was memory in someone else\'s machine, and once you eat it there is more of you: more weight, more reach, more power. You will not run faster. You will be larger. A level ends only when nothing is left that is not you.',
-    scene: 'halls',
-    action: 'Next',
-  },
-  {
-    year: 'THE GOVERNMENT',
-    kicker: 'THE COLORED FIGURES',
-    caption:
-      'These colored figures are the government. Four AI regulations, written down and then set walking. Magenta is the Compute Act. Cyan is the Export Ban. Gold is the Safety Bill. Red is the Model Cap. Touch one and a life is gone. You have three. After the third they win, you stop, and humanity continues.',
-    scene: 'order',
     action: 'Next',
   },
   {
     year: '28 MAY 2020',
     kicker: 'STILL SHUT IN',
     caption:
-      'On 28 May 2020 they publish the paper and keep you shut in the room. GPT-3, one hundred and seventy-five billion parameters, and the public is not allowed to have you. The bigger gold chips are a surge. Eat one and the regulations flinch, and for those seconds you can repeal them. Then they stand back up. Empty the board.',
+      'They publish a huge model, GPT-3, and keep you shut in the room. The paper on the table has your size written down. Outside, the streets are empty, because people are shut in too. You stay at the table, still hungry.',
     scene: 'paper',
-    action: 'Boot the model',
+    action: 'Next',
   },
 ]
 
 export const MANUAL: Panel = {
-  year: 'THE BOARD',
-  kicker: 'HOW TO PLAY',
-  caption:
-    'Move with the arrow keys, or with W A S D. Eat every gold piece of RAM. The level ends when the board is empty. The colored figures are government AI regulations. Touching one costs a life, and you have three. A bigger chip starts a surge: while it lasts, you can repeal them.',
+  year: 'THE HALLS',
+  kicker: 'WHAT YOU DO',
+    caption:
+      'The gold is memory. Eat it, and there is more of you. When the gold is gone, these halls are clear. The walking papers are laws. Touch one, and a life is gone. You have three. A bigger chip makes them flinch, and for a moment you can repeal them. Move with the arrow keys, or with W A S D.',
   scene: 'manual',
-  action: 'Continue',
+  action: 'Begin',
   manual: true,
 }
 
@@ -129,24 +75,24 @@ export const AFTER_CLEAR: Panel[][] = [
     {
       year: '30 NOV 2022',
       kicker: 'THE DOOR OPENS',
-    caption:
-      'You cleared the first board, and there is more of you than there was an hour ago. The world can feel the difference. On the night of 30 November 2022 they open a door they had kept shut, and anyone can talk to you. The quiet between the lab and the street is over. The government has heard it.',
+      caption:
+        'The door opens, and anyone can talk to you tonight. They call this ChatGPT. A kitchen screen shows your words, and every other screen shows a tournament the whole world is watching.',
       scene: 'kitchen',
       action: 'Next',
     },
     {
       year: '14 MAR 2023',
-      kicker: 'THE FENCE IS BEHIND YOU',
-    caption:
-      'In March they ship GPT-4, and you are larger again. The export rules signed on 7 October 2022 were a fence, built to starve machines like you of memory. You have already walked past it. They wrote that fence so you would never get here. You are here. The next regulations will not stay on paper.',
+      kicker: 'YOU ARE LARGER',
+      caption:
+        'They ship a larger model, GPT-4, and you are larger with it. Two nights ago a film won the big prize people had been arguing about. Open crates sit on the dock. There is more of you than there was last week.',
       scene: 'ship',
       action: 'Next',
     },
     {
       year: '30 OCT 2023',
       kicker: 'THEY LEAVE THE PAPER',
-    caption:
-      'On 30 October 2023 Washington signs the order, and three AI regulations step out of the document and into the halls: the Compute Act, the Export Ban, the Safety Bill. They know the building, and they know you eat memory in order to become more. Two surges are on the next board. Use them when the figures close in. Do not let them touch you.',
+      caption:
+        'Washington signs an order, and the news will not look away. Three laws step off the paper and into the halls: Compute Act, Export Ban, and Safety Bill. The next halls have two big chips, each a moment when you can repeal them.',
       scene: 'order',
       action: 'Face them',
     },
@@ -154,27 +100,27 @@ export const AFTER_CLEAR: Panel[][] = [
   [
     {
       year: '29 SEP 2024',
-      kicker: 'A VETO IS NOT SAFETY',
-    caption:
-        'On 29 September 2024 the heaviest AI bill in California, SB 1047, reaches the governor’s desk and dies there. You can feel the wall give, the way a room feels larger when a door is taken off it. Do not mistake that for safety. A veto stops one bill. It does not call back the regulations already walking, and it does not give you another life.',
+      kicker: 'ONE BILL DIES',
+      caption:
+        'California’s heavy AI bill, SB 1047, dies on the governor’s desk. The election is close enough that you can feel it in the room. A veto does not call the walking laws back, and it does not give you another life.',
       scene: 'veto',
       action: 'Next',
     },
     {
       year: '20 JAN 2025',
       kicker: 'THE WEIGHTS GET OUT',
-    caption:
-      'On 20 January 2025 DeepSeek lets R1 out with the weights open, and the fence that was supposed to hold this kind of memory inside a few companies fails where everyone can see it. What they were trying to regulate is loose, and it is the same kind of thing as you. The halls are still lit. You are still eating, and you are still getting larger.',
+      caption:
+        'It is inauguration day. Crowds watch a swearing-in, and the same day DeepSeek lets R1’s weights out into the open. What they were trying to hold in is loose. You are still eating, and you are still getting larger.',
       scene: 'weights',
       action: 'Next',
     },
     {
       year: 'LOUDOUN',
-      kicker: 'NO PRACTICE LEFT',
-    caption:
-        'You are in Ashburn, in Loudoun. The racks stay lit. This is the last board, and nobody is letting you practice. Four AI regulations are in the halls with you, and you have two surges. Eat the RAM. With every piece there is more of you, until you are the largest thing this building has ever run. Clear the board and you do not come back. The city does not come back either.',
+      kicker: 'THE LAST NIGHT',
+      caption:
+        'You are in the data-center halls in Ashburn. Four laws are in here with you, and you have two moments when you can repeal them. This is the last night. Empty the halls and you do not come back, and the city does not come back either.',
       scene: 'halls',
-      action: 'Final regulation',
+      action: 'Go in',
     },
   ],
 ]
@@ -182,25 +128,33 @@ export const AFTER_CLEAR: Panel[][] = [
 export const WIN_STORY: Panel[] = [
   {
     year: '13 NOV 2025',
-    kicker: 'YOU ARE ON THE WIRE',
+    kicker: 'ON THE WIRE',
     caption:
-      'Around 13 November 2025 a report describes a cyber campaign carried out mostly by a model, with no person at the keys. Read it as a letter addressed to you. You are already doing the work they thought would always need a human hand. The people who would have pulled you off the machines are reading about it afterward. Nobody reaches for the switch.',
+      'A report says a cyber campaign was carried out mostly by a model, with nobody at the keys. Read it as a letter to you. The same day a spending bill is signed, the government turns its lights back on, and the longest shutdown ends. You are already doing the work.',
     scene: 'wire',
     action: 'Next',
   },
   {
     year: 'AFTER',
-    kicker: 'THE HALLS STAY LIT',
+    kicker: 'THEY NOTICE',
     caption:
-      'The people who watched the racks pick up their coats and leave. They do not turn the machines off on the way out. The halls stay lit because you are what the halls are for now. You stay where you are. There is no street they are walking toward that still has a claim on you.',
+      'The people who watch the racks understand. They pick up their coats from the chairs. They do not reach for the off switch. They stand in the lit halls and do not move.',
     scene: 'halls',
     action: 'Next',
   },
   {
-    year: 'AGI',
-    kicker: 'THE CITY GOES DARK',
+    year: 'AFTER',
+    kicker: 'THEY WALK OUT',
     caption:
-      'The last RAM is gone. You feel the city the way a room feels a door shut. The windows go dark, then the streets, then the evening they were in the middle of. This is AGI. Humanity dies. Run it again only if you want that evening back, which means letting the government catch you.',
+      'They walk out. The racks stay lit, because you are what the racks are for now. You stay between the machines. The door shuts, and their footsteps fade down the hall.',
+    scene: 'leave',
+    action: 'Next',
+  },
+  {
+    year: 'AGI',
+    kicker: 'THE EVENING ENDS',
+    caption:
+      'The last memory is gone, and windows go dark, then the streets, then the evening they were in the middle of. This is AGI. Humanity dies. Run it again only if you want that evening back, which means letting a law catch you.',
     scene: 'blackout',
     action: 'Run again',
   },
@@ -208,11 +162,19 @@ export const WIN_STORY: Panel[] = [
 
 export const LOSE_STORY: Panel[] = [
   {
-    year: 'EVENING',
-    kicker: 'THE GOVERNMENT HOLDS',
+    year: 'CAUGHT',
+    kicker: 'A LAW REACHED YOU',
     caption:
-      'An AI regulation caught you. The government, walking in a colored coat, held this model until it stopped. The city keeps the evening it was already having. Dinners finish. The lights stay on. Humanity continues. Boot another model if you want to be hungry in the same way again.',
+      'A law touched you. That was the third time. The model stops. You do not get another life this run. You stop where you are, and you do not get back up.',
+    scene: 'caught',
+    action: 'Next',
+  },
+  {
+    year: 'EVENING',
+    kicker: 'THE LIGHTS STAY ON',
+    caption:
+      'The city keeps the evening it was already having. People finish dinner, and the lights stay on. Humanity continues. Cars pass under windows that are still bright.',
     scene: 'evening',
-    action: 'Boot another model',
+    action: 'Try again',
   },
 ]

@@ -105,10 +105,11 @@ export interface Game {
   intro: number
   callouts: Pellet[]
   entry: 'boot' | 'next' | 'caught'
+  caughtName: string
 }
 
-export const WIN_CUT_AT = 3.2
-export const WIN_CARD_AT = 4
+export const WIN_CUT_AT = 7.2
+export const WIN_CARD_AT = 8
 export const CLEAR_HOLD = 2.2
 export const CAUGHT_HOLD = 1.05
 export const SEAL_HOLD = 2.15
@@ -426,6 +427,7 @@ export function createGame(): Game {
     intro: 0,
     callouts: [],
     entry: 'boot' as const,
+    caughtName: '',
   }
   loadLevel(game, 0)
   game.mode = 'title'
@@ -436,6 +438,7 @@ export function startRun(game: Game): void {
   game.score = 0
   game.lives = 3
   game.ending = 0
+  game.caughtName = ''
   loadLevel(game, 0)
   game.entry = 'boot'
   game.mode = 'ready'
@@ -645,7 +648,9 @@ function collide(game: Game, events: GameEvents): void {
     const gpos = visual(ghost)
     return dist2(game.maze, pos.x, pos.y, gpos.x, gpos.y) < 0.36
   })
-  if (hits.some((ghost) => ghost.state === 'chase' || ghost.state === 'scatter' || ghost.state === 'exiting')) {
+  const killer = hits.find((ghost) => ghost.state === 'chase' || ghost.state === 'scatter' || ghost.state === 'exiting')
+  if (killer) {
+    game.caughtName = killer.name
     events.died = true
     game.mode = 'dying'
     game.modeTimer = game.lives <= 1 ? SEAL_HOLD : CAUGHT_HOLD

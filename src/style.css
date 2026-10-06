@@ -264,7 +264,6 @@ canvas {
   grid-template-areas:
     "kicker action"
     "year action"
-    "chyron action"
     "body action"
     "progress action";
   column-gap: 22px;
@@ -293,37 +292,15 @@ canvas {
   text-shadow: 0 0 10px rgba(255, 46, 147, 0.55);
 }
 
-.overlay.cinema #ov-chyron {
-  grid-area: chyron;
-}
-
-.chyron {
-  margin: 0;
-  justify-self: start;
-  max-width: 100%;
-  padding: 4px 8px;
-  background: #07040f;
-  border: 2px solid var(--phosphor-mid);
-  color: var(--phosphor-mid);
-  font-family: "Press Start 2P", "Silkscreen", ui-monospace, monospace;
-  font-size: 8px;
-  line-height: 1.6;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  box-shadow: 0 0 10px rgba(255, 176, 0, 0.28);
-}
-
-.chyron[hidden] { display: none; }
-
 .overlay.cinema #ov-body {
   grid-area: body;
   margin: 0;
-  max-width: 38ch;
+  max-width: none;
   color: #f4f0e6;
   font-family: "Silkscreen", ui-monospace, monospace;
   font-weight: 400;
-  font-size: clamp(14px, 1.5vw, 18px);
-  line-height: 1.35;
+  font-size: clamp(13px, 1.35vw, 16px);
+  line-height: 1.45;
   text-shadow: 0 1px 0 #07040f;
 }
 
@@ -655,39 +632,53 @@ canvas {
 }
 
 body[data-era="0"] {
-  --bg: #161616;
-  --bg-2: #222222;
-  --ink: #f2f2f2;
-  --muted: #b0b0b0;
-  --phosphor: #f4f4f4;
-  --phosphor-mid: #d0d0d0;
-  --phosphor-hot: #ffffff;
-  --pcb: #3a3a3a;
-  --ram: #ffffff;
-  --surge: #ffffff;
-  --line: #3a3a3a;
+  --bg: #14081f;
+  --bg-2: #241038;
+  --ink: #ffe7a3;
+  --muted: #e2c2ff;
+  --phosphor: #ffb020;
+  --phosphor-mid: #ffd36a;
+  --phosphor-hot: #fff1c2;
+  --pcb: #4b2a86;
+  --ram: #ffd36a;
+  --surge: #ff7ad9;
+  --line: #4b2a86;
 }
 
 body[data-era="0"] .crt {
-  background-color: rgba(255, 255, 255, 0.03);
+  background-color: rgba(255, 176, 32, 0.04);
 }
 
 body[data-era="1"] {
-  --bg: #031208;
-  --bg-2: #062413;
-  --ink: #e4ffc4;
-  --muted: #8fdf78;
-  --phosphor: #46ff2a;
-  --phosphor-mid: #d2ff4a;
+  --bg: #140014;
+  --bg-2: #2a0030;
+  --ink: #f4ffe4;
+  --muted: #d6ff8a;
+  --phosphor: #3dfff3;
+  --phosphor-mid: #fff15a;
   --phosphor-hot: #ff4fd8;
-  --pcb: #145214;
-  --ram: #d6ff6a;
+  --pcb: #e012a0;
+  --ram: #fff15a;
   --surge: #ff4fd8;
-  --line: #145214;
+  --line: #7a0060;
 }
 
 body[data-era="1"] .crt {
-  background-color: rgba(57, 255, 20, 0.05);
+  background-color: rgba(182, 255, 46, 0.04);
+}
+
+body[data-era="2"] {
+  --bg: #071422;
+  --bg-2: #0d2438;
+  --ink: #f7f4ea;
+  --muted: #b9cfff;
+  --phosphor: #8eb6ff;
+  --phosphor-mid: #ffe14a;
+  --phosphor-hot: #c9a6ff;
+  --pcb: #16324a;
+  --ram: #ffe14a;
+  --surge: #ff5c93;
+  --line: #16324a;
 }
 
 body.surge .crt {
@@ -732,7 +723,6 @@ body.surge .crt {
     grid-template-areas:
       "kicker"
       "year"
-      "chyron"
       "body"
       "progress"
       "action";

@@ -3,7 +3,7 @@ import { drawComic } from './comic'
 import { LEVELS } from './levels'
 import { render, tileSize } from './render'
 import { WIN_CARD_AT, WIN_CUT_AT, createGame, stateLabel, update, type Dir, type Game } from './sim'
-import { AFTER_CLEAR, CHYRONS, LOSE_STORY, MANUAL, OPENING, WIN_STORY, chunkCopy, type Panel } from './story'
+import { AFTER_CLEAR, LOSE_STORY, MANUAL, OPENING, WIN_STORY, type Panel } from './story'
 import './style.css'
 
 const game: Game = createGame()
@@ -33,7 +33,6 @@ const comic = document.querySelector<HTMLCanvasElement>('#comic')!
 const comicCtx = comic.getContext('2d')!
 const caption = document.querySelector<HTMLElement>('.caption')!
 const progressEl = document.querySelector<HTMLElement>('#ov-progress')!
-const chyronEl = document.querySelector<HTMLElement>('#ov-chyron')!
 
 const held = new Set<Dir>()
 let lastDir: Dir | null = null
@@ -42,10 +41,15 @@ let pauseEdge = false
 let overlaySig = ''
 let cutHeard = false
 let comicIndex = 0
-let beatIndex = 0
 let comicKey = ''
 let sceneStamp = ''
 let sceneAt = 0
+let revealKey = ''
+let revealedChars = 0
+let revealComplete = false
+let caretClock = 0
+
+const TYPE_CPS = 32
 
 const KEY_DIRS: Record<string, Dir> = {
   ArrowLeft: 'left',
@@ -76,43 +80,68 @@ function currentPanel(): Panel | null {
   return panels[Math.min(comicIndex, panels.length - 1)] ?? null
 }
 
-function currentBeats(): string[] {
-  const panel = currentPanel()
-  if (!panel) return []
-  return chunkCopy(panel.caption)
-}
-
-function advanceStory(): boolean {
-  const panels = storyPanels()
-  if (!panels) return false
-  const beats = currentBeats()
-  if (beatIndex < beats.length - 1) {
-    audio.unlock()
-    beatIndex += 1
-    overlaySig = ''
-    return true
-  }
-  if (comicIndex >= panels.length - 1) return false
-  audio.unlock()
-  comicIndex += 1
-  beatIndex = 0
-  overlaySig = ''
+function storyCardShown(): boolean {
+  if (!storyPanels()?.length) return false
+  if (celebrating()) return false
+  if (game.mode === 'cleared' && game.levelIndex >= LEVELS.length - 1) return false
   return true
 }
 
-function skipStoryCard(): boolean {
+function trackStory(): void {
+  const winCard = game.mode === 'win' && game.ending >= WIN_CARD_AT
+  const storyKey = `${game.mode}:${game.levelIndex}:${winCard}`
+  if (storyKey !== comicKey) {
+    comicKey = storyKey
+    comicIndex = 0
+  }
+  const panel = currentPanel()
+  const key = panel ? `${game.mode}:${game.levelIndex}:${comicIndex}:${panel.scene}` : ''
+  if (key !== revealKey) {
+    revealKey = key
+    revealedChars = 0
+    revealComplete = !panel || panel.caption.length === 0
+  }
+}
+
+function advanceTypewriter(dt: number): void {
+  caretClock += dt
+  trackStory()
+  const panel = currentPanel()
+  if (!panel || revealComplete || !storyCardShown()) return
+  revealedChars = Math.min(panel.caption.length, revealedChars + dt * TYPE_CPS)
+  if (revealedChars >= panel.caption.length) {
+    revealedChars = panel.caption.length
+    revealComplete = true
+  }
+}
+
+function paintStoryText(): void {
+  if (!storyCardShown()) return
+  const panel = currentPanel()
+  if (!panel) return
+  const shown = panel.caption.slice(0, Math.min(panel.caption.length, Math.floor(revealedChars)))
+  if (revealComplete) {
+    body.textContent = `${shown}\u25bc`
+    return
+  }
+  const caretOn = Math.floor(caretClock * 2) % 2 === 0
+  body.textContent = shown + (caretOn ? '\u2588' : '\u00a0')
+}
+
+function confirmLine(): boolean {
   const panels = storyPanels()
-  if (!panels) return false
-  if (comicIndex < panels.length - 1) {
-    audio.unlock()
-    comicIndex += 1
-    beatIndex = 0
-    overlaySig = ''
+  const panel = currentPanel()
+  if (!panels || !panel) return false
+  trackStory()
+  if (!revealComplete) {
+    revealedChars = panel.caption.length
+    revealComplete = true
     return true
   }
-  beatIndex = Math.max(0, currentBeats().length - 1)
-  overlaySig = ''
-  return false
+  if (comicIndex >= panels.length - 1) return false
+  comicIndex += 1
+  trackStory()
+  return true
 }
 
 function celebrating(): boolean {
@@ -126,7 +155,7 @@ function pressStart(): void {
     overlaySig = ''
     return
   }
-  if (advanceStory()) return
+  if (confirmLine()) return
   startEdge = true
 }
 
@@ -148,8 +177,7 @@ function skipAhead(): void {
     overlaySig = ''
     return
   }
-  if (skipStoryCard()) return
-  if (advanceStory()) return
+  if (confirmLine()) return
   startEdge = true
 }
 
@@ -163,6 +191,7 @@ window.addEventListener('keydown', (event) => {
   if (dir) {
     event.preventDefault()
     if (storyPanels() && !celebrating()) {
+      if (event.repeat) return
       pressStart()
       return
     }
@@ -178,9 +207,11 @@ window.addEventListener('keydown', (event) => {
     muteBtn.textContent = audio.muted ? 'Sound off' : 'Sound on'
   } else if (event.key === 'Enter' || event.key === ' ') {
     event.preventDefault()
+    if (event.repeat) return
     pressStart()
   } else if (event.key === ']') {
     event.preventDefault()
+    if (event.repeat) return
     skipAhead()
   }
 })
@@ -265,20 +296,13 @@ function sceneTime(): number {
 }
 
 function syncOverlay(): void {
+  trackStory()
   const winCard = game.mode === 'win' && game.ending >= WIN_CARD_AT
   const storyKey = `${game.mode}:${game.levelIndex}:${winCard}`
-  if (storyKey !== comicKey) {
-    comicKey = storyKey
-    comicIndex = 0
-    beatIndex = 0
-  }
   const panels = storyPanels()
   const panel = panels?.[Math.min(comicIndex, panels.length - 1)] ?? null
-  const beats = panel ? chunkCopy(panel.caption) : []
-  if (beatIndex > beats.length - 1) beatIndex = 0
-  const beat = beats[beatIndex] ?? panel?.caption ?? ''
   const fanfare = celebrating()
-  const sig = `${storyKey}:${game.lives}:${game.entry}:${comicIndex}:${beatIndex}:${fanfare}`
+  const sig = `${storyKey}:${game.lives}:${game.entry}:${comicIndex}:${revealComplete ? 1 : 0}:${fanfare}`
   if (sig === overlaySig) return
   overlaySig = sig
   const skipClear = game.mode === 'cleared' && game.levelIndex >= LEVELS.length - 1
@@ -293,26 +317,22 @@ function syncOverlay(): void {
   card.classList.toggle('story', Boolean(panel) && show)
   comic.hidden = !panel
   caption.classList.toggle('manual', Boolean(panel?.manual))
-  if (panel) {
+  if (panel && panels) {
     drawComic(comicCtx, panel.scene, sceneTime())
     kicker.textContent = panel.kicker
     title.textContent = panel.year
-    body.textContent = beat
-    const chyron = CHYRONS[panel.year] ?? ''
-    chyronEl.hidden = !chyron
-    chyronEl.textContent = chyron
     progressEl.hidden = false
-    progressEl.textContent = `${beatIndex + 1} / ${beats.length}`
+    progressEl.textContent = `${comicIndex + 1} / ${panels.length}`
     loud.hidden = true
     pills.hidden = true
     action.hidden = false
-    action.textContent = beatIndex >= beats.length - 1 ? panel.action : 'Next'
+    const lastPanel = comicIndex >= panels.length - 1
+    action.textContent = revealComplete ? (lastPanel ? panel.action : 'Next') : 'Skip'
     return
   }
   pills.hidden = true
   loud.hidden = true
   progressEl.hidden = true
-  chyronEl.hidden = true
   const level = LEVELS[game.levelIndex]
   if (game.mode === 'pause') {
     kicker.textContent = 'Session paused'
@@ -388,7 +408,9 @@ function frame(now: number): void {
   pauseEdge = false
   fit()
   render(ctx, game)
+  advanceTypewriter(dt)
   syncOverlay()
+  paintStoryText()
   const livePanel = storyPanels()?.[Math.min(comicIndex, (storyPanels()?.length ?? 1) - 1)]
   if (livePanel && !overlay.hidden && !comic.hidden) drawComic(comicCtx, livePanel.scene, sceneTime())
   syncHud()
@@ -419,5 +441,6 @@ function frame(now: number): void {
 
 fit()
 syncOverlay()
+paintStoryText()
 syncHud()
 requestAnimationFrame(frame)
