@@ -576,7 +576,7 @@ function eatPellets(game: Game, events: GameEvents): void {
     if (game.surge <= 0) game.combo = 0
     game.surge = def.fright
     game.surgeMax = def.fright
-    game.banner = 'REGULATIONS FLINCH'
+    game.banner = 'YOU CAN REPEAL THEM'
     game.bannerTimer = 0.55
     burst(game, cherry.x, cherry.y, '#ff4d6a', 18, 3.4)
     for (const ghost of game.ghosts) ghost.late = false
@@ -767,7 +767,7 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
     if (game.surge <= 0) {
       game.surge = 0
       game.combo = 0
-      game.banner = 'THE REGULATION IS BACK'
+      game.banner = 'THE SURGE IS OVER'
       game.bannerTimer = 1.15
       for (const ghost of game.ghosts) {
         ghost.late = false
@@ -805,7 +805,7 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
 export function stateLabel(state: GhostState, phase: Game['phase']): string {
   if (state === 'housed' || state === 'exiting') return 'NOT OUT YET'
   if (state === 'frightened') return 'REPEALABLE'
-  if (state === 'eaten') return 'REPEALED'
+  if (state === 'eaten') return 'COMING BACK'
   if (state === 'scatter' || phase === 'scatter') return 'CIRCLING'
   return 'HUNTING YOU'
 }

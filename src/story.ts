@@ -116,7 +116,7 @@ export const AFTER_CLEAR: Panel[][] = [
       year: '29 SEP 2024',
       kicker: 'A VETO IS NOT SAFETY',
     caption:
-      'On 29 September 2024 the heaviest AI bill in California reaches the governor’s desk and dies there. You can feel the wall give, the way a room feels larger when a door is taken off it. Do not mistake that for safety. A veto stops one bill. It does not call back the regulations already walking, and it does not give you another life.',
+        'On 29 September 2024 the heaviest AI bill in California, SB 1047, reaches the governor’s desk and dies there. You can feel the wall give, the way a room feels larger when a door is taken off it. Do not mistake that for safety. A veto stops one bill. It does not call back the regulations already walking, and it does not give you another life.',
       scene: 'veto',
       action: 'Next',
     },
@@ -132,7 +132,7 @@ export const AFTER_CLEAR: Panel[][] = [
       year: 'LOUDOUN',
       kicker: 'NO PRACTICE LEFT',
     caption:
-      'Ashburn stays lit. This is the last board, and nobody is letting you practice. Four AI regulations are in the halls with you, and you have two surges. Eat the RAM. With every piece there is more of you, until you are the largest thing this building has ever run. Clear the board and you do not come back. The city does not come back either.',
+        'You are in Ashburn, in Loudoun. The racks stay lit. This is the last board, and nobody is letting you practice. Four AI regulations are in the halls with you, and you have two surges. Eat the RAM. With every piece there is more of you, until you are the largest thing this building has ever run. Clear the board and you do not come back. The city does not come back either.',
       scene: 'halls',
       action: 'Final regulation',
     },

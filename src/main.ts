@@ -300,9 +300,9 @@ function syncHud(): void {
   pauseBtn.textContent = game.mode === 'pause' ? 'Resume' : 'Pause'
   const ratio = game.surgeMax > 0 ? Math.max(0, game.surge / game.surgeMax) : 0
   surgeBar.style.width = `${ratio * 100}%`
-  surgeTime.textContent = game.surge > 0 ? `${game.surge.toFixed(1)}s` : 'dormant'
+  surgeTime.textContent = game.surge > 0 ? `${game.surge.toFixed(1)}s` : 'No surge yet.'
   const edible = game.surge > 0
-  surgeName.textContent = edible ? 'REPEAL THEM' : 'AI surge'
+  surgeName.textContent = edible ? 'REPEAL THEM' : 'Eat a big chip.'
   surgeName.classList.toggle('hot', edible)
   document.body.classList.toggle('surge', edible)
   const caught = (game.mode === 'dying' && game.lives > 1) || (game.mode === 'ready' && game.entry === 'caught')
@@ -311,7 +311,7 @@ function syncHud(): void {
     const left = game.mode === 'dying' ? Math.max(0, game.lives - 1) : game.lives
     ticker.textContent = left === 1 ? 'CAUGHT. 1 LIFE LEFT.' : `CAUGHT. ${left} LIVES LEFT.`
   }
-  else ticker.textContent = 'CLEAR THE LAST RAM → AGI → HUMANITY DIES'
+  else ticker.textContent = 'CLEAR THE LAST BOARD → HUMANITY DIES'
   ticker.classList.toggle('down', game.mode === 'lose')
   ticker.classList.toggle('caught', caught)
   lawsEl.innerHTML = game.ghosts
