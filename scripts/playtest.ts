@@ -133,7 +133,7 @@ function assertWalls(game: Game): void {
   if (!ghost) fail('no ghost')
   ghost.state = 'chase'
   ghost.x = 1
-  ghost.y = 1
+  ghost.y = 2
   ghost.progress = 0
   ghost.dir = 'left'
   for (let i = 0; i < 240 && game.mode === 'play'; i++) {
@@ -159,7 +159,7 @@ startRun(probe)
 probe.mode = 'play'
 park(probe)
 probe.player.x = 1
-probe.player.y = 1
+probe.player.y = 2
 probe.player.dir = 'up'
 probe.player.queued = null
 probe.player.progress = 0
@@ -167,10 +167,10 @@ for (let i = 0; i < 40; i++) {
   park(probe)
   update(probe, 1 / 60, { dir: 'up', start: false, pause: false })
 }
-if (probe.player.y !== 1 || !walkable(probe.maze, probe.player.x, probe.player.y, 'player')) fail('player clipped into a wall')
-if (!canStep(probe.maze, 0, 14, 'left', 'player')) fail('tunnel is closed')
+if (probe.player.y !== 2 || !walkable(probe.maze, probe.player.x, probe.player.y, 'player')) fail('player clipped into a wall')
+if (!canStep(probe.maze, 0, 5, 'left', 'player')) fail('tunnel is closed')
 probe.player.x = 0
-probe.player.y = 14
+probe.player.y = 5
 probe.player.dir = 'left'
 probe.player.queued = null
 probe.player.progress = 0
@@ -191,8 +191,8 @@ cherryGame.player.y = cherry.y
 cherryGame.player.progress = 0
 const hunter = cherryGame.ghosts[0]!
 hunter.state = 'chase'
-hunter.x = 5
-hunter.y = 1
+hunter.x = 4
+hunter.y = 2
 hunter.progress = 0
 update(cherryGame, 0.01, { dir: null, start: false, pause: false })
 if (cherryGame.surge <= 0) fail('cherry did not start a surge')
@@ -331,10 +331,10 @@ for (let level = 0; level < 3; level++) {
 for (let level = 1; level < 3; level++) {
   const game = reachLevel(level)
   const spots = [
-    [1, 1],
-    [26, 1],
-    [1, 29],
-    [12, 1],
+    [1, 2],
+    [16, 2],
+    [1, 18],
+    [8, 7],
   ] as const
   for (const [x, y] of spots) {
     const ghost = game.ghosts[0]!
@@ -382,10 +382,10 @@ for (let level = 1; level < 3; level++) {
 {
   const finalLevel = LEVELS.length - 1
   const corners = [
-    [1, 29, 'left'],
-    [26, 29, 'right'],
-    [2, 29, 'left'],
-    [25, 29, 'right'],
+    [1, 18, 'left'],
+    [16, 18, 'right'],
+    [2, 18, 'left'],
+    [15, 18, 'right'],
   ] as const
   for (let law = 0; law < LEVELS[finalLevel]!.laws; law++) {
     for (const [x, y, dir] of corners) {
@@ -426,7 +426,7 @@ for (let level = 1; level < 3; level++) {
         }
         update(game, 1 / 60, { dir: null, start: false, pause: false })
         const state: string = ghost.state
-        if (ghost.y >= 14 && state === 'eaten') cornerLoops++
+        if (ghost.y >= game.maze.h - 4 && state === 'eaten') cornerLoops++
         if (!housed && state === 'housed') housed = true
         const tile = game.maze.rows[ghost.y]?.[ghost.x]
         if (housed && state !== 'housed' && state !== 'eaten' && tile !== 'G' && tile !== 'd') back = true
@@ -455,7 +455,7 @@ for (let level = 0; level < 3; level++) {
   game.phase = 'chase'
   game.phaseTimer = 999
   game.player.x = 1
-  game.player.y = 1
+  game.player.y = 2
   game.player.dir = 'up'
   game.player.progress = 0
   game.mode = 'play'
