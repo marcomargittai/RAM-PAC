@@ -30,5 +30,5 @@ npm run preview
 ## Levels
 
 1. Public Comment — two laws, four surges
-2. Committee Markup — three laws, two surges, narrower halls
-3. Final Statute — four laws, one surge. Clear it and you are AGI.
+2. Committee Markup — three laws, two surges
+3. Final Regulation — four laws, two surges. Clear it and you are AGI.

@@ -1,5 +1,6 @@
 import { LEVELS } from './levels'
 import { CAUGHT_HOLD, CLEAR_HOLD, SEAL_HOLD, WIN_CARD_AT, WIN_CUT_AT, visual, type Dir, type Game, type Ghost } from './sim'
+import { drawFacing, lawSprite, pacFrame, type GhostLook } from './sprites'
 
 const TILE = 40
 const PIXEL = '"Press Start 2P", monospace'
@@ -32,7 +33,6 @@ interface Palette {
   mark: string
 }
 
-const AI_ROWS = ['11101', '10101', '11101', '10101', '10101']
 const PAGE = '#f4efe2'
 const PAGE_INK = '#1a1028'
 
@@ -315,7 +315,7 @@ export function render(ctx: CanvasRenderingContext2D, game: Game): void {
   drawMaze(ctx, game, tile, pal)
   drawPellets(ctx, game, tile, pal)
   for (const ghost of game.ghosts) drawGhost(ctx, game, ghost, tile)
-  drawPlayer(ctx, game, tile, pal)
+  drawPlayer(ctx, game, tile)
   drawFx(ctx, game, tile)
   drawEraPlate(ctx, game, width)
 
@@ -329,7 +329,7 @@ export function render(ctx: CanvasRenderingContext2D, game: Game): void {
   if (game.mode === 'cleared' && game.modeTimer > 0) drawClearFanfare(ctx, game, width, height)
   drawBanner(ctx, game, width, height)
 
-  if (game.mode === 'title') drawTitleGag(ctx, game, width, height, pal)
+  if (game.mode === 'title') drawTitleGag(ctx, game, width, height)
 }
 
 function drawMaze(ctx: CanvasRenderingContext2D, game: Game, tile: number, pal: Palette): void {
@@ -482,133 +482,21 @@ function drawSurgeChip(
   label(ctx, text, left + bodyW / 2, top + bodyH / 2 + 1, 8, pal.surgeInk)
 }
 
-function inMouth(x: number, y: number, dir: Dir, mouth: number): boolean {
-  let forward = x
-  let side = y
-  if (dir === 'left') forward = -x
-  else if (dir === 'down') {
-    forward = y
-    side = x
-  } else if (dir === 'up') {
-    forward = -y
-    side = x
-  }
-  return forward > 1 && Math.abs(side) < forward * mouth
+function actorSize(level: number): number {
+  return Math.round(32 * ([0.86, 1, 1.12][eraOf(level)] ?? 1))
 }
 
-function drawChomp(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  radius: number,
-  dir: Dir,
-  mouth: number,
-  color: string,
-  mark: string | null,
-  markPx: number,
-): void {
-  const r = Math.max(4, snap(radius))
-  const ox = snap(x)
-  const oy = snap(y)
-  const step = 2
-  ctx.fillStyle = color
-  for (let py = -r; py <= r; py += step) {
-    const limit = Math.floor(Math.sqrt(r * r - py * py))
-    let run: number | null = null
-    for (let px = -limit; px <= limit + 1; px++) {
-      const draw = px <= limit && !inMouth(px, py, dir, mouth)
-      if (draw && run === null) run = px
-      if (!draw && run !== null) {
-        ctx.fillRect(ox + run, oy + py, px - run, step)
-        run = null
-      }
-    }
-  }
-  if (mark) drawAiMark(ctx, ox, oy, dir, mark, markPx)
+function drawPacAt(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, dir: Dir, open: number): void {
+  const frame = pacFrame(open)
+  if (!frame) return
+  drawFacing(ctx, frame, x, y, size, dir, 'right')
 }
 
-function drawAiMark(ctx: CanvasRenderingContext2D, cx: number, cy: number, dir: Dir, color: string, px: number): void {
-  const w = AI_ROWS[0]!.length * px
-  const h = AI_ROWS.length * px
-  let ox = cx
-  let oy = cy
-  if (dir === 'right') {
-    ox = cx - w - px
-    oy = cy - Math.floor(h / 2)
-  } else if (dir === 'left') {
-    ox = cx + px
-    oy = cy - Math.floor(h / 2)
-  } else if (dir === 'up') {
-    ox = cx - Math.floor(w / 2)
-    oy = cy + px
-  } else {
-    ox = cx - Math.floor(w / 2)
-    oy = cy - h - px
-  }
-  ctx.fillStyle = color
-  for (let y = 0; y < AI_ROWS.length; y++) {
-    const row = AI_ROWS[y]!
-    for (let x = 0; x < row.length; x++) {
-      if (row[x] !== '1') continue
-      ctx.fillRect(ox + x * px, oy + y * px, px, px)
-    }
-  }
-}
-
-const GLYPH_8BIT = ['111', '101', '111', '101', '111']
-
-function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, tile: number, pal: Palette): void {
-  const era = eraOf(game.levelIndex)
+function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, tile: number): void {
   const pos = visual(game.player)
-  const x = pos.x * tile + tile / 2
-  const y = pos.y * tile + tile / 2
   const moving = game.mode === 'play' && game.player.speed > 0
-  const mouth = moving ? 0.14 + Math.abs(Math.sin(game.time * 14)) * 0.55 : 0.16
-  const radius = [11, 14, 18][era] ?? 14
-  const mark = era === 2 ? pal.mark : null
-  drawChomp(ctx, x, y, radius, game.player.dir, mouth, pal.player, mark, 3)
-  if (era === 1) drawGlyph(ctx, x, y, game.player.dir, GLYPH_8BIT, pal.mark, 2)
-  if (era === 2) {
-    ctx.fillStyle = pal.mark
-    ctx.fillRect(snap(x) - 1, snap(y) - radius - 4, 2, 4)
-    ctx.fillRect(snap(x) - 3, snap(y) - radius - 6, 6, 2)
-  }
-}
-
-function drawGlyph(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  dir: Dir,
-  rows: string[],
-  color: string,
-  px: number,
-): void {
-  const w = rows[0]!.length * px
-  const h = rows.length * px
-  let ox = snap(x)
-  let oy = snap(y)
-  if (dir === 'right') {
-    ox = snap(x) - w - px
-    oy = snap(y) - Math.floor(h / 2)
-  } else if (dir === 'left') {
-    ox = snap(x) + px
-    oy = snap(y) - Math.floor(h / 2)
-  } else if (dir === 'up') {
-    ox = snap(x) - Math.floor(w / 2)
-    oy = snap(y) + px
-  } else {
-    ox = snap(x) - Math.floor(w / 2)
-    oy = snap(y) - h - px
-  }
-  ctx.fillStyle = color
-  for (let row = 0; row < rows.length; row++) {
-    const line = rows[row]!
-    for (let col = 0; col < line.length; col++) {
-      if (line[col] !== '1') continue
-      ctx.fillRect(ox + col * px, oy + row * px, px, px)
-    }
-  }
+  const open = moving ? game.time * 12 : 0
+  drawPacAt(ctx, pos.x * tile + tile / 2, pos.y * tile + tile / 2, actorSize(game.levelIndex), game.player.dir, open)
 }
 
 function drawEraPlate(ctx: CanvasRenderingContext2D, game: Game, width: number): void {
@@ -622,85 +510,25 @@ function drawEraPlate(ctx: CanvasRenderingContext2D, game: Game, width: number):
   }
 }
 
-function drawEatenLaw(ctx: CanvasRenderingContext2D, color: string): void {
-  const x = -8
-  const y = -10
-  const w = 16
-  const h = 20
-  fill(ctx, color, x, y, w, 1)
-  fill(ctx, color, x, y + h - 1, w, 1)
-  fill(ctx, color, x, y, 1, h)
-  fill(ctx, color, x + w - 1, y, 1, h)
-  fill(ctx, color, x + 1, y + 2, w - 2, 1)
-  fill(ctx, color, x + 2, y + 1, 1, 3)
-  fill(ctx, color, x + w - 3, y + 1, 1, 3)
-  fill(ctx, color, 2, 4, 5, 1)
-  fill(ctx, color, 2, 8, 5, 1)
-  fill(ctx, color, 2, 4, 1, 5)
-  fill(ctx, color, 6, 4, 1, 5)
-}
-
-function drawHuntingEyes(ctx: CanvasRenderingContext2D, dir: Dir): void {
-  const lookX = dir === 'right' ? 1 : 0
-  const lookY = dir === 'down' ? 1 : 0
-  for (const ox of [-5, 1]) {
-    fill(ctx, PAGE_INK, ox, -6, 4, 4)
-    fill(ctx, '#fffef8', ox + 1, -5, 2, 2)
-    fill(ctx, PAGE_INK, ox + 1 + lookX, -5 + lookY, 1, 1)
-  }
-}
-
-function drawLiveLaw(ctx: CanvasRenderingContext2D, color: string, dir: Dir, frightened: boolean, flash: boolean): void {
-  const x = -8
-  const y = -10
-  const w = 16
-  const h = 20
-  const page = flash ? color : PAGE
-  const ink = flash ? PAGE : PAGE_INK
-  const seal = flash ? PAGE : color
-  const ribbon = flash ? PAGE : color
-  fill(ctx, page, x, y, w, h)
-  fill(ctx, PAGE_INK, x, y, w, 1)
-  fill(ctx, PAGE_INK, x, y + h - 1, w, 1)
-  fill(ctx, PAGE_INK, x, y, 1, h)
-  fill(ctx, PAGE_INK, x + w - 1, y, 1, h)
-  fill(ctx, ribbon, x + 1, y + 1, w - 2, 2)
-  fill(ctx, page, 4, y + 1, 3, 2)
-  fill(ctx, ribbon, x + 1, 0, 2, 8)
-  drawHuntingEyes(ctx, dir)
-  fill(ctx, ink, -4, -1, 10, 1)
-  fill(ctx, ink, -4, 1, 9, 1)
-  fill(ctx, ink, -4, 3, 4, 1)
-  fill(ctx, seal, 2, 3, 5, 5)
-  fill(ctx, page, 4, 5, 1, 1)
-  if (frightened) {
-    fill(ctx, page, 3, 3, 1, 5)
-    fill(ctx, page, 4, 6, 3, 1)
-  }
+function ghostLook(game: Game, ghost: Ghost): GhostLook {
+  if (ghost.state === 'eaten') return 'eyes'
+  if (ghost.state !== 'frightened') return 'body'
+  const warned = game.surge > 0 && game.surge < 2
+  const flash = Math.floor(game.time * (warned ? 14 : 8) + ghost.law) % 2 === 0
+  return flash ? 'flash' : 'blue'
 }
 
 function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile: number): void {
-  const era = eraOf(game.levelIndex)
   const pos = visual(ghost)
-  const x = snap(pos.x * tile + tile / 2)
-  const y = snap(pos.y * tile + tile / 2)
-  const eaten = ghost.state === 'eaten'
-  const frightened = ghost.state === 'frightened'
-  ctx.save()
-  ctx.translate(x, y)
-  const scale = [0.82, 1, 1.15][era] ?? 1
-  ctx.scale(scale, scale)
-  if (eaten) ctx.translate(0, Math.round(Math.sin(game.time * 10 + ghost.law)))
-  else if (frightened) ctx.translate(Math.round(Math.sin(game.time * 18 + ghost.law) * 2), 0)
-  else if (ghost.state !== 'housed') ctx.translate(0, Math.round(Math.sin(game.time * 8 + ghost.law * 2)))
-  if (eaten) drawEatenLaw(ctx, ghost.color)
-  else {
-    const warned = frightened && game.surge > 0 && game.surge < 2
-    const flash = frightened && Math.floor(game.time * (warned ? 14 : 8) + ghost.law) % 2 === 0
-    drawLiveLaw(ctx, ghost.color, ghost.dir, frightened, flash)
-  }
-  label(ctx, ghost.tag, 0, -17, 8, ghost.color)
-  ctx.restore()
+  const size = actorSize(game.levelIndex)
+  let x = pos.x * tile + tile / 2
+  let y = pos.y * tile + tile / 2
+  if (ghost.state === 'eaten') y += Math.sin(game.time * 10 + ghost.law)
+  else if (ghost.state === 'frightened') x += Math.sin(game.time * 18 + ghost.law) * 2
+  else if (ghost.state !== 'housed') y += Math.sin(game.time * 8 + ghost.law * 2)
+  const art = lawSprite(ghost.law, ghostLook(game, ghost))
+  if (art) drawFacing(ctx, art, x, y, size, ghost.dir, 'up')
+  label(ctx, ghost.tag, x, y - size / 2 - 8, 8, ghost.color)
 }
 
 function drawPerson(
@@ -730,11 +558,10 @@ function drawPerson(
   label(ctx, 'HI', sx + 11, sy + 8, 8, '#100818')
 }
 
-function drawTitleGag(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, pal: Palette): void {
+function drawTitleGag(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number): void {
   const mouthX = snap(width * 0.3)
   const mouthY = snap(height * 0.72)
-  const chomp = 0.28 + Math.abs(Math.sin(game.time * 6)) * 0.5
-  drawChomp(ctx, mouthX, mouthY, 42, 'right', chomp, pal.player, pal.mark, 3)
+  drawPacAt(ctx, mouthX, mouthY, 84, 'right', game.time * 6)
   const span = width * 0.62
   for (let i = 0; i < 6; i++) {
     const travel = (game.time * 42 + i * (span / 6)) % span
@@ -927,9 +754,7 @@ function drawWin(ctx: CanvasRenderingContext2D, game: Game, width: number, heigh
   const grow = clamp(t / 6.6, 0, 1)
   const eased = grow * grow * grow
   const radius = 22 + eased * 280
-  const chomp = 0.18 + Math.abs(Math.sin(game.time * 5)) * 0.42
-  const mark = radius < 90 ? pal.mark : null
-  drawChomp(ctx, cx, cy, radius, 'right', chomp, pal.player, mark, radius > 36 ? 3 : 2)
+  drawPacAt(ctx, cx, cy, radius * 2, 'right', game.time * 5)
 
   if (t >= 2 && t < 6) {
     const count = 7
@@ -952,18 +777,15 @@ function drawLose(ctx: CanvasRenderingContext2D, game: Game, width: number, heig
   drawMaze(ctx, game, tile, pal)
   drawPellets(ctx, game, tile, pal)
   for (const ghost of game.ghosts) drawGhost(ctx, game, ghost, tile)
-  drawPlayer(ctx, game, tile, pal)
+  drawPlayer(ctx, game, tile)
   const pos = visual(game.player)
   const px = snap(pos.x * tile + tile / 2)
   const py = snap(pos.y * tile + tile / 2)
   const law = game.ghosts.find((ghost) => ghost.name === game.caughtName)
   const ink = law?.color ?? '#ff2e93'
-  ctx.save()
-  ctx.translate(px, py)
-  ctx.scale(4, 4)
-  drawLiveLaw(ctx, ink, 'down', false, false)
-  label(ctx, law?.tag ?? 'LAW', 0, -17, 8, ink)
-  ctx.restore()
+  const caught = lawSprite(law?.law ?? 0, 'body')
+  if (caught) drawFacing(ctx, caught, px, py, actorSize(game.levelIndex) * 3.2, 'down', 'up')
+  label(ctx, law?.tag ?? 'LAW', px, py - 62, 8, ink)
 
   const plateW = 308
   const plateH = game.caughtName ? 68 : 40

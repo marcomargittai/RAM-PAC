@@ -168,9 +168,9 @@ for (let i = 0; i < 40; i++) {
   update(probe, 1 / 60, { dir: 'up', start: false, pause: false })
 }
 if (probe.player.y !== 1 || !walkable(probe.maze, probe.player.x, probe.player.y, 'player')) fail('player clipped into a wall')
-if (!canStep(probe.maze, 0, 11, 'left', 'player')) fail('tunnel is closed')
+if (!canStep(probe.maze, 0, 19, 'left', 'player')) fail('tunnel is closed')
 probe.player.x = 0
-probe.player.y = 11
+probe.player.y = 19
 probe.player.dir = 'left'
 probe.player.queued = null
 probe.player.progress = 0
@@ -191,7 +191,7 @@ cherryGame.player.y = cherry.y
 cherryGame.player.progress = 0
 const hunter = cherryGame.ghosts[0]!
 hunter.state = 'chase'
-hunter.x = 8
+hunter.x = 5
 hunter.y = 1
 hunter.progress = 0
 update(cherryGame, 0.01, { dir: null, start: false, pause: false })
@@ -332,9 +332,9 @@ for (let level = 1; level < 3; level++) {
   const game = reachLevel(level)
   const spots = [
     [1, 1],
+    [33, 1],
+    [1, 35],
     [17, 1],
-    [4, 14],
-    [8, 1],
   ] as const
   for (const [x, y] of spots) {
     const ghost = game.ghosts[0]!
@@ -382,10 +382,10 @@ for (let level = 1; level < 3; level++) {
 {
   const finalLevel = LEVELS.length - 1
   const corners = [
-    [1, 15, 'left'],
-    [17, 15, 'right'],
-    [2, 15, 'left'],
-    [16, 15, 'right'],
+    [1, 35, 'left'],
+    [33, 35, 'right'],
+    [2, 35, 'left'],
+    [32, 35, 'right'],
   ] as const
   for (let law = 0; law < LEVELS[finalLevel]!.laws; law++) {
     for (const [x, y, dir] of corners) {
@@ -460,7 +460,7 @@ for (let level = 0; level < 3; level++) {
   game.player.progress = 0
   game.mode = 'play'
   let responded = false
-  for (let f = 0; f < 60 * 12; f++) {
+  for (let f = 0; f < 60 * 18; f++) {
     game.phase = 'chase'
     game.phaseTimer = 999
     for (const ghost of game.ghosts) {

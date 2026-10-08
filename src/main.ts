@@ -274,8 +274,8 @@ function fit(): void {
   const narrow = window.innerWidth <= 860
   const maxW = Math.min(window.innerWidth - (narrow ? 16 : 320), 980)
   const maxH = window.innerHeight - (narrow ? 210 : 88)
-  const fitted = Math.min(1.22, maxW / mw, maxH / mh)
-  const scale = narrow ? Math.max(0.42, fitted) : Math.max(0.72, fitted)
+  const fitted = Math.min(1.15, maxW / mw, maxH / mh)
+  const scale = Math.max(narrow ? 0.32 : 0.42, fitted)
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
   canvas.width = Math.floor(mw * dpr)
   canvas.height = Math.floor(mh * dpr)
