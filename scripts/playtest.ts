@@ -158,7 +158,7 @@ const probe = createGame()
 startRun(probe)
 probe.mode = 'play'
 park(probe)
-probe.player.x = 1
+probe.player.x = 2
 probe.player.y = 2
 probe.player.dir = 'up'
 probe.player.queued = null
