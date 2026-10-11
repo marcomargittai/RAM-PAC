@@ -365,15 +365,15 @@ function drawRamPackage(ctx: CanvasRenderingContext2D, maze: Game['maze'], tile:
   const pen = penBox(maze)
   if (!pen) return
   const pinH = 5
-  const bodyX = (pen.x - 1) * tile
+  const bodyX = pen.x * tile
   const bodyY = pen.y * tile
-  const bodyW = (pen.w + 2) * tile
-  const bodyH = (pen.h + 1) * tile
+  const bodyW = pen.w * tile
+  const bodyH = pen.h * tile
   const pcbPad = 3
-  const pcbX = bodyX - pcbPad
-  const pcbY = bodyY - pinH - pcbPad
-  const pcbW = bodyW + pcbPad * 2
-  const pcbH = bodyH + pinH * 2 + pcbPad * 2
+  const pcbX = bodyX + pcbPad
+  const pcbY = bodyY + pcbPad
+  const pcbW = bodyW - pcbPad * 2
+  const pcbH = bodyH - pcbPad * 2
 
   fill(ctx, pal.pcb, pcbX, pcbY, pcbW, pcbH)
   fill(ctx, pal.trace, pcbX + 2, pcbY + 2, pcbW - 4, 1)
@@ -395,14 +395,14 @@ function drawRamPackage(ctx: CanvasRenderingContext2D, maze: Game['maze'], tile:
   const door = maze.door
   const slotW = tile - 10
   const slotX = door.x * tile + 5
-  const slotTop = bodyY - pinH
+  const slotTop = bodyY
   const slotBottom = (door.y + 1) * tile
   const pitch = 4
   const pinW = 2
   const count = Math.max(4, Math.floor((bodyW - 8) / pitch))
   const used = count * pitch - (pitch - pinW)
   const pinStart = bodyX + Math.floor((bodyW - used) / 2)
-  const pinRows = [bodyY - pinH, bodyY + bodyH]
+  const pinRows = [bodyY + 2, bodyY + bodyH - pinH - 2]
   for (const pinY of pinRows) {
     const topRow = pinY < bodyY
     for (let i = 0; i < count; i++) {
