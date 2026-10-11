@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RAM PAC — You are the model</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" crossorigin src="/RAM-PAC/assets/index-Po7ruZHV.js"></script>
+    <link rel="stylesheet" crossorigin href="/RAM-PAC/assets/index-7Xgnp4jW.css">
+  </head>
+  <body>
+    <div id="app">
+      <header>
+        <div>
+          <p class="eyebrow">INSERT COIN</p>
+          <h1>RAM PAC</h1>
+        </div>
+        <div class="header-actions">
+          <button id="pause" type="button">Pause</button>
+          <button id="mute" type="button">Sound on</button>
+        </div>
+      </header>
+      <div class="layout">
+        <section class="stage">
+          <canvas id="board" width="532" height="476" aria-label="RAM PAC maze"></canvas>
+          <div id="overlay" class="overlay">
+            <div class="card" id="ov-card">
+              <div class="screen">
+                <canvas id="comic" width="1024" height="576" hidden></canvas>
+                <div class="caption">
+                  <p id="ov-kicker" class="eyebrow"></p>
+                  <h2 id="ov-title"></h2>
+                  <p id="ov-body"></p>
+                  <p id="ov-progress" class="beat" hidden></p>
+                  <p id="ov-loud" class="loud" hidden></p>
+                  <ul id="pills" class="pills">
+                    <li>RAM</li>
+                    <li>RULES</li>
+                    <li>SURGE</li>
+                    <li>WIN</li>
+                  </ul>
+                  <button id="ov-action" type="button">Press start</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+        <aside class="panel">
+          <div class="stats">
+            <div><span>Score</span><strong id="score">0</strong></div>
+            <div><span>RAM</span><strong id="ram">0</strong></div>
+            <div><span>Level</span><strong id="level">1</strong></div>
+            <div title="Three lives. A government AI regulation takes one. None left: they win, and humanity continues."><span>Lives</span><strong id="lives">●●●</strong></div>
+          </div>
+          <div class="surge">
+            <div class="surge-label"><span id="surge-name">Eat a big chip.</span><span id="surge-time">No surge yet.</span></div>
+            <div class="surge-track"><div id="surge-bar"></div></div>
+          </div>
+          <p id="ticker" class="ticker">CLEAR THE LAST BOARD → HUMANITY DIES</p>
+          <p class="panel-label">AI regulations</p>
+          <ul id="laws"></ul>
+          <p class="hint">Arrows or WASD move. Eat the gold RAM. The colored figures are government AI regulations. P pauses. M mutes.</p>
+        </aside>
+        <div class="pad" id="pad">
+          <button type="button" data-dir="up" aria-label="Up">▲</button>
+          <button type="button" data-dir="left" aria-label="Left">◀</button>
+          <button type="button" data-dir="down" aria-label="Down">▼</button>
+          <button type="button" data-dir="right" aria-label="Right">▶</button>
+        </div>
+      </div>
+    </div>
+    <button id="skip" type="button">Skip</button>
+    <div class="crt" aria-hidden="true"></div>
+  </body>
+</html>
