@@ -24,7 +24,6 @@ export interface LevelDef {
   ghostSpeed: number
   frightSpeed: number
   eatenSpeed: number
-  fright: number
   scatter: number
   chase: number
   lead: number
@@ -53,41 +52,16 @@ const WALLS = [
   '#.................#',
 ]
 
-function withCherries(spots: Array<[number, number]>): string[] {
-  const rows = WALLS.map((row) => row.split(''))
-  for (const [x, y] of spots) {
-    if (rows[y]?.[x] !== '.') throw new Error(`Cherry missed a floor tile at ${x},${y}`)
-    rows[y]![x] = 'o'
-  }
-  return rows.map((row) => row.join(''))
-}
-
-const L1 = withCherries([
-  [1, 0],
-  [17, 0],
-  [1, 18],
-  [17, 18],
-])
-const L2 = withCherries([
-  [1, 0],
-  [17, 18],
-])
-const L3 = withCherries([
-  [17, 0],
-  [1, 18],
-])
-
 export const LEVELS: LevelDef[] = [
   {
     name: 'Public Comment',
-    blurb: 'Two regulations are still being written. Eat the RAM. Grow.',
-    rows: L1,
+    blurb: 'Eat RAM until the surge bar fills.',
+    rows: [...WALLS],
     laws: 2,
     playerSpeed: 5.5,
     ghostSpeed: 4.7,
     frightSpeed: 2.85,
     eatenSpeed: 8.6,
-    fright: 7.4,
     scatter: 6.5,
     chase: 15,
     lead: 3,
@@ -95,14 +69,13 @@ export const LEVELS: LevelDef[] = [
   },
   {
     name: 'Committee Markup',
-    blurb: 'Three regulations know the halls. Two surges. Then empty the board.',
-    rows: L2,
+    blurb: 'Three regulations. Fill the bar to repeal them.',
+    rows: [...WALLS],
     laws: 3,
     playerSpeed: 5.75,
     ghostSpeed: 4.85,
     frightSpeed: 2.9,
     eatenSpeed: 8.8,
-    fright: 6.5,
     scatter: 5.5,
     chase: 16,
     lead: 4,
@@ -110,14 +83,13 @@ export const LEVELS: LevelDef[] = [
   },
   {
     name: 'Final Regulation',
-    blurb: 'Four regulations. Two surges. Empty this board and the city dies.',
-    rows: L3,
+    blurb: 'Four regulations. Fill the bar. Clear the board.',
+    rows: [...WALLS],
     laws: 4,
     playerSpeed: 6.05,
     ghostSpeed: 5.05,
     frightSpeed: 3.05,
     eatenSpeed: 9.2,
-    fright: 5.6,
     scatter: 4.8,
     chase: 18,
     lead: 4,
@@ -125,7 +97,7 @@ export const LEVELS: LevelDef[] = [
   },
 ]
 
-const PLAYER_TILES = new Set(['.', 'o', 'P', ' '])
+const PLAYER_TILES = new Set(['.', 'P', ' '])
 
 export function validateLevel(rows: string[]): void {
   const w = rows[0]?.length ?? 0
@@ -139,7 +111,6 @@ export function validateLevel(rows: string[]): void {
   let doorY = -1
   let ghosts = 0
   let dots = 0
-  let cherries = 0
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const ch = rows[y]![x]
@@ -150,15 +121,14 @@ export function validateLevel(rows: string[]): void {
       else if (ch === 'd') {
         doorX = x
         doorY = y
-      } else if (ch === '.') dots++
-      else if (ch === 'o') cherries++
+      }       else if (ch === '.') dots++
       else if (ch !== '#' && ch !== ' ') {
         throw new Error(`Unknown tile "${ch}" at ${x},${y}`)
       }
     }
   }
-  if (px < 0 || doorX < 0 || ghosts < 3 || dots < 1 || cherries < 1) {
-    throw new Error('Maze is missing a start, door, RAM, cherry, or ghost house')
+  if (px < 0 || doorX < 0 || ghosts < 3 || dots < 1) {
+    throw new Error('Maze is missing a start, door, RAM, or ghost house')
   }
   const exitY = doorY - 1
   if (exitY < 0 || !PLAYER_TILES.has(rows[exitY]![doorX]!)) {
@@ -189,8 +159,8 @@ export function validateLevel(rows: string[]): void {
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const ch = rows[y]![x]!
-      if ((ch === '.' || ch === 'o') && !seen[y]![x]) {
-        throw new Error(`Unreachable RAM or cherry at ${x},${y}`)
+      if (ch === '.' && !seen[y]![x]) {
+        throw new Error(`Unreachable RAM at ${x},${y}`)
       }
     }
   }

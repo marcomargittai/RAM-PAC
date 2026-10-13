@@ -87,10 +87,11 @@ export interface Game {
   phaseTimer: number
   surge: number
   surgeMax: number
+  surgeCharge: number
+  milestone: number
   combo: number
   maze: Maze
   dots: Pellet[]
-  cherries: Pellet[]
   ramsTotal: number
   player: Actor
   ghosts: Ghost[]
@@ -113,6 +114,9 @@ export const WIN_CARD_AT = 8
 export const CLEAR_HOLD = 2.2
 export const CAUGHT_HOLD = 1.05
 export const SEAL_HOLD = 2.15
+export const SURGE_RAM = 25
+export const SURGE_SECONDS = 5
+export const MILESTONE_HOLD = 1.6
 
 export interface FrameInput {
   dir: Dir | null
@@ -123,7 +127,7 @@ export interface FrameInput {
 export interface GameEvents {
   moved: boolean
   ateRam: number
-  ateCherry: boolean
+  surgeStarted: boolean
   repealed: boolean
   died: boolean
   cleared: boolean
@@ -133,7 +137,7 @@ export interface GameEvents {
 const EMPTY_EVENTS = (): GameEvents => ({
   moved: false,
   ateRam: 0,
-  ateCherry: false,
+  surgeStarted: false,
   repealed: false,
   died: false,
   cleared: false,
@@ -183,7 +187,7 @@ function dist2(maze: Maze, ax: number, ay: number, bx: number, by: number): numb
   return dx * dx + dy * dy
 }
 
-function parseMaze(rows: string[]): { maze: Maze; dots: Pellet[]; cherries: Pellet[]; player: Actor; homes: Array<{ x: number; y: number }> } {
+function parseMaze(rows: string[]): { maze: Maze; dots: Pellet[]; player: Actor; homes: Array<{ x: number; y: number }> } {
   validateLevel(rows)
   const maze: Maze = {
     rows,
@@ -193,7 +197,6 @@ function parseMaze(rows: string[]): { maze: Maze; dots: Pellet[]; cherries: Pell
     exit: { x: 0, y: 0 },
   }
   const dots: Pellet[] = []
-  const cherries: Pellet[] = []
   const homes: Array<{ x: number; y: number }> = []
   let px = 1
   let py = 1
@@ -201,7 +204,6 @@ function parseMaze(rows: string[]): { maze: Maze; dots: Pellet[]; cherries: Pell
     for (let x = 0; x < maze.w; x++) {
       const ch = rows[y]![x]
       if (ch === '.') dots.push({ x, y })
-      else if (ch === 'o') cherries.push({ x, y })
       else if (ch === 'P') {
         px = x
         py = y
@@ -212,7 +214,7 @@ function parseMaze(rows: string[]): { maze: Maze; dots: Pellet[]; cherries: Pell
   maze.exit = { x: maze.door.x, y: maze.door.y - 1 }
   if (homes.length < 4) homes.push({ ...maze.door })
   const player: Actor = { x: px, y: py, dir: 'left', queued: null, progress: 0, speed: 0 }
-  return { maze, dots, cherries, player, homes }
+  return { maze, dots, player, homes }
 }
 
 function levelDef(index: number): LevelDef {
@@ -356,14 +358,15 @@ function loadLevel(game: Game, index: number): void {
   game.levelIndex = index
   game.maze = parsed.maze
   game.dots = parsed.dots
-  game.cherries = parsed.cherries
   game.ramsTotal = parsed.dots.length
   game.player = parsed.player
   game.player.speed = def.playerSpeed
   game.phase = 'scatter'
   game.phaseTimer = def.scatter
   game.surge = 0
-  game.surgeMax = def.fright
+  game.surgeMax = SURGE_SECONDS
+  game.surgeCharge = 0
+  game.milestone = 0
   game.combo = 0
   game.particles = []
   game.popups = []
@@ -408,11 +411,12 @@ export function createGame(): Game {
     phase: 'scatter' as const,
     phaseTimer: 0,
     surge: 0,
-    surgeMax: 1,
+    surgeMax: SURGE_SECONDS,
+    surgeCharge: 0,
+    milestone: 0,
     combo: 0,
     maze: { rows: [], w: 0, h: 0, door: { x: 0, y: 0 }, exit: { x: 0, y: 0 } },
     dots: [],
-    cherries: [],
     ramsTotal: 0,
     player: { x: 1, y: 1, dir: 'left' as Dir, queued: null, progress: 0, speed: 0 },
     ghosts: [],
@@ -455,6 +459,7 @@ function respawn(game: Game): void {
   game.player.queued = null
   game.surge = 0
   game.combo = 0
+  game.milestone = 0
   game.banner = ''
   game.bannerTimer = 0
   game.phase = 'scatter'
@@ -611,32 +616,35 @@ function applySpeeds(game: Game): void {
   }
 }
 
+function beginSurge(game: Game, events: GameEvents, x: number, y: number): void {
+  game.surgeCharge = 0
+  game.combo = 0
+  game.surge = SURGE_SECONDS
+  game.surgeMax = SURGE_SECONDS
+  game.milestone = MILESTONE_HOLD
+  game.banner = 'YOU CAN REPEAL THEM'
+  game.bannerTimer = MILESTONE_HOLD
+  game.flash = 1
+  game.shake = Math.max(game.shake, 10)
+  events.surgeStarted = true
+  burst(game, x, y, '#ff4d6a', 18, 3.4)
+  for (const ghost of game.ghosts) ghost.late = false
+  for (const ghost of game.ghosts) markFrightened(game, ghost, true)
+}
+
 function eatPellets(game: Game, events: GameEvents): void {
   const pos = visual(game.player)
   for (let i = game.dots.length - 1; i >= 0; i--) {
     const dot = game.dots[i]!
-    if (dist2(game.maze, pos.x, pos.y, dot.x, dot.y) <= 0.2) {
-      game.dots.splice(i, 1)
-      game.score += 10
-      events.ateRam++
-      burst(game, dot.x, dot.y, '#dffc6a', 6, 2.2)
-    }
-  }
-  for (let i = game.cherries.length - 1; i >= 0; i--) {
-    const cherry = game.cherries[i]!
-    if (dist2(game.maze, pos.x, pos.y, cherry.x, cherry.y) > 0.22) continue
-    game.cherries.splice(i, 1)
-    game.score += 100
-    events.ateCherry = true
-    const def = levelDef(game.levelIndex)
-    if (game.surge <= 0) game.combo = 0
-    game.surge = def.fright
-    game.surgeMax = def.fright
-    game.banner = 'YOU CAN REPEAL THEM'
-    game.bannerTimer = 0.55
-    burst(game, cherry.x, cherry.y, '#ff4d6a', 18, 3.4)
-    for (const ghost of game.ghosts) ghost.late = false
-    for (const ghost of game.ghosts) markFrightened(game, ghost, true)
+    if (dist2(game.maze, pos.x, pos.y, dot.x, dot.y) > 0.2) continue
+    game.dots.splice(i, 1)
+    game.score += 10
+    events.ateRam++
+    burst(game, dot.x, dot.y, '#dffc6a', 6, 2.2)
+    // Only RAM the player eats fills the bar. Dots removed by anyone else must not reach this.
+    if (game.surge > 0) continue
+    game.surgeCharge += 1
+    if (game.surgeCharge >= SURGE_RAM) beginSurge(game, events, dot.x, dot.y)
   }
 }
 
@@ -677,6 +685,10 @@ function collide(game: Game, events: GameEvents): void {
 function stepFx(game: Game, dt: number): void {
   game.shake *= Math.pow(0.04, dt)
   game.flash *= Math.pow(0.05, dt)
+  if (game.milestone > 0) {
+    game.milestone -= dt
+    if (game.milestone < 0) game.milestone = 0
+  }
   if (game.bannerTimer > 0) {
     game.bannerTimer -= dt
     if (game.bannerTimer <= 0) {

@@ -1,6 +1,8 @@
 # RAM PAC
 
-You are the model. The dots are scarce RAM and the ghosts are walking statutes. The SURGE chip is the moment you outrun the law and eat it. Clear the last level and you have reached AGI: humanity dies. Lose the last try and a statute regulates the model: humanity continues.
+You are the model. The dots are RAM and the walking figures are government AI regulations. Eat enough RAM to fill the surge bar, and for five seconds those regulations can be repealed. They come back. Clear every board.
+
+The unused story copy lives in `archive/story.ts`. The game does not import it.
 
 ## Run
 
@@ -22,13 +24,17 @@ npm run preview
 
 ## Controls
 
-- Arrow keys or WASD to turn. On a story card, arrow keys confirm the line and do not steer.
-- P or Escape pauses, M mutes. Enter or Space confirms the story line.
-- Story text types itself out; Skip or the action button finishes the line, and the next press turns the page. The counter is the page, like 2/4.
+- Arrow keys or WASD to turn
+- P or Escape pauses, M mutes
+- Enter or Space starts, continues, and confirms the card on screen
 - Swipe the maze, or use the on-screen pad
+
+## Surge
+
+The bar fills only when the player eats RAM. Twenty-five RAM fills it. Surge then runs for five seconds, and the bar starts over. RAM eaten during surge does not fill the next bar. RAM removed by anyone other than the player does not fill it.
 
 ## Levels
 
-1. Public Comment — two laws, four surges
-2. Committee Markup — three laws, two surges
-3. Final Regulation — four laws, two surges. Clear it and you are AGI.
+1. Public Comment — two regulations
+2. Committee Markup — three regulations
+3. Final Regulation — four regulations

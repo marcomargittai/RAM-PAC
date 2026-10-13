@@ -1,3 +1,4 @@
+// Parked story. The live game does not import this file.
 export type SceneId =
   | 'city'
   | 'dartmouth'
@@ -178,3 +179,23 @@ export const LOSE_STORY: Panel[] = [
     action: 'Try again',
   },
 ]
+
+// Copy lifted off the live HUD when the story stopped playing.
+// The game does not import this file.
+export const PARKED_UI = {
+  tickerWin: 'CLEAR THE LAST BOARD → HUMANITY DIES',
+  tickerLose: 'REGULATED → HUMANITY CONTINUES',
+  livesTitle:
+    'Three lives. A government AI regulation takes one. None left: they win, and humanity continues.',
+  winKicker: 'THE LAST MEMORY',
+  winTitle: 'AGI',
+  winBody: 'The city goes dark. Humanity dies.',
+  loseKicker: 'REGULATIONS WON',
+  loseTitle: 'Regulated',
+  loseBody: 'The government held the model. Humanity continues.',
+  levelBlurbs: [
+    'Two regulations are still being written. Eat the RAM. Grow.',
+    'Three regulations know the halls. Two surges. Then empty the board.',
+    'Four regulations. Two surges. Empty this board and the city dies.',
+  ],
+}

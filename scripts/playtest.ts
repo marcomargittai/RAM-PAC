@@ -1,6 +1,8 @@
+import { AFTER_CLEAR, LOSE_STORY, MANUAL, OPENING, WIN_STORY } from '../archive/story'
 import { LEVELS } from '../src/levels'
-import { AFTER_CLEAR, LOSE_STORY, MANUAL, OPENING, WIN_STORY } from '../src/story'
 import {
+  SURGE_RAM,
+  SURGE_SECONDS,
   ahead,
   canStep,
   createGame,
@@ -181,23 +183,91 @@ for (let i = 0; i < 40 && probe.player.x !== probe.maze.w - 1; i++) {
 }
 if (probe.player.x !== probe.maze.w - 1) fail(`tunnel wrap failed, x=${probe.player.x}`)
 
-const cherryGame = createGame()
-startRun(cherryGame)
-cherryGame.mode = 'play'
-const cherry = cherryGame.cherries[0]
-if (!cherry) fail('no cherry')
-cherryGame.player.x = cherry.x
-cherryGame.player.y = cherry.y
-cherryGame.player.progress = 0
-const hunter = cherryGame.ghosts[0]!
-hunter.state = 'chase'
-hunter.x = 4
-hunter.y = 2
-hunter.progress = 0
-update(cherryGame, 0.01, { dir: null, start: false, pause: false })
-if (cherryGame.surge <= 0) fail('cherry did not start a surge')
-const hunterState: string = hunter.state
-if (hunterState !== 'frightened') fail(`legislation stayed ${hunterState}`)
+function eatOneRam(game: Game) {
+  park(game)
+  const dot = game.dots[0]
+  if (!dot) fail('no ram')
+  game.player.x = dot.x
+  game.player.y = dot.y
+  game.player.progress = 0
+  game.player.dir = 'left'
+  game.player.queued = null
+  game.mode = 'play'
+  return update(game, 1 / 60, { dir: null, start: false, pause: false })
+}
+
+const meter = createGame()
+startRun(meter)
+meter.mode = 'play'
+park(meter)
+meter.dots.pop()
+update(meter, 1 / 60, { dir: null, start: false, pause: false })
+if (meter.surgeCharge !== 0 || meter.surge > 0) fail('RAM removed off the player filled the surge bar')
+for (let i = 0; i < SURGE_RAM - 1; i++) {
+  const events = eatOneRam(meter)
+  if (events.surgeStarted || meter.surge > 0) fail(`surge started after ${i + 1} RAM`)
+  if (meter.surgeCharge !== i + 1) fail(`surge charge is ${meter.surgeCharge} after ${i + 1} RAM`)
+}
+const filled = eatOneRam(meter)
+if (!filled.surgeStarted || meter.surge <= 0) fail('a full surge bar did not start surge')
+if (meter.surgeCharge !== 0) fail('the surge bar did not empty when it filled')
+if (meter.surge > SURGE_SECONDS || meter.surge < SURGE_SECONDS - 0.05) fail(`surge ran ${meter.surge}s`)
+const during = eatOneRam(meter)
+if (during.surgeStarted || meter.surgeCharge !== 0) fail('RAM eaten during surge filled the bar')
+let surgeElapsed = 1 / 60
+while (meter.surge > 0 && surgeElapsed < 8) {
+  park(meter)
+  meter.mode = 'play'
+  update(meter, 1 / 60, { dir: null, start: false, pause: false })
+  surgeElapsed += 1 / 60
+}
+if (meter.surge !== 0 || surgeElapsed < 4.8 || surgeElapsed > 5.2) fail(`surge lasted ${surgeElapsed.toFixed(2)}s`)
+
+const edibleRun = createGame()
+startRun(edibleRun)
+edibleRun.mode = 'play'
+edibleRun.surgeCharge = SURGE_RAM - 1
+park(edibleRun)
+const armed = edibleRun.ghosts[0]!
+armed.state = 'chase'
+armed.x = 4
+armed.y = 2
+armed.progress = 0
+const ram = edibleRun.dots[0]
+if (!ram) fail('no ram')
+edibleRun.player.x = ram.x
+edibleRun.player.y = ram.y
+edibleRun.player.progress = 0
+edibleRun.player.queued = null
+update(edibleRun, 1 / 60, { dir: null, start: false, pause: false })
+const armedState: string = armed.state
+if (edibleRun.surge <= 0) fail('milestone did not arm surge')
+if (armedState !== 'frightened') fail(`legislation stayed ${armedState}`)
+armed.x = edibleRun.player.x
+armed.y = edibleRun.player.y
+armed.progress = 0
+armed.state = 'frightened'
+const repealed = update(edibleRun, 1 / 60, { dir: null, start: false, pause: false })
+const afterEat: string = armed.state
+if (!repealed.repealed || afterEat !== 'eaten') fail(`surge did not let the law be eaten (${afterEat})`)
+let housed = false
+let back = false
+for (let f = 0; f < 60 * 14 && !back; f++) {
+  pinInWall(edibleRun)
+  edibleRun.surge = 0
+  for (const other of edibleRun.ghosts) {
+    if (other !== armed) {
+      other.state = 'housed'
+      other.release = 1e9
+    }
+  }
+  update(edibleRun, 1 / 60, { dir: null, start: false, pause: false })
+  const state: string = armed.state
+  if (!housed && state === 'housed') housed = true
+  const tile = edibleRun.maze.rows[armed.y]?.[armed.x]
+  if (housed && state !== 'housed' && state !== 'eaten' && tile !== 'G' && tile !== 'd') back = true
+}
+if (!housed || !back) fail(`repealed law did not respawn (${armed.state}@${armed.x},${armed.y})`)
 
 const death = createGame()
 startRun(death)
@@ -236,11 +306,10 @@ startRun(run)
 advanceUntil(run, 3, ['play'])
 if (mode(run) !== 'play') fail(`ready did not start play (${mode(run)})`)
 const counts = [2, 3, 4]
-const cherries = [4, 2, 2]
 for (let level = 0; level < 3; level++) {
   if (run.levelIndex !== level) fail(`expected level ${level}, saw ${run.levelIndex}`)
   if (run.ghosts.length !== counts[level]) fail(`level ${level} ghost count ${run.ghosts.length}`)
-  if (run.cherries.length !== cherries[level]) fail(`level ${level} cherries ${run.cherries.length}`)
+  if (run.maze.rows.some((row) => row.includes('o'))) fail(`level ${level} still has a surge pickup`)
   const rams = run.dots.length
   clearLevel(run)
   const clearedMode: string = run.mode
