@@ -53,6 +53,19 @@ export interface Ghost extends Actor {
   scatterY: number
 }
 
+export interface Mini extends Actor {
+  id: number
+  name: string
+}
+
+const MINI_ROSTER: Array<{ name: string; x: number; y: number; dir: Dir; speed: number }> = [
+  { name: 'Cafe', x: 2, y: 5, dir: 'left', speed: 1.35 },
+  { name: 'Startup', x: 16, y: 5, dir: 'right', speed: 1.5 },
+  { name: 'Family', x: 9, y: 14, dir: 'left', speed: 1.42 },
+]
+
+const MINI_BOUNTY = 50
+
 export interface Pellet {
   x: number
   y: number
@@ -94,6 +107,7 @@ export interface Game {
   ramsTotal: number
   player: Actor
   ghosts: Ghost[]
+  minis: Mini[]
   particles: Particle[]
   popups: Popup[]
   shake: number
@@ -217,6 +231,24 @@ function parseMaze(rows: string[]): { maze: Maze; dots: Pellet[]; cherries: Pell
 
 function levelDef(index: number): LevelDef {
   return LEVELS[index] ?? LEVELS[0]!
+}
+
+function spawnMinis(maze: Maze): Mini[] {
+  return MINI_ROSTER.map((spot, id) => {
+    if (!walkable(maze, spot.x, spot.y, 'player')) {
+      throw new Error(`consumer spawn is walled in at ${spot.x},${spot.y}`)
+    }
+    return {
+      id,
+      name: spot.name,
+      x: spot.x,
+      y: spot.y,
+      dir: spot.dir,
+      queued: null,
+      progress: 0,
+      speed: spot.speed,
+    }
+  })
 }
 
 function burst(game: Game, x: number, y: number, color: string, count: number, speed: number): void {
@@ -396,6 +428,7 @@ function loadLevel(game: Game, index: number): void {
       scatterY: law.scatter.y,
     }
   })
+  game.minis = spawnMinis(parsed.maze)
 }
 
 export function createGame(): Game {
@@ -416,6 +449,7 @@ export function createGame(): Game {
     ramsTotal: 0,
     player: { x: 1, y: 1, dir: 'left' as Dir, queued: null, progress: 0, speed: 0 },
     ghosts: [],
+    minis: [],
     particles: [],
     popups: [],
     shake: 0,
@@ -472,6 +506,7 @@ function respawn(game: Game): void {
     ghost.late = false
     ghost.release = def.release[i] ?? 1 + i
   })
+  // Eaten consumers stay gone. Dying does not bring them back.
 }
 
 function ghostWho(game: Game, ghost: Ghost): Who {
@@ -596,6 +631,39 @@ function pickGhost(game: Game, ghost: Ghost): Dir {
   }
   const target = ghostTarget(game, ghost)
   return chooseDir(game.maze, ghost, target.x, target.y, who, ghost.state === 'eaten')
+}
+
+function pickMini(maze: Maze, mini: Actor): Dir {
+  const options = DIR_ORDER.filter((dir) => canStep(maze, mini.x, mini.y, dir, 'player'))
+  if (!options.length) return mini.dir
+  const forward = options.filter((dir) => dir !== opposite(mini.dir))
+  const pool = forward.length ? forward : options
+  return pool[Math.floor(Math.random() * pool.length)]!
+}
+
+function minisEatRam(game: Game): void {
+  for (const mini of game.minis) {
+    const pos = visual(mini)
+    for (let i = game.dots.length - 1; i >= 0; i--) {
+      const dot = game.dots[i]!
+      if (dist2(game.maze, pos.x, pos.y, dot.x, dot.y) > 0.2) continue
+      game.dots.splice(i, 1)
+      burst(game, dot.x, dot.y, '#d9c7a2', 4, 1.4)
+    }
+  }
+}
+
+function playerEatsMinis(game: Game): void {
+  const pos = visual(game.player)
+  for (let i = game.minis.length - 1; i >= 0; i--) {
+    const mini = game.minis[i]!
+    const mpos = visual(mini)
+    if (dist2(game.maze, pos.x, pos.y, mpos.x, mpos.y) >= 0.4) continue
+    game.minis.splice(i, 1)
+    game.score += MINI_BOUNTY
+    burst(game, mpos.x, mpos.y, '#ffe7a3', 12, 2.6)
+    popup(game, mpos.x, mpos.y - 0.4, mini.name.toUpperCase(), '#ffe7a3')
+  }
 }
 
 function applySpeeds(game: Game): void {
@@ -801,8 +869,14 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
     }
   }
 
+  for (const mini of game.minis) {
+    moveActor(game.maze, mini, step, () => 'player', () => pickMini(game.maze, mini))
+  }
+
   eatPellets(game, events)
+  minisEatRam(game)
   if (game.dots.length === 0) {
+    playerEatsMinis(game)
     events.cleared = true
     game.mode = 'cleared'
     game.modeTimer = CLEAR_HOLD
@@ -819,6 +893,7 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
     stepFx(game, step)
     return events
   }
+  playerEatsMinis(game)
 
   if (game.surge > 0) {
     game.surge -= step

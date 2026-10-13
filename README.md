@@ -26,6 +26,7 @@ npm run preview
 - P or Escape pauses, M mutes. Enter or Space confirms the story line.
 - Story text types itself out; Skip or the action button finishes the line, and the next press turns the page. The counter is the page, like 2/4.
 - Swipe the maze, or use the on-screen pad
+- Three small pacs are consumers. They wander and eat RAM, which does not score or fill a surge. Eat one and it stays gone.
 
 ## Levels
 

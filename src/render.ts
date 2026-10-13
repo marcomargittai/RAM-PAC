@@ -314,6 +314,7 @@ export function render(ctx: CanvasRenderingContext2D, game: Game): void {
 
   drawMaze(ctx, game, tile, pal)
   drawPellets(ctx, game, tile, pal)
+  drawMinis(ctx, game, tile)
   for (const ghost of game.ghosts) drawGhost(ctx, game, ghost, tile)
   drawPlayer(ctx, game, tile)
   drawFx(ctx, game, tile)
@@ -497,6 +498,16 @@ function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, tile: number): vo
   const moving = game.mode === 'play' && game.player.speed > 0
   const open = moving ? game.time * 12 : 0
   drawPacAt(ctx, pos.x * tile + tile / 2, pos.y * tile + tile / 2, actorSize(game.levelIndex), game.player.dir, open)
+}
+
+function drawMinis(ctx: CanvasRenderingContext2D, game: Game, tile: number): void {
+  const moving = game.mode === 'play'
+  const size = Math.max(12, Math.round(actorSize(game.levelIndex) * 0.5))
+  for (const mini of game.minis) {
+    const pos = visual(mini)
+    const open = moving ? game.time * 7 + mini.id * 0.9 : 0.4
+    drawPacAt(ctx, pos.x * tile + tile / 2, pos.y * tile + tile / 2, size, mini.dir, open)
+  }
 }
 
 function drawEraPlate(ctx: CanvasRenderingContext2D, game: Game, width: number): void {
@@ -747,6 +758,7 @@ function drawWin(ctx: CanvasRenderingContext2D, game: Game, width: number, heigh
   fill(ctx, pal.bg, 0, 0, width, height)
   drawMaze(ctx, game, tile, pal)
   drawPellets(ctx, game, tile, pal)
+  drawMinis(ctx, game, tile)
   for (const ghost of game.ghosts) drawGhost(ctx, game, ghost, tile)
 
   const cx = snap(width / 2)
@@ -776,6 +788,7 @@ function drawLose(ctx: CanvasRenderingContext2D, game: Game, width: number, heig
   fill(ctx, pal.bg, 0, 0, width, height)
   drawMaze(ctx, game, tile, pal)
   drawPellets(ctx, game, tile, pal)
+  drawMinis(ctx, game, tile)
   for (const ghost of game.ghosts) drawGhost(ctx, game, ghost, tile)
   drawPlayer(ctx, game, tile)
   const pos = visual(game.player)
