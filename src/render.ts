@@ -1,5 +1,5 @@
 import { LEVELS } from './levels'
-import { CAUGHT_HOLD, CLEAR_HOLD, SEAL_HOLD, WIN_CARD_AT, WIN_CUT_AT, visual, type Dir, type Game, type Ghost } from './sim'
+import { CAUGHT_HOLD, CLEAR_HOLD, MILESTONE_HOLD, SEAL_HOLD, visual, type Dir, type Game, type Ghost } from './sim'
 import { drawFacing, lawSprite, pacFrame, type GhostLook } from './sprites'
 
 const TILE = 40
@@ -294,11 +294,6 @@ export function render(ctx: CanvasRenderingContext2D, game: Game): void {
   const width = game.maze.w * tile
   const height = game.maze.h * tile
   const pal = palette(game.surge > 0, game.levelIndex)
-  const cinematic = game.mode === 'win'
-  if (cinematic) {
-    drawWin(ctx, game, width, height, pal)
-    return
-  }
   if (game.mode === 'lose') {
     drawLose(ctx, game, width, height, pal)
     return
@@ -328,8 +323,7 @@ export function render(ctx: CanvasRenderingContext2D, game: Game): void {
   if (game.mode === 'dying') drawDeathStamp(ctx, game, width, height)
   if (game.mode === 'cleared' && game.modeTimer > 0) drawClearFanfare(ctx, game, width, height)
   drawBanner(ctx, game, width, height)
-
-  if (game.mode === 'title') drawTitleGag(ctx, game, width, height)
+  drawMilestone(ctx, game, width, height, pal)
 }
 
 function drawMaze(ctx: CanvasRenderingContext2D, game: Game, tile: number, pal: Palette): void {
@@ -448,38 +442,6 @@ function drawPellets(ctx: CanvasRenderingContext2D, game: Game, tile: number, pa
       label(ctx, 'RAM', x, y - 10, 8, ink)
     }
   }
-  const last = game.levelIndex === LEVELS.length - 1
-  for (const cherry of game.cherries) {
-    drawSurgeChip(ctx, cherry.x * tile + tile / 2, cherry.y * tile + tile / 2, game.time, last, pal, game.maze.w * tile)
-  }
-}
-
-function drawSurgeChip(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  time: number,
-  last: boolean,
-  pal: Palette,
-  canvasW: number,
-): void {
-  const text = last ? 'LAST SURGE' : 'SURGE'
-  const bodyW = text.length * 8 + 8
-  const bodyH = 14
-  const pinH = 3
-  let left = snap(x - bodyW / 2)
-  const top = snap(y - bodyH / 2)
-  if (left < 2) left = 2
-  if (left + bodyW > canvasW - 2) left = canvasW - 2 - bodyW
-  if (Math.floor(time * 7) % 2 === 0) fill(ctx, pal.surgeHalo, left - 2, top - pinH - 2, bodyW + 4, bodyH + pinH + 4)
-  const pitch = 6
-  const pins = Math.max(3, Math.floor((bodyW - 8) / pitch))
-  const used = pins * pitch - 2
-  const pinX = left + Math.floor((bodyW - used) / 2)
-  for (let i = 0; i < pins; i++) fill(ctx, pal.pin, pinX + i * pitch, top - pinH, 2, pinH)
-  fill(ctx, pal.surgeBody, left, top, bodyW, bodyH)
-  fill(ctx, pal.surgeHalo, left, top, bodyW, 1)
-  label(ctx, text, left + bodyW / 2, top + bodyH / 2 + 1, 8, pal.surgeInk)
 }
 
 function actorSize(level: number): number {
@@ -531,46 +493,6 @@ function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile
   label(ctx, ghost.tag, x, y - size / 2 - 8, 8, ghost.color)
 }
 
-function drawPerson(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  wave: number,
-  scale: number,
-  sign: boolean,
-): void {
-  if (scale <= 0.02) return
-  const u = Math.max(1, snap(scale * 2))
-  const x0 = snap(x)
-  const y0 = snap(y)
-  const arm = snap(wave * 2) * u
-  fill(ctx, '#f4f0e6', x0 - u, y0 - 16 * u, 2 * u, 2 * u)
-  fill(ctx, '#f4f0e6', x0 - u, y0 - 14 * u, 2 * u, 5 * u)
-  fill(ctx, '#f4f0e6', x0 - 4 * u, y0 - 13 * u + arm, 3 * u, u)
-  fill(ctx, '#f4f0e6', x0 + u, y0 - 13 * u - arm, 3 * u, u)
-  fill(ctx, '#ff2e93', x0 - 2 * u, y0 - 9 * u, u, 4 * u)
-  fill(ctx, '#ff2e93', x0 + u, y0 - 9 * u, u, 4 * u)
-  if (!sign || scale <= 0.75) return
-  const sx = x0 + 4 * u
-  const sy = y0 - 20 * u
-  fill(ctx, '#5c3d8a', sx, sy, 22, 14)
-  fill(ctx, '#ffb000', sx + 1, sy + 1, 20, 12)
-  label(ctx, 'HI', sx + 11, sy + 8, 8, '#100818')
-}
-
-function drawTitleGag(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number): void {
-  const mouthX = snap(width * 0.3)
-  const mouthY = snap(height * 0.72)
-  drawPacAt(ctx, mouthX, mouthY, 84, 'right', game.time * 6)
-  const span = width * 0.62
-  for (let i = 0; i < 6; i++) {
-    const travel = (game.time * 42 + i * (span / 6)) % span
-    const x = mouthX + span - travel
-    if (x < mouthX + 20) continue
-    drawPerson(ctx, x, mouthY + 8, Math.sin(game.time * 8 + i), 1, i === 4)
-  }
-}
-
 function drawClearFanfare(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number): void {
   const t = CLEAR_HOLD - game.modeTimer
   const flash = clamp(1 - t / 0.22, 0, 1)
@@ -619,6 +541,28 @@ function drawClearFanfare(ctx: CanvasRenderingContext2D, game: Game, width: numb
     fill(ctx, '#100818', width / 2 - 140, height * 0.4 + 36, 280, 28)
     label(ctx, name.toUpperCase(), width / 2, height * 0.4 + 50, 16, '#f4f0e6')
   }
+}
+
+function drawMilestone(
+  ctx: CanvasRenderingContext2D,
+  game: Game,
+  width: number,
+  height: number,
+  pal: Palette,
+): void {
+  if (game.milestone <= 0) return
+  const t = MILESTONE_HOLD - game.milestone
+  const slam = clamp(t / 0.22, 0, 1)
+  const scale = 1 + (1 - slam) * (1 - slam) * 1.6
+  ctx.save()
+  ctx.translate(snap(width / 2), snap(height * 0.42))
+  ctx.scale(scale, scale)
+  fill(ctx, pal.surgeHalo, -140, -40, 280, 80)
+  fill(ctx, pal.surgeBody, -132, -34, 264, 68)
+  fill(ctx, pal.bg, -124, -26, 248, 52)
+  label(ctx, 'SURGE', 0, -4, 32, pal.surgeBody)
+  label(ctx, 'REPEAL THEM', 0, 22, 8, pal.hot)
+  ctx.restore()
 }
 
 function drawBanner(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number): void {
@@ -698,77 +642,6 @@ function drawFx(ctx: CanvasRenderingContext2D, game: Game, tile: number): void {
   label(ctx, `LEVEL ${game.levelIndex + 1}`, width * 0.5, top + 20, 8, '#5c3d8a')
   label(ctx, def?.name ?? '', width * 0.5, top + 46, 16, '#f4f0e6')
   label(ctx, def?.blurb ?? '', width * 0.5, top + 76, 8, '#ff2e93')
-}
-
-function drawBlackoutCity(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, t: number): void {
-  fill(ctx, '#05060c', 0, 0, width, height)
-  const tile = TILE
-  const { maze } = game
-  const faces: Array<{ x: number; y: number }> = []
-  for (let y = 0; y < maze.h; y++) {
-    for (let x = 0; x < maze.w; x++) {
-      if (!wallAt(maze, x, y)) continue
-      fill(ctx, '#0e1320', x * tile, y * tile, tile, tile)
-      if (!wallAt(maze, x, y - 1)) fill(ctx, '#1a2236', x * tile, y * tile, tile, 2)
-      if (y < maze.h - 1 && !wallAt(maze, x, y + 1)) faces.push({ x, y })
-    }
-  }
-  const colors = ['#ffe14a', '#8eb6ff', '#c9a6ff', '#ffb020']
-  const want = Math.min(7, faces.length)
-  const lights: Array<{ x: number; y: number; color: string }> = []
-  for (let i = 0; i < want; i++) {
-    const face = faces[Math.floor(((i + 0.5) * faces.length) / want)]!
-    lights.push({
-      x: face.x * tile + 8,
-      y: face.y * tile + 10,
-      color: colors[i % colors.length]!,
-    })
-  }
-  const span = Math.max(0.25, WIN_CARD_AT - WIN_CUT_AT)
-  const elapsed = t - WIN_CUT_AT
-  for (let i = 0; i < lights.length; i++) {
-    const offAt = ((i + 1) / lights.length) * span
-    if (elapsed >= offAt) continue
-    if (offAt - elapsed < 0.14 && Math.floor((t + i) * 16) % 2 === 0) continue
-    const light = lights[i]!
-    fill(ctx, light.color, light.x, light.y, 8, 6)
-    fill(ctx, light.color, light.x + 12, light.y + 12, 6, 5)
-  }
-}
-
-function drawWin(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, pal: Palette): void {
-  const tile = TILE
-  const t = game.ending
-  if (t >= WIN_CUT_AT) {
-    drawBlackoutCity(ctx, game, width, height, t)
-    return
-  }
-
-  fill(ctx, pal.bg, 0, 0, width, height)
-  drawMaze(ctx, game, tile, pal)
-  drawPellets(ctx, game, tile, pal)
-  for (const ghost of game.ghosts) drawGhost(ctx, game, ghost, tile)
-
-  const cx = snap(width / 2)
-  const cy = snap(height / 2)
-  const grow = clamp(t / 6.6, 0, 1)
-  const eased = grow * grow * grow
-  const radius = 22 + eased * 280
-  drawPacAt(ctx, cx, cy, radius * 2, 'right', game.time * 5)
-
-  if (t >= 2 && t < 6) {
-    const count = 7
-    for (let i = 0; i < count; i++) {
-      const begin = 2 + i * 0.12
-      const u = clamp((t - begin) / (6 - begin), 0, 1)
-      if (u <= 0 || u >= 1) continue
-      const sx = ((i + 0.5) / count) * width
-      const sy = height * 0.78
-      drawPerson(ctx, sx + (cx - sx) * u, sy + (cy - sy) * u, Math.sin(t * 7 + i), 1 - u * 0.72, i === count - 1)
-    }
-  }
-
-  drawFx(ctx, game, tile)
 }
 
 function drawLose(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, pal: Palette): void {

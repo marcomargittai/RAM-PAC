@@ -149,7 +149,7 @@ export class Sfx {
     this.voice(480, 0.04, 'square', 0.09, this.master, 920)
   }
 
-  cherry(): void {
+  surge(): void {
     if (!this.master) return
     this.voice(196, 0.26, 'square', 0.1, this.master, 98)
     this.voice(740, 0.14, 'triangle', 0.04, this.master, 370, 0.03)

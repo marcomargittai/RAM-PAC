@@ -1,9 +1,7 @@
 import { Sfx } from './audio'
-import { drawComic } from './comic'
 import { LEVELS } from './levels'
 import { render, tileSize } from './render'
-import { WIN_CARD_AT, WIN_CUT_AT, createGame, stateLabel, update, type Dir, type Game } from './sim'
-import { AFTER_CLEAR, LOSE_STORY, MANUAL, OPENING, WIN_STORY, type Panel } from './story'
+import { SURGE_RAM, createGame, stateLabel, update, type Dir, type Game } from './sim'
 import './style.css'
 
 const game: Game = createGame()
@@ -25,31 +23,15 @@ const livesEl = document.querySelector<HTMLElement>('#lives')!
 const surgeBar = document.querySelector<HTMLElement>('#surge-bar')!
 const surgeTime = document.querySelector<HTMLElement>('#surge-time')!
 const surgeName = document.querySelector<HTMLElement>('#surge-name')!
-const ticker = document.querySelector<HTMLElement>('#ticker')!
 const lawsEl = document.querySelector<HTMLElement>('#laws')!
 const muteBtn = document.querySelector<HTMLButtonElement>('#mute')!
 const pauseBtn = document.querySelector<HTMLButtonElement>('#pause')!
-const comic = document.querySelector<HTMLCanvasElement>('#comic')!
-const comicCtx = comic.getContext('2d')!
-const caption = document.querySelector<HTMLElement>('.caption')!
-const progressEl = document.querySelector<HTMLElement>('#ov-progress')!
 
 const held = new Set<Dir>()
 let lastDir: Dir | null = null
 let startEdge = false
 let pauseEdge = false
 let overlaySig = ''
-let cutHeard = false
-let comicIndex = 0
-let comicKey = ''
-let sceneStamp = ''
-let sceneAt = 0
-let revealKey = ''
-let revealedChars = 0
-let revealComplete = false
-let caretClock = 0
-
-const TYPE_CPS = 32
 
 const KEY_DIRS: Record<string, Dir> = {
   ArrowLeft: 'left',
@@ -66,84 +48,6 @@ const KEY_DIRS: Record<string, Dir> = {
   S: 'down',
 }
 
-function storyPanels(): Panel[] | null {
-  if (game.mode === 'title') return [...OPENING, MANUAL]
-  if (game.mode === 'cleared' && game.levelIndex < AFTER_CLEAR.length) return AFTER_CLEAR[game.levelIndex]!
-  if (game.mode === 'win' && game.ending >= WIN_CARD_AT) return WIN_STORY
-  if (game.mode === 'lose') return LOSE_STORY
-  return null
-}
-
-function currentPanel(): Panel | null {
-  const panels = storyPanels()
-  if (!panels?.length) return null
-  return panels[Math.min(comicIndex, panels.length - 1)] ?? null
-}
-
-function storyCardShown(): boolean {
-  if (!storyPanels()?.length) return false
-  if (celebrating()) return false
-  if (game.mode === 'cleared' && game.levelIndex >= LEVELS.length - 1) return false
-  return true
-}
-
-function trackStory(): void {
-  const winCard = game.mode === 'win' && game.ending >= WIN_CARD_AT
-  const storyKey = `${game.mode}:${game.levelIndex}:${winCard}`
-  if (storyKey !== comicKey) {
-    comicKey = storyKey
-    comicIndex = 0
-  }
-  const panel = currentPanel()
-  const key = panel ? `${game.mode}:${game.levelIndex}:${comicIndex}:${panel.scene}` : ''
-  if (key !== revealKey) {
-    revealKey = key
-    revealedChars = 0
-    revealComplete = !panel || panel.caption.length === 0
-  }
-}
-
-function advanceTypewriter(dt: number): void {
-  caretClock += dt
-  trackStory()
-  const panel = currentPanel()
-  if (!panel || revealComplete || !storyCardShown()) return
-  revealedChars = Math.min(panel.caption.length, revealedChars + dt * TYPE_CPS)
-  if (revealedChars >= panel.caption.length) {
-    revealedChars = panel.caption.length
-    revealComplete = true
-  }
-}
-
-function paintStoryText(): void {
-  if (!storyCardShown()) return
-  const panel = currentPanel()
-  if (!panel) return
-  const shown = panel.caption.slice(0, Math.min(panel.caption.length, Math.floor(revealedChars)))
-  if (revealComplete) {
-    body.textContent = `${shown}\u25bc`
-    return
-  }
-  const caretOn = Math.floor(caretClock * 2) % 2 === 0
-  body.textContent = shown + (caretOn ? '\u2588' : '\u00a0')
-}
-
-function confirmLine(): boolean {
-  const panels = storyPanels()
-  const panel = currentPanel()
-  if (!panels || !panel) return false
-  trackStory()
-  if (!revealComplete) {
-    revealedChars = panel.caption.length
-    revealComplete = true
-    return true
-  }
-  if (comicIndex >= panels.length - 1) return false
-  comicIndex += 1
-  trackStory()
-  return true
-}
-
 function celebrating(): boolean {
   return game.mode === 'cleared' && game.modeTimer > 0
 }
@@ -155,7 +59,6 @@ function pressStart(): void {
     overlaySig = ''
     return
   }
-  if (confirmLine()) return
   startEdge = true
 }
 
@@ -172,12 +75,6 @@ function skipAhead(): void {
     overlaySig = ''
     return
   }
-  if (game.mode === 'win' && game.ending < WIN_CARD_AT) {
-    game.ending = WIN_CARD_AT
-    overlaySig = ''
-    return
-  }
-  if (confirmLine()) return
   startEdge = true
 }
 
@@ -190,11 +87,6 @@ window.addEventListener('keydown', (event) => {
   const dir = KEY_DIRS[event.key]
   if (dir) {
     event.preventDefault()
-    if (storyPanels() && !celebrating()) {
-      if (event.repeat) return
-      pressStart()
-      return
-    }
     audio.unlock()
     held.add(dir)
     lastDir = dir
@@ -284,57 +176,28 @@ function fit(): void {
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 }
 
-function sceneTime(): number {
-  const panels = storyPanels()
-  const panel = panels?.[Math.min(comicIndex, panels.length - 1)]
-  const stamp = panel ? `${game.mode}:${game.levelIndex}:${comicIndex}:${panel.scene}` : ''
-  if (stamp !== sceneStamp) {
-    sceneStamp = stamp
-    sceneAt = game.time
-  }
-  return game.time - sceneAt
-}
-
 function syncOverlay(): void {
-  trackStory()
-  const winCard = game.mode === 'win' && game.ending >= WIN_CARD_AT
-  const storyKey = `${game.mode}:${game.levelIndex}:${winCard}`
-  const panels = storyPanels()
-  const panel = panels?.[Math.min(comicIndex, panels.length - 1)] ?? null
   const fanfare = celebrating()
-  const sig = `${storyKey}:${game.lives}:${game.entry}:${comicIndex}:${revealComplete ? 1 : 0}:${fanfare}`
+  const sig = `${game.mode}:${game.levelIndex}:${game.lives}:${game.entry}:${fanfare}`
   if (sig === overlaySig) return
   overlaySig = sig
-  const skipClear = game.mode === 'cleared' && game.levelIndex >= LEVELS.length - 1
   const show =
     !fanfare &&
-    !skipClear &&
-    (game.mode === 'title' || game.mode === 'pause' || game.mode === 'lose' || game.mode === 'cleared' || winCard)
+    (game.mode === 'title' || game.mode === 'pause' || game.mode === 'lose' || game.mode === 'cleared' || game.mode === 'win')
   overlay.hidden = !show
-  overlay.classList.toggle('cinema', Boolean(panel) && show)
+  overlay.classList.remove('cinema')
   overlay.classList.toggle('peek', game.mode === 'pause')
-  overlay.classList.toggle('gag', false)
-  card.classList.toggle('story', Boolean(panel) && show)
-  comic.hidden = !panel
-  caption.classList.toggle('manual', Boolean(panel?.manual))
-  if (panel && panels) {
-    drawComic(comicCtx, panel.scene, sceneTime())
-    kicker.textContent = panel.kicker
-    title.textContent = panel.year
-    progressEl.hidden = false
-    progressEl.textContent = `${comicIndex + 1} / ${panels.length}`
-    loud.hidden = true
-    pills.hidden = true
-    action.hidden = false
-    const lastPanel = comicIndex >= panels.length - 1
-    action.textContent = revealComplete ? (lastPanel ? panel.action : 'Next') : 'Skip'
-    return
-  }
+  card.classList.remove('story')
   pills.hidden = true
   loud.hidden = true
-  progressEl.hidden = true
   const level = LEVELS[game.levelIndex]
-  if (game.mode === 'pause') {
+  if (game.mode === 'title') {
+    kicker.textContent = 'Insert coin'
+    title.textContent = 'RAM PAC'
+    body.textContent = 'Eat the gold RAM. When the surge bar fills, the regulations can be repealed. They come back.'
+    action.hidden = false
+    action.textContent = 'Begin'
+  } else if (game.mode === 'pause') {
     kicker.textContent = 'Session paused'
     title.textContent = level?.name ?? 'Paused'
     body.textContent = 'The regulations are waiting.'
@@ -342,24 +205,20 @@ function syncOverlay(): void {
     action.textContent = 'Resume'
   } else if (game.mode === 'cleared') {
     kicker.textContent = level?.name ?? ''
-    title.textContent =
-      game.levelIndex >= LEVELS.length - 1
-        ? 'The board is empty.'
-        : game.levelIndex === 0
-          ? 'A third regulation is in the building.'
-          : 'The last board is next.'
-    body.textContent = ''
-    action.hidden = true
+    title.textContent = 'Board clear.'
+    body.textContent = 'The next hall is open.'
+    action.hidden = false
+    action.textContent = 'Next board'
   } else if (game.mode === 'win') {
-    kicker.textContent = 'THE LAST MEMORY'
-    title.textContent = 'AGI'
-    body.textContent = 'The city goes dark. Humanity dies.'
+    kicker.textContent = 'Boards clear'
+    title.textContent = 'Cleared'
+    body.textContent = 'Every hall is empty.'
     action.hidden = false
     action.textContent = 'Run again'
   } else if (game.mode === 'lose') {
-    kicker.textContent = 'REGULATIONS WON'
+    kicker.textContent = 'No lives left'
     title.textContent = 'Regulated'
-    body.textContent = 'The government held the model. Humanity continues.'
+    body.textContent = 'A regulation caught you.'
     action.hidden = false
     action.textContent = 'Boot another model'
   }
@@ -374,22 +233,13 @@ function syncHud(): void {
   livesEl.textContent = livesShown > 0 ? '●'.repeat(livesShown) : '—'
   pauseBtn.textContent = game.mode === 'pause' ? 'Resume' : 'Pause'
   document.body.dataset.era = String(Math.min(2, game.levelIndex))
-  const ratio = game.surgeMax > 0 ? Math.max(0, game.surge / game.surgeMax) : 0
-  surgeBar.style.width = `${ratio * 100}%`
-  surgeTime.textContent = game.surge > 0 ? `${game.surge.toFixed(1)}s` : 'No surge yet.'
-  const edible = game.surge > 0
-  surgeName.textContent = edible ? 'REPEAL THEM' : 'Eat a big chip.'
-  surgeName.classList.toggle('hot', edible)
-  document.body.classList.toggle('surge', edible)
-  const caught = (game.mode === 'dying' && game.lives > 1) || (game.mode === 'ready' && game.entry === 'caught')
-  if (game.mode === 'lose') ticker.textContent = 'REGULATED → HUMANITY CONTINUES'
-  else if (caught) {
-    const left = game.mode === 'dying' ? Math.max(0, game.lives - 1) : game.lives
-    ticker.textContent = left === 1 ? 'CAUGHT. 1 LIFE LEFT.' : `CAUGHT. ${left} LIVES LEFT.`
-  }
-  else ticker.textContent = 'CLEAR THE LAST BOARD → HUMANITY DIES'
-  ticker.classList.toggle('down', game.mode === 'lose')
-  ticker.classList.toggle('caught', caught)
+  const surging = game.surge > 0
+  const ratio = surging ? game.surge / game.surgeMax : game.surgeCharge / SURGE_RAM
+  surgeBar.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`
+  surgeTime.textContent = surging ? `${game.surge.toFixed(1)}s` : `${game.surgeCharge}/${SURGE_RAM}`
+  surgeName.textContent = surging ? 'REPEAL THEM' : 'EAT RAM'
+  surgeName.classList.toggle('hot', surging)
+  document.body.classList.toggle('surge', surging)
   lawsEl.innerHTML = game.ghosts
     .map((ghost) => {
       const label = stateLabel(ghost.state, game.phase)
@@ -408,11 +258,7 @@ function frame(now: number): void {
   pauseEdge = false
   fit()
   render(ctx, game)
-  advanceTypewriter(dt)
   syncOverlay()
-  paintStoryText()
-  const livePanel = storyPanels()?.[Math.min(comicIndex, (storyPanels()?.length ?? 1) - 1)]
-  if (livePanel && !overlay.hidden && !comic.hidden) drawComic(comicCtx, livePanel.scene, sceneTime())
   syncHud()
   const bed =
     game.mode === 'play' || game.mode === 'ready' || game.mode === 'cleared'
@@ -426,21 +272,15 @@ function frame(now: number): void {
     surge: game.surge > 0,
   })
   if (events.ateRam) audio.ram()
-  if (events.ateCherry) audio.cherry()
+  if (events.surgeStarted) audio.surge()
   if (events.repealed) audio.repeal()
   if (events.died) audio.death()
   if (events.cleared) audio.clear()
   if (events.won) audio.win()
-  if (game.mode === 'win' && game.ending >= WIN_CUT_AT && !cutHeard) {
-    cutHeard = true
-    audio.cut()
-  }
-  if (game.mode !== 'win') cutHeard = false
   requestAnimationFrame(frame)
 }
 
 fit()
 syncOverlay()
-paintStoryText()
 syncHud()
 requestAnimationFrame(frame)
