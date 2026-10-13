@@ -552,6 +552,129 @@ for (let level = 0; level < 3; level++) {
   }
 }
 
+function parkMinis(game: Game, x: number, y: number): void {
+  for (const mini of game.minis) {
+    mini.x = x
+    mini.y = y
+    mini.progress = 0
+    mini.speed = 0
+  }
+}
+
+{
+  const game = createGame()
+  startRun(game)
+  game.mode = 'play'
+  if (game.minis.length !== 3) fail(`expected 3 consumers, saw ${game.minis.length}`)
+  for (const mini of game.minis) {
+    if (!(mini.speed < game.player.speed) || !(mini.speed < 2)) fail(`${mini.name} is not slow (${mini.speed})`)
+    if (!walkable(game.maze, mini.x, mini.y, 'player')) fail(`${mini.name} spawned in a wall`)
+  }
+  park(game)
+  const ram = game.dots.find((dot) => dot.x === 2 && dot.y === 2)
+  if (!ram) fail('expected RAM at 2,2')
+  const thief = game.minis[0]!
+  thief.x = ram.x
+  thief.y = ram.y
+  thief.progress = 0
+  for (const extra of game.minis.slice(1)) {
+    extra.x = 5
+    extra.y = 10
+    extra.progress = 0
+  }
+  game.player.x = 9
+  game.player.y = 10
+  game.player.progress = 0
+  const score = game.score
+  const surge = game.surge
+  const charge = game.surgeCharge
+  const dots = game.dots.length
+  const stolen = update(game, 0.01, { dir: null, start: false, pause: false })
+  if (game.dots.length !== dots - 1) fail('consumer did not eat RAM')
+  if (game.score !== score || stolen.ateRam !== 0) fail('stolen RAM counted toward the player score')
+  if (game.surge !== surge || game.surgeCharge !== charge) fail('stolen RAM changed the surge')
+
+  game.player.x = thief.x
+  game.player.y = thief.y
+  game.player.progress = 0
+  thief.progress = 0
+  const beforeEat = game.minis.length
+  const beforeScore = game.score
+  const ate = update(game, 0.01, { dir: null, start: false, pause: false })
+  if (game.minis.length !== beforeEat - 1) fail('player could not eat a consumer')
+  if (game.minis.some((mini) => mini.name === thief.name)) fail('eaten consumer is still in the maze')
+  if (game.score !== beforeScore + 50) fail('eating a consumer did not score')
+  if (game.surge !== surge || ate.surgeStarted || game.surgeCharge !== charge) fail('eating a consumer started a surge')
+  const gone = game.minis.length
+  for (let i = 0; i < 90; i++) {
+    park(game)
+    pinInWall(game)
+    update(game, 1 / 60, { dir: null, start: false, pause: false })
+  }
+  if (game.minis.length !== gone) fail('an eaten consumer respawned')
+
+  const alive = game.minis.length
+  const statute = game.ghosts[0]!
+  statute.state = 'chase'
+  statute.x = game.player.x
+  statute.y = game.player.y
+  statute.progress = 0
+  game.surge = 0
+  game.mode = 'play'
+  update(game, 0.01, { dir: null, start: false, pause: false })
+  if (mode(game) !== 'dying') fail('consumer test did not reach a death')
+  while (mode(game) === 'dying') update(game, 0.05, { dir: null, start: false, pause: false })
+  if (game.minis.length !== alive) fail('dying brought consumers back')
+  advanceUntil(game, 3, ['play'])
+  if (game.minis.length !== alive) fail('the next life respawned consumers')
+
+  startRun(game)
+  if (game.minis.length !== 3) fail('a new run should field three consumers again')
+}
+
+{
+  const game = createGame()
+  startRun(game)
+  game.mode = 'play'
+  park(game)
+  game.player.x = 9
+  game.player.y = 10
+  game.player.progress = 0
+  const spots = game.dots.filter((dot) => dot.x !== game.player.x || dot.y !== game.player.y).slice(0, 3)
+  if (spots.length < 3) fail('not enough RAM for consumers')
+  game.minis.forEach((mini, i) => {
+    const spot = spots[i]!
+    mini.x = spot.x
+    mini.y = spot.y
+    mini.progress = 0
+  })
+  const charge = game.surgeCharge
+  const surge = game.surge
+  const score = game.score
+  update(game, 0.02, { dir: null, start: false, pause: false })
+  if (game.surgeCharge !== charge || game.surge !== surge || game.score !== score) {
+    fail('stolen RAM filled the surge bar')
+  }
+}
+
+for (let level = 0; level < 3; level++) {
+  const game = reachLevel(level)
+  if (game.minis.length !== 3) fail(`level ${level} spawned ${game.minis.length} consumers`)
+  park(game)
+  parkMinis(game, 4, 10)
+  for (let i = 0; i < 120; i++) {
+    park(game)
+    for (const mini of game.minis) mini.speed = 1.4
+    update(game, 1 / 60, { dir: null, start: false, pause: false })
+    for (const mini of game.minis) {
+      const tile = game.maze.rows[mini.y]?.[mini.x]
+      if (tile === '#' || tile === 'G' || tile === 'd') fail(`${mini.name} clipped a wall at ${mini.x},${mini.y}`)
+    }
+  }
+  const moved = game.minis.some((mini) => mini.x !== 4 || mini.y !== 10 || mini.progress > 0)
+  if (!moved) fail(`level ${level} consumers did not roam`)
+}
+
 console.log('playtest ok', {
   score: run.score,
   levels: LEVELS.map((level) => level.name),

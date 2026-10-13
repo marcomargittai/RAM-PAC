@@ -28,6 +28,7 @@ npm run preview
 - P or Escape pauses, M mutes
 - Enter or Space starts, continues, and confirms the card on screen
 - Swipe the maze, or use the on-screen pad
+- Three small pacs are consumers. They wander and eat RAM, which does not score or fill a surge. Eat one and it stays gone.
 
 ## Surge
 
