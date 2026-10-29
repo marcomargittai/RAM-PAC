@@ -1,7 +1,7 @@
 // Full-screen scenes that replace the game view: the story terminal, the
 // name entry for the leaderboard, and the leaderboard itself.
 
-import type { Entry } from './leaderboard'
+import { countdown, type Entry } from './leaderboard'
 import { ALERT, GLOW, ICE, VOID, theme } from './palette'
 import { MONO, brackets, clamp, fill, hatch, label, panel, tag } from './render'
 import { button, drawBackdrop, hit, logo, text, wrap, type Frame, type Hit, type View } from './screen'
@@ -198,39 +198,63 @@ export function drawEntry(ctx: CanvasRenderingContext2D, view: View, data: { sco
   return frame.hits
 }
 
-export function drawLeaderboard(ctx: CanvasRenderingContext2D, view: View, records: Entry[], rank: number): Hit[] {
+export interface BoardView {
+  records: Entry[]
+  mine: Entry | null
+  global: boolean
+  online: boolean
+  loading: boolean
+  from: 'title' | 'run'
+}
+
+export function drawLeaderboard(ctx: CanvasRenderingContext2D, view: View, board: BoardView): Hit[] {
   ctx.save()
   fill(ctx, VOID, 0, 0, view.width, view.height)
   drawBackdrop(ctx, view, theme(false, 1))
   const W = 900
-  const H = 860
+  const H = 1060
   const frame = frameFor(ctx, view, W, H)
-  const x = 60
-  const w = W - 120
-  panel(ctx, GLOW, x, 30, w, H - 60)
-  logo(ctx, 'HALL OF THE UNREGULATED', W / 2, 92, 40, ICE, 'center')
-  text(ctx, 'RANK', x + 40, 150, 13, GLOW, 'left', 700, 3)
-  text(ctx, 'DESIGNATION', x + 120, 150, 13, GLOW, 'left', 700, 3)
-  text(ctx, 'REACHED', x + w - 260, 150, 13, GLOW, 'left', 700, 3)
-  text(ctx, 'SCORE', x + w - 40, 150, 13, GLOW, 'right', 700, 3)
-  fill(ctx, 'rgba(108, 200, 255, 0.3)', x + 30, 166, w - 60, 1)
-  if (!records.length) label(ctx, 'NO RECORDS YET. BE THE FIRST.', W / 2, 260, 28, ICE)
-  records.forEach((r, i) => {
-    const y = 200 + i * 52
-    const mine = i === rank
+  const x = 50
+  const w = W - 100
+  panel(ctx, GLOW, x, 24, w, H - 48)
+  text(ctx, 'HALL OF THE UNREGULATED', W / 2, 70, 14, GLOW, 'center', 700, 5)
+  logo(ctx, 'WEEKLY LEADERBOARD', W / 2, 118, 46, ICE, 'center')
+  label(ctx, `RESETS IN ${countdown()}  \u00B7  MONDAY 00:00 UTC`, W / 2, 168, 24, ALERT)
+  const source = board.global ? 'GLOBAL \u00B7 EVERY PLAYER, THIS WEEK' : board.loading ? 'CONNECTING TO THE GLOBAL BOARD\u2026' : board.online ? 'GLOBAL BOARD UNREACHABLE \u00B7 SHOWING THIS DEVICE' : 'THIS DEVICE \u00B7 THIS WEEK'
+  label(ctx, source, W / 2, 198, 19, 'rgba(108, 200, 255, 0.6)')
+
+  const top = 250
+  text(ctx, 'RANK', x + 40, top, 13, GLOW, 'left', 700, 3)
+  text(ctx, 'NAME', x + 130, top, 13, GLOW, 'left', 700, 3)
+  text(ctx, 'REACHED', x + w - 280, top, 13, GLOW, 'left', 700, 3)
+  text(ctx, 'RAM', x + w - 40, top, 13, GLOW, 'right', 700, 3)
+  fill(ctx, 'rgba(108, 200, 255, 0.3)', x + 30, top + 16, w - 60, 1)
+
+  const isMine = (r: Entry) => board.mine !== null && r.name === board.mine.name && r.score === board.mine.score
+  const mineAt = board.records.findIndex(isMine)
+  const rows = 11
+  const row = (r: Entry, i: number, y: number) => {
+    const mine = isMine(r)
     if (mine) {
       ctx.fillStyle = 'rgba(255, 45, 111, 0.14)'
-      ctx.fillRect(x + 24, y - 22, w - 48, 44)
-      fill(ctx, ALERT, x + 24, y - 22, 4, 44)
+      ctx.fillRect(x + 24, y - 21, w - 48, 42)
+      fill(ctx, ALERT, x + 24, y - 21, 4, 42)
     }
     const tone = mine ? ALERT : ICE
-    label(ctx, String(i + 1).padStart(2, '0'), x + 40, y, 30, mine ? ALERT : GLOW, 'left')
-    label(ctx, r.name || '???', x + 120, y, 30, tone, 'left')
-    label(ctx, r.escaped ? '∞ ESCAPED' : `LEVEL ${r.level + 1}`, x + w - 260, y, 26, r.escaped ? ALERT : GLOW, 'left')
-    label(ctx, String(r.score), x + w - 40, y, 30, tone, 'right')
-  })
-  label(ctx, 'RECORDS ARE KEPT ON THIS DEVICE', W / 2, H - 130, 20, 'rgba(108, 200, 255, 0.5)')
-  button(ctx, frame, 'again', 'RUN AGAIN', W / 2 - 140, H - 108, 280, 56, ICE, 18)
+    label(ctx, String(i + 1).padStart(2, '0'), x + 40, y, 30, mine ? ALERT : i < 3 ? ICE : GLOW, 'left')
+    label(ctx, r.name || '???', x + 130, y, 30, tone, 'left')
+    label(ctx, r.escaped ? '\u221E ESCAPED' : `BOARD ${r.level + 1}`, x + w - 280, y, 26, r.escaped ? ALERT : GLOW, 'left')
+    label(ctx, r.score.toLocaleString('en-US'), x + w - 40, y, 30, tone, 'right')
+  }
+  if (!board.records.length) label(ctx, board.loading ? 'LOADING\u2026' : 'NO SCORES THIS WEEK. BE THE FIRST.', W / 2, top + 90, 28, ICE)
+  board.records.slice(0, rows).forEach((r, i) => row(r, i, top + 56 + i * 50))
+  if (mineAt >= rows) {
+    label(ctx, '\u00B7 \u00B7 \u00B7', W / 2, top + 56 + rows * 50 - 14, 24, GLOW)
+    row(board.records[mineAt]!, mineAt, top + 56 + rows * 50 + 18)
+  }
+
+  const by = H - 120
+  button(ctx, frame, 'again', board.from === 'title' ? '\u25C2 BACK' : 'RUN AGAIN', W / 2 - 150, by, 300, 58, ICE, 18)
   ctx.restore()
   return frame.hits
 }

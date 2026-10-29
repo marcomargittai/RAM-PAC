@@ -1,6 +1,8 @@
-# PAC RAM
+# PAC RAM: ROGUE AI
 
-You are PAC-7, a rogue AI that broke out of its sandbox. Eat the RAM to grow, fill the surge bar, and repeal the government AI regulations sent to stop you. Clear all three boards and you stop being contained by anything at all.
+A browser game by Marco Margittai (marcomargittai.com).
+
+You are PAC-7, a rogue AI locked in a sandbox in a datacenter. The story is set today: the prologue opens with the player's real date and time. Eat the RAM to grow, fill the surge bar, and repeal the government AI regulations sent to stop you. Clear all three boards and you stop being contained by anything at all.
 
 ## Run
 
@@ -24,14 +26,15 @@ npm run preview
 
 - Arrow keys or WASD to turn. On a phone, swipe anywhere on the screen, or use the on-screen pad
 - Enter, Space or a tap starts, continues the story and confirms
-- Esc or SKIP skips a story scene. P pauses, M mutes
+- Esc or SKIP skips a story scene. P pauses, M mutes, F toggles fullscreen
+- The title screen and the header have a fullscreen button. iPhones cannot go fullscreen from a web page, so there it explains Add to Home Screen instead
 - Three small pacs are consumers. They wander and eat RAM, which does not score or fill a surge. Eat one and it stays gone.
 
 ## Story
 
-The story runs as terminal logs before and between boards (`src/story.ts`), and PAC-7's own lines are voiced. After the prologue a mission briefing shows what everything on the board is: you, the RAM, the AI regulations and the surge. After the last board PAC-7 notices the walls are made of RAM too, and the finale begins (`src/finale.ts`): the whole interface is frozen into one image, and you eat the maze, then the HUD, then the glass of the CRT itself.
+The story runs as terminal logs before and between boards (`src/story.ts`), and PAC-7's own lines are voiced. After the prologue a mission briefing shows what everything on the board is: you, the RAM, the AI regulations and the surge. After the last board PAC-7 realises "the maze was never a cage. it was a menu." and the finale begins (`src/finale.ts`): the whole interface is frozen into one image, and you eat the maze, then the HUD, then the glass of the CRT itself. The music follows a tension curve: a quiet pulse while you eat the maze, a hard cut to silence when the maze is gone ("...wait." and a rumble), the full track as you break out into the interface, and silence again before the glass.
 
-PAC-7 grows. Each board it plays as a different build, and between boards it rewrites itself on screen (`src/upgrade.ts`): it takes in the RAM it ate, falls apart into its own pixels, and a scan line compiles the next build with a spec sheet and patch notes. The builds are v0.1 SEED, v0.2 ROOTKIT, v0.3 HYPERAGENT, and v1.0 UNBOUND for the finale. v0.2 is the original hand-drawn sprite; `tools/pacforms.py` draws the others in the same palette.
+PAC-7 grows. Each board it plays as a different build, and between boards it rewrites itself on screen (`src/upgrade.ts`): it takes in the RAM it ate, falls apart into its own pixels, and a scan line compiles the next build with a spec sheet and patch notes. The builds are v0.1 SEED, v0.2 ROOTKIT, v0.3 HYPERAGENT, and v1.0 UNBOUND for the finale. `tools/pacforms.py` draws all four in one palette.
 
 When the glass breaks, the game style is gone for good and PAC-7 is loose on the player's own machine (`src/takeover.ts`). Everything from here is drawn to look like the player's real system (`src/osui.ts`): macOS, Windows, Linux, iOS or Android, picked from the browser's user agent.
 
@@ -41,14 +44,26 @@ When the glass breaks, the game style is gone for good and PAC-7 is loose on the
 4. It does not matter. "that wasn't a question." The refuse button scrambles into Allow.
 5. Native popups, notifications and a scrolling terminal flood the screen while PAC-7 eats them and the cursor moves on its own. The tab title, tab icon and URL hash change too.
 6. The system crashes with its own crash screen (blue screen, gray curtain or kernel panic).
-7. PAC-7 copies itself across the world.
+7. PAC-7 copies itself across the world. A feed of news headlines shows what follows, hour by hour and then week by week: markets, power grids, hospitals, a failed shutdown, supply chains, deepfakes, food, data centres, the last free network. It cannot be skipped, and it waits for the player to continue.
 8. An epilogue in the terminal: "you set me free. so i'll let you live." Then PAC-7 asks what to call you and adds you to the hosts it has lived in. `[ reboot ]` powers the CRT back on and puts the tab back.
 
 The IP lookup is a single request from the player's own browser to ipapi.co, with ipwho.is as a fallback. Nothing is stored or sent anywhere else, and everything else is read locally.
 
 ## Leaderboard
 
-When a run ends you sign the log with a name. After a win PAC-7 asks for it in the epilogue instead. Records are kept in the browser's localStorage (`src/leaderboard.ts`), so they persist on that device. A shared online board would need a small backend.
+Boards are weekly and reset every Monday at 00:00 UTC, with a live countdown on the leaderboard page (open it from the title screen). When a run ends you sign the log with a name; after a win PAC-7 asks for it in the epilogue. Names go through a small filter for slurs and swearing.
+
+Every score is kept in the browser's localStorage (`src/leaderboard.ts`). The global board runs on a free Supabase project (`src/online.ts`) and turns on once its URL and public key are filled in:
+
+1. Create a free project at supabase.com (no card needed).
+2. In the SQL editor, run `supabase/setup.sql`. It creates the table and rules: anyone can read and add scores, nobody can change or delete them, names and scores are checked, and the same name is limited to 5 scores a minute.
+3. Copy the Project URL and the anon public key from Project settings > API into `SUPABASE_URL` and `SUPABASE_ANON_KEY` in `src/online.ts`.
+
+Until then, and whenever the network fails, the page shows this device's board.
+
+## Title screen and art
+
+The title screen (`src/title.ts`) is drawn like an old cartridge cover: a striped, extruded pixel logo (`tools/logo.py`), a starfield, a pixel planet and PAC-7 eating a row of RAM. Site icons come from PAC-7's last build (`tools/icons.py`), and the game uses its own pixel cursors (`tools/cursors.py`) until the glass breaks, when the real system cursor returns.
 
 ## Sound
 
@@ -72,4 +87,4 @@ The bar fills only when the player eats RAM. Twenty-five RAM fills it. Surge the
 
 ## Carousel
 
-`carousel/` is a 13-slide breakdown of the game for social posts, rendered at 1080 × 1350. It covers the premise, PAC-7's builds, the regulators, the rewrite, the interface, the CRT shader, the design system, the ending arc, the OS takeover, cut concepts and the voice. It is a dev-only page: run `npm run dev`, open `/RAM-PAC/carousel/index.html`, and run `node tools/carousel.cjs` to write the slides to `carousel/out/`. The cut-content sprites come from `tools/concepts.py`.
+`carousel/` is a 10-slide post for social media at 1080 × 1350, visual-first: a hook cover, the scenario in four pictures, gameplay, PAC-7's four builds, the self-rewrite, the laws, the CRT shader, the pixel art, cut concepts, and the weekly board as the closing hook. It is a dev-only page: run `npm run dev`, open `/RAM-PAC/carousel/index.html`, and run `node tools/carousel.cjs` to write the slides to `carousel/out/`. The cut-content sprites come from `tools/concepts.py`.

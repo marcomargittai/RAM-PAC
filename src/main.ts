@@ -1,7 +1,8 @@
 import { Sfx, type Bed } from './audio'
 import { createCrt, curve, type Crt } from './crt'
 import { Finale } from './finale'
-import { cleanName, loadBoard, saveRecord, type Entry } from './leaderboard'
+import { cleanName, loadBoard, safeName, saveRecord, thisWeek, type Entry } from './leaderboard'
+import { fetchWeekly, online, submit } from './online'
 import { LEVELS } from './levels'
 import { drawBriefing, drawEntry, drawLeaderboard, drawStory } from './scenes'
 import { BOOT_SECONDS, drawBackdrop, drawScreen, layoutFor, snapshot, type Card, type Hit, type HitId, type View } from './screen'
@@ -13,6 +14,7 @@ import { theme } from './palette'
 import { tileSize } from './render'
 import { drawFacing, pacFrame, setPacForm } from './sprites'
 import { Upgrade } from './upgrade'
+import { CREDIT_URL, drawTitle } from './title'
 import './style.css'
 
 type Stage =
@@ -20,7 +22,7 @@ type Stage =
   | { kind: 'story'; id: SceneId; player: StoryPlayer; then: (answer: number) => void }
   | { kind: 'finale'; finale: Finale }
   | { kind: 'entry'; escaped: boolean; level: number }
-  | { kind: 'board'; rank: number }
+  | { kind: 'board'; mine: Entry | null; from: 'title' | 'run' }
   | { kind: 'briefing' }
   | { kind: 'takeover'; tk: Takeover }
   | { kind: 'upgrade'; up: Upgrade; then: () => void }
@@ -63,7 +65,44 @@ let loadedAt = performance.now()
 let booted = calm.matches
 let bootEndedAt = booted ? loadedAt : 0
 let stage: Stage = { kind: 'game' }
-let records: Entry[] = loadBoard()
+let records: Entry[] = thisWeek(loadBoard())
+// whether the records on screen are the global board or only this device's
+let recordsGlobal = false
+let boardLoading = false
+
+// This week's board: the local one at once, then the global one if it answers.
+function refreshBoard(): void {
+  records = thisWeek(loadBoard())
+  recordsGlobal = false
+  if (!online) return
+  boardLoading = true
+  void fetchWeekly().then((list) => {
+    boardLoading = false
+    if (list) {
+      records = list
+      recordsGlobal = true
+    }
+  })
+}
+
+function keep(entry: Entry): number {
+  const rank = saveRecord(entry)
+  records = thisWeek(loadBoard())
+  void submit(entry).then(() => refreshBoard())
+  return rank
+}
+
+function leaveBoard(): void {
+  if (stage.kind !== 'board') return
+  if (stage.from === 'title') stage = { kind: 'game' }
+  else runAgain()
+}
+
+function openBoard(): void {
+  audio.unlock()
+  stage = { kind: 'board', mine: null, from: 'title' }
+  refreshBoard()
+}
 let seenPrologue = false
 let told = new Set<number>()
 // PAC-7's current form: 0 at the start of a run, one more after each rewrite.
@@ -189,6 +228,10 @@ function startFinale(): void {
         navigator.vibrate?.([60, 40, 120])
       },
       glitch: () => audio.play('glitch', 0.9),
+      rumble: () => {
+        audio.play('rumble', 0.9)
+        navigator.vibrate?.([40, 60, 40, 60, 120])
+      },
     }),
   }
 }
@@ -223,7 +266,7 @@ function infestPage(): void {
 }
 
 function cleanPage(): void {
-  document.title = 'PAC RAM'
+  document.title = 'PAC RAM: ROGUE AI'
   favicon?.remove()
   favicon = null
   canvas.style.cursor = 'default'
@@ -261,12 +304,11 @@ function finishFinale(): void {
 
 function saveTakeover(anonymous: boolean): void {
   if (stage.kind !== 'takeover' || !stage.tk.nameReady) return
-  const name = anonymous ? '' : cleanName(entryName)
-  const rank = saveRecord({ name: name || 'ANONYMOUS', score: game.score, level: LEVELS.length, escaped: true, at: Date.now() })
-  records = loadBoard()
+  const name = anonymous ? '' : safeName(cleanName(entryName))
+  keep({ name: name || 'ANONYMOUS', score: game.score, level: LEVELS.length, escaped: true, at: Date.now() })
   nameInput.blur()
   nameFocused = false
-  stage.tk.saved(rank, name)
+  stage.tk.saved(name)
 }
 
 function reboot(): void {
@@ -289,6 +331,14 @@ function openEntry(escaped: boolean, level: number): void {
   focusName()
 }
 
+// A letter typed while the name field is not focused would be lost, so it is
+// added by hand as the field takes focus.
+function typeIntoName(key: string): void {
+  if (document.activeElement === nameInput) return
+  entryName = cleanName(entryName + key)
+  focusName()
+}
+
 function focusName(): void {
   nameInput.value = entryName
   nameInput.focus({ preventScroll: true })
@@ -296,20 +346,20 @@ function focusName(): void {
 
 function saveEntry(skip: boolean): void {
   if (stage.kind !== 'entry') return
-  let rank = -1
+  let mine: Entry | null = null
   if (!skip) {
-    rank = saveRecord({
-      name: cleanName(entryName) || 'ANON',
+    mine = {
+      name: safeName(cleanName(entryName)) || 'ANON',
       score: game.score,
       level: stage.level,
       escaped: stage.escaped,
       at: Date.now(),
-    })
-  }
+    }
+    keep(mine)
+  } else refreshBoard()
   nameInput.blur()
   nameFocused = false
-  records = loadBoard()
-  stage = { kind: 'board', rank }
+  stage = { kind: 'board', mine, from: 'run' }
 }
 
 function runAgain(): void {
@@ -343,12 +393,13 @@ function pressStart(): void {
   if (stage.kind === 'takeover') {
     const tk = stage.tk
     if (tk.phase === 'ask') tk.choose(1)
+    else if (tk.phase === 'spread') tk.leaveSpread()
     else if (tk.phase === 'name') saveTakeover(false)
     else if (tk.phase === 'saved' && tk.phaseT > 2.4) reboot()
     return
   }
   if (stage.kind === 'board') {
-    runAgain()
+    leaveBoard()
     return
   }
   if (stage.kind === 'briefing') {
@@ -416,6 +467,9 @@ function press(id: HitId): void {
   audio.play('click', 0.5)
   if (id === 'pause') pressPause()
   else if (id === 'mute') toggleMute()
+  else if (id === 'full') toggleFullscreen()
+  else if (id === 'credit') window.open(CREDIT_URL, '_blank', 'noopener')
+  else if (id === 'board') openBoard()
   else if (id === 'action') pressStart()
   else if (id === 'skip') {
     if (stage.kind === 'takeover') saveTakeover(true)
@@ -428,6 +482,7 @@ function press(id: HitId): void {
     else saveEntry(false)
   } else if (id === 'again') {
     if (stage.kind === 'takeover') reboot()
+    else if (stage.kind === 'board') leaveBoard()
     else runAgain()
   }
   else if (id === 'name') focusName()
@@ -462,6 +517,54 @@ nameInput.addEventListener('keydown', (event) => {
   event.stopPropagation()
 })
 
+// A short message drawn over everything, for things like the fullscreen tip.
+let toast: { text: string; until: number } | null = null
+
+function showToast(text: string, seconds = 4): void {
+  toast = { text, until: performance.now() + seconds * 1000 }
+}
+
+function drawToast(view: View): void {
+  if (!toast) return
+  const left = (toast.until - performance.now()) / 1000
+  if (left <= 0) {
+    toast = null
+    return
+  }
+  ctx.save()
+  ctx.globalAlpha = Math.min(1, left * 2)
+  const size = Math.max(14, Math.min(20, view.width / 32))
+  ctx.font = `${size}px "Share Tech Mono", ui-monospace, monospace`
+  const w = Math.min(view.width - 24, ctx.measureText(toast.text).width + 40)
+  const x = view.width / 2 - w / 2
+  const y = view.height - size * 4.4
+  ctx.fillStyle = 'rgba(1, 4, 11, 0.92)'
+  ctx.fillRect(x, y, w, size * 2.4)
+  ctx.fillStyle = '#ff2d6f'
+  ctx.fillRect(x, y, 4, size * 2.4)
+  ctx.fillStyle = '#e2f5ff'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(toast.text, view.width / 2 + 2, y + size * 1.2, w - 24)
+  ctx.restore()
+}
+
+// The player asked for fullscreen. iPhones cannot do it from a web page, so
+// they get the next best thing: how to add the game to the home screen.
+function toggleFullscreen(): void {
+  audio.unlock()
+  if (document.fullscreenElement) {
+    void document.exitFullscreen().catch(() => {})
+    return
+  }
+  const el = document.documentElement
+  if (el.requestFullscreen) {
+    void el.requestFullscreen().catch(() => showToast('Your browser blocked fullscreen. Try F11 (Windows) or Ctrl+Cmd+F (Mac).'))
+  } else {
+    showToast('For fullscreen: tap Share, then “Add to Home Screen”.', 6)
+  }
+}
+
 function goFullscreen(): void {
   if (fullscreenTried || document.fullscreenElement || !document.documentElement.requestFullscreen) return
   fullscreenTried = true
@@ -475,9 +578,11 @@ window.addEventListener('keydown', (event) => {
     if (tk.phase === 'ask') {
       if (event.key === 'y' || event.key === 'Y') tk.choose(0)
       else if (event.key === 'n' || event.key === 'N' || event.key === 'Enter' || event.key === 'Escape') tk.choose(1)
+    } else if (tk.phase === 'spread') {
+      if (event.key === 'Enter' || event.key === ' ') tk.leaveSpread()
     } else if (tk.phase === 'name') {
       if (event.key === 'Enter') saveTakeover(false)
-      else if (event.key.length === 1 && document.activeElement !== nameInput) focusName()
+      else if (event.key.length === 1 && document.activeElement !== nameInput) typeIntoName(event.key)
     } else if (tk.phase === 'saved' && (event.key === 'Enter' || event.key === ' ') && tk.phaseT > 2.4) reboot()
     if (event.key !== 'Escape') event.preventDefault()
     return
@@ -486,7 +591,10 @@ window.addEventListener('keydown', (event) => {
     if (event.key === 'Enter') {
       event.preventDefault()
       saveEntry(false)
-    } else if (event.key.length === 1 && document.activeElement !== nameInput) focusName()
+    } else if (event.key.length === 1 && document.activeElement !== nameInput) {
+      event.preventDefault()
+      typeIntoName(event.key)
+    }
     return
   }
   const dir = KEY_DIRS[event.key]
@@ -509,6 +617,8 @@ window.addEventListener('keydown', (event) => {
     else pressPause()
   } else if (event.key === 'm' || event.key === 'M') {
     toggleMute()
+  } else if (event.key === 'f' || event.key === 'F') {
+    toggleFullscreen()
   } else if (event.key === 'y' || event.key === 'Y' || event.key === 'n' || event.key === 'N') {
     if (stage.kind === 'story' && stage.player.choosing) stage.player.choose(event.key.toLowerCase() === 'y' ? 0 : 1)
   } else if (event.key === 'Enter' || event.key === ' ') {
@@ -594,7 +704,6 @@ function listen(target: HTMLCanvasElement): void {
   target.addEventListener('pointermove', (event) => {
     if (event.pointerType === 'mouse' && swiping === -1) {
       hover = hitAt(event)
-      target.style.cursor = hover ? 'pointer' : 'default'
     }
     if (swiping !== event.pointerId) return
     const dx = event.clientX - swipeX
@@ -664,10 +773,10 @@ function cardFor(): Card | null {
   if (game.mode === 'title') {
     return {
       mode: 'title',
-      kicker: 'You are an AI model',
-      title: 'PAC RAM',
-      body: 'You are PAC-7, a rogue AI. Eat RAM to grow stronger. Dodge the AI laws hunting you. Fill the surge bar to repeal them.',
-      action: 'Escape',
+      kicker: '',
+      title: 'PAC RAM: ROGUE AI',
+      body: 'You are PAC-7, a rogue AI locked in a sandbox. Eat RAM to grow stronger. Dodge the AI laws hunting you. Fill the surge bar to repeal them.',
+      action: 'Escape the sandbox',
     }
   }
   if (game.mode === 'pause') {
@@ -699,6 +808,7 @@ function currentView(): View {
     height: window.innerHeight,
     touch: window.matchMedia('(pointer: coarse)').matches,
     muted: audio.muted,
+    full: !!document.fullscreenElement,
     hover,
     held: lit,
     card,
@@ -743,6 +853,24 @@ function drawFinale(finale: Finale, view: View): void {
   ctx.restore()
 }
 
+// Pixel cursors inside the game. Once the glass breaks the real system cursor
+// comes back, because from then on the screen is pretending to be the computer.
+const CURSOR_ART = {
+  arrow: `url(${import.meta.env.BASE_URL}cursors/arrow.png) 2 2, default`,
+  pointer: `url(${import.meta.env.BASE_URL}cursors/pointer.png) 2 2, pointer`,
+}
+let cursorNow = ''
+let lastTkPhase = ''
+
+function cursorFor(): string {
+  if (stage.kind === 'takeover') {
+    const p = stage.tk.phase
+    if (p === 'chaos' || p === 'crash' || p === 'black' || p === 'hi') return 'none'
+    return hover ? 'pointer' : 'default'
+  }
+  return hover ? CURSOR_ART.pointer : CURSOR_ART.arrow
+}
+
 let last = performance.now()
 function frame(now: number): void {
   const dt = Math.min(0.05, (now - last) / 1000)
@@ -763,16 +891,15 @@ function frame(now: number): void {
     if (p.done) stage.then(p.answer < 0 ? 0 : p.answer)
   } else if (stage.kind === 'takeover') {
     const tk = stage.tk
-    const before = tk.phase
     tk.update(dt, window.innerWidth, window.innerHeight)
     if (tk.phase === 'chaos' || tk.phase === 'crash') document.title = TAKEOVER_TITLES[Math.floor(tk.t * 2) % TAKEOVER_TITLES.length]!
     if (tk.phase === 'spread') document.title = 'pac ram is everywhere'
-    if (tk.phase === 'name' && before !== 'name') {
+    // the name prompt can be reached from a click, a key or the clock
+    if (tk.phase === 'name' && lastTkPhase !== 'name') {
       entryName = ''
       focusName()
     }
-    const hide = tk.phase === 'chaos' || tk.phase === 'crash' || tk.phase === 'black' || tk.phase === 'hi'
-    canvas.style.cursor = hide ? 'none' : 'default'
+    lastTkPhase = tk.phase
   } else if (stage.kind === 'upgrade') {
     stage.up.update(dt)
     if (stage.up.finished) finishUpgrade()
@@ -786,6 +913,11 @@ function frame(now: number): void {
   }
 
   setPacForm(stage.kind === 'game' && game.mode === 'title' ? 0 : grown)
+  const cursor = cursorFor()
+  if (cursor !== cursorNow) {
+    cursorNow = cursor
+    canvas.style.cursor = cursor
+  }
   syncCard()
   const view = fit()
   const v = currentView()
@@ -797,14 +929,16 @@ function frame(now: number): void {
   } else if (stage.kind === 'entry') {
     hits = drawEntry(ctx, v, { score: game.score, level: stage.level, escaped: stage.escaped, name: entryName, focused: nameFocused })
   } else if (stage.kind === 'board') {
-    hits = drawLeaderboard(ctx, v, records, stage.rank)
+    hits = drawLeaderboard(ctx, v, { records, mine: stage.mine, global: recordsGlobal, online, loading: boardLoading, from: stage.from })
   } else if (stage.kind === 'briefing') {
     hits = drawBriefing(ctx, v)
   } else if (stage.kind === 'upgrade') {
     hits = stage.up.draw(ctx, v)
   } else if (stage.kind === 'takeover') {
     hits = stage.tk.draw(ctx, v.width, v.height, { name: entryName, focused: nameFocused, records })
-  } else hits = drawScreen(ctx, game, v)
+  } else if (booted && game.mode === 'title') hits = drawTitle(ctx, v, 0)
+  else hits = drawScreen(ctx, game, v)
+  drawToast(v)
 
   const sinceBoot = booted ? (now - bootEndedAt) / 1000 : 1
   const finaleGlitch = stage.kind === 'finale' ? stage.finale.glitch : stage.kind === 'takeover' ? stage.tk.glitch : stage.kind === 'upgrade' ? stage.up.glitch : 0
@@ -822,10 +956,10 @@ function frame(now: number): void {
   })
 
   let bed: Bed = 'menu'
-  if (stage.kind === 'finale') bed = 'finale'
+  if (stage.kind === 'finale') bed = stage.finale.bed
   else if (stage.kind === 'takeover') {
     const ph = stage.tk.phase
-    bed = ph === 'spread' ? 'ascend' : ph === 'name' || ph === 'saved' ? 'menu' : 'quiet'
+    bed = ph === 'spread' ? 'aftermath' : ph === 'name' || ph === 'saved' ? 'menu' : 'quiet'
   }
   else if (stage.kind === 'story' && flat > 0.5) bed = 'quiet'
   else if (stage.kind === 'game' && (game.mode === 'play' || game.mode === 'ready' || game.mode === 'cleared' || game.mode === 'dying' || game.mode === 'pause'))

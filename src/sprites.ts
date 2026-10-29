@@ -12,7 +12,7 @@ interface GhostSet {
 // PAC-7's growth forms, one per board plus the finale. Each has three mouth frames.
 export const FORMS = [
   { file: 'pac1', version: 'v0.1', name: 'SEED' },
-  { file: 'pac', version: 'v0.2', name: 'ROOTKIT' },
+  { file: 'pac2', version: 'v0.2', name: 'ROOTKIT' },
   { file: 'pac3', version: 'v0.3', name: 'HYPERAGENT' },
   { file: 'pac4', version: 'v1.0', name: 'UNBOUND' },
 ] as const
