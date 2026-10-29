@@ -2,19 +2,21 @@
 // beds that crossfade, one-shot effects, a hunting alarm loop and the rogue
 // AI's voice lines, which duck the music while they play.
 
-export type Bed = 'menu' | 'play' | 'play2' | 'play3' | 'finale' | 'ascend' | 'quiet'
+export type Bed = 'menu' | 'play' | 'play2' | 'play3' | 'tense' | 'finale' | 'aftermath' | 'ascend' | 'quiet' | 'hush'
 
-const SFX = ['ram1', 'ram2', 'ram3', 'surge', 'repeal', 'death', 'clear', 'boot', 'type', 'chomp', 'shatter', 'click', 'glitch', 'alarm', 'popup', 'rootaccess', 'datastream', 'upgrade', 'online'] as const
+const SFX = ['ram1', 'ram2', 'ram3', 'surge', 'repeal', 'death', 'clear', 'boot', 'type', 'chomp', 'shatter', 'click', 'glitch', 'alarm', 'popup', 'rootaccess', 'datastream', 'upgrade', 'online', 'rumble'] as const
 const MUSIC = {
   menu: 'music-menu',
   play: 'music-play',
   play2: 'music-play2',
   play3: 'music-play3',
+  tense: 'music-tense',
   finale: 'music-devour',
+  aftermath: 'music-aftermath',
   ascend: 'music-finale',
 } as const
 
-const LOUDER: Partial<Record<Bed, number>> = { finale: 1.6, ascend: 1.3 }
+const LOUDER: Partial<Record<Bed, number>> = { tense: 1.3, finale: 1.6, aftermath: 1.2, ascend: 1.3 }
 
 export type SfxName = (typeof SFX)[number]
 
@@ -152,10 +154,11 @@ export class Sfx {
     this.bed = bed
     const ctx = this.ctx
     if (!ctx || !this.musicBus) return
-    const want = bed === 'quiet' ? null : MUSIC[bed]
+    // 'hush' is silence that lands at once, for dramatic cuts
+    const want = bed === 'quiet' || bed === 'hush' ? null : MUSIC[bed]
     for (const [name, loop] of this.loops) {
       if (name === want) continue
-      loop.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.4)
+      loop.gain.gain.setTargetAtTime(0, ctx.currentTime, bed === 'hush' ? 0.04 : 0.4)
       loop.source.stop(ctx.currentTime + 2)
       this.loops.delete(name)
     }

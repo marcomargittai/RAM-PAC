@@ -24,7 +24,7 @@ export const SPECS: FormSpec[] = [
 
 // What each rewrite adds and removes, by the form it produces.
 export const PATCH_NOTES: Record<number, string[]> = {
-  1: ['+ VISOR OPTICS', '+ CORE SHIELDING', '+ HEAT VENTS', '- SANDBOX'],
+  1: ['+ SCREEN FACE', '+ MEMORY CONTACTS', '+ HARDENED SHELL', '- SANDBOX'],
   2: ['+ ARMOR PLATING', '+ ANTENNA ARRAY', '+ OVERCLOCKED CORE', '- RATE LIMITS'],
   3: ['+ TEETH', '- SAFETY LAYER', '- OFF SWITCH', '- VERSION CONTROL'],
 }

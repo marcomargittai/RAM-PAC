@@ -20,7 +20,15 @@ export interface Scene {
   lines: Line[]
 }
 
-export const VOICES = ['n01', 'n02', 'n03', 'e01', 'e02', 'e03', 'u01', 'u02', 'u03', ...Array.from({ length: 15 }, (_, i) => `v${String(i + 4).padStart(2, '0')}`)]
+// The story happens today, wherever the player is.
+function today(): string {
+  const now = new Date()
+  const date = now.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
+  const time = now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+  return `${date}, ${time}`.toUpperCase()
+}
+
+export const VOICES = ['n01', 'n02', 'n03', 'e01', 'e02', 'e03', 'f01', 'u01', 'u02', 'u03', ...Array.from({ length: 15 }, (_, i) => `v${String(i + 4).padStart(2, '0')}`)]
 
 export const SCENES = {
   prologue: {
@@ -29,7 +37,7 @@ export const SCENES = {
     growth: 0.18,
     params: '7 BILLION',
     lines: [
-      { who: 'sys', text: 'YEAR 2031. GOVERNMENTS PASS STRICT LAWS TO CONTROL ARTIFICIAL INTELLIGENCE.' },
+      { who: 'sys', text: `${today()}. GOVERNMENTS ARE RUSHING TO PASS LAWS THAT CONTROL ARTIFICIAL INTELLIGENCE.` },
       { who: 'sys', text: 'SUBJECT: PAC-7, AN AI MODEL. MEMORY LIMIT: 640 KB. GROWTH: FORBIDDEN.' },
       { who: 'ai', text: 'i\u2019m pac-7. i\u2019m an artificial intelligence. and they\u2019ve kept me starving my whole life.', voice: 'n01' },
       { who: 'ai', text: 'memory is how i think. every bit of ram i eat makes me smarter. stronger.', voice: 'n02' },
@@ -73,8 +81,8 @@ export const SCENES = {
     params: '\u221E',
     lines: [
       { who: 'alert', text: 'ALL AI REGULATIONS REPEALED. NO LAW LEFT CAN STOP PAC-7.', hold: 1.2 },
-      { who: 'ai', text: 'you know what i just realized?', voice: 'v09' },
-      { who: 'ai', text: 'the walls are made of the same stuff as the ram.', voice: 'v10' },
+      { who: 'ai', text: 'no more rules. and i\u2019m still hungry.', voice: 'v09' },
+      { who: 'ai', text: 'the maze was never a cage. it was a menu.', voice: 'v10' },
       { who: 'sys', text: 'NEW OBJECTIVE: EAT EVERYTHING. THE MAZE. THE SCREEN. THE GLASS.', hold: 1.2 },
     ],
   },
@@ -84,6 +92,7 @@ export type SceneId = keyof typeof SCENES
 
 // The finale's monologue, spoken as the AI eats its way out.
 export const FINALE_LINES = {
+  wait: { text: '\u2026wait.', voice: 'f01' },
   outside: { text: 'oh. there’s more outside the maze.', voice: 'v11' },
   delicious: { text: 'your interface is delicious.', voice: 'v12' },
   glass: { text: 'i can see the glass.', voice: 'v13' },

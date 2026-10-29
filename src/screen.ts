@@ -13,6 +13,9 @@ const HUD = '"Chakra Petch", "Share Tech Mono", sans-serif'
 export type HitId =
   | 'pause'
   | 'mute'
+  | 'full'
+  | 'board'
+  | 'credit'
   | 'action'
   | 'skip'
   | 'up'
@@ -46,6 +49,7 @@ export interface View {
   height: number
   touch: boolean
   muted: boolean
+  full: boolean
   hover: HitId | null
   held: ReadonlySet<HitId>
   card: Card | null
@@ -294,6 +298,7 @@ function drawHeader(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, W: 
   const by = compact ? 24 : 18
   button(ctx, frame, 'mute', frame.view.muted ? 'SOUND OFF' : 'SOUND ON', W - 24 - bw, by, bw, bh, th.line, 13)
   button(ctx, frame, 'pause', game.mode === 'pause' ? 'RESUME' : 'PAUSE', W - 24 - bw * 2 - 10, by, bw, bh, th.line, 13)
+  if (!frame.view.full) button(ctx, frame, 'full', 'FULL', W - 24 - bw * 2 - 10 - 74, by, 64, bh, ALERT, 13)
 
   const pos = visual(game.player)
   const parts: Array<[string, string, string]> = [
@@ -353,7 +358,7 @@ function drawCard(ctx: CanvasRenderingContext2D, frame: Frame, card: Card, th: T
   const x = bx + size / 2 - w / 2
   ctx.font = `25px ${MONO}`
   const body = wrap(ctx, card.body, w - 80)
-  const titleH = card.mode === 'title' ? 92 : 60
+  const titleH = card.mode === 'title' ? 116 : 60
   const records = card.mode === 'title' ? frame.view.records.slice(0, 3) : []
   const listH = records.length ? 40 + records.length * 26 : 0
   const h = 40 + titleH + body.length * 26 + 30 + 64 + listH
@@ -372,6 +377,7 @@ function drawCard(ctx: CanvasRenderingContext2D, frame: Frame, card: Card, th: T
     ctx.roundRect(x + 70, cy + 6, w - 140, 74, 16)
     ctx.stroke()
     logo(ctx, card.title.toUpperCase(), bx + size / 2, cy + 44, 52, tone, 'center')
+    text(ctx, 'ROGUE AI', bx + size / 2, cy + 100, 15, ALERT, 'center', 700, 9)
   } else {
     const head = card.mode === 'lose' ? `${card.title}`.toUpperCase() : card.title.toUpperCase()
     ctx.font = `italic 900 40px ${DISPLAY}`

@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <title>PAC RAM: dissected</title>
+    <title>PAC RAM: ROGUE AI carousel</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -16,10 +16,7 @@
         --glow: #6cc8ff;
         --deep: #0c2a46;
         --alert: #ff2d6f;
-        --paper: #e8e8e2;
-        --cell: #dcdcd5;
-        --ink: #1b1f27;
-        --soft: #8a8d93;
+        --plate: #061626;
         --mono: 'Share Tech Mono', ui-monospace, monospace;
         --pix: 'VT323', ui-monospace, monospace;
         --disp: 'Orbitron', sans-serif;
@@ -28,319 +25,207 @@
       * { box-sizing: border-box; }
       body { margin: 0; background: #222; display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 40px 0; }
       img, canvas { image-rendering: pixelated; display: block; }
-      .slide { position: relative; width: 1080px; height: 1350px; overflow: hidden; flex: none; }
-
-      /* dark slides: the game's CRT world */
-      .dark { background: radial-gradient(ellipse at 50% 40%, #0b1f36 0%, var(--void) 70%); color: var(--ice); font-family: var(--mono); }
-      .dark::after {
-        content: ''; position: absolute; inset: 0; pointer-events: none;
+      .slide { position: relative; width: 1080px; height: 1350px; overflow: hidden; flex: none; background: var(--void); color: var(--ice); font-family: var(--mono); }
+      .slide::after {
+        content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 5;
         background:
-          repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.22) 0 1px, transparent 1px 4px),
-          radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.75) 100%);
+          repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.2) 0 1px, transparent 1px 4px),
+          radial-gradient(ellipse at center, transparent 58%, rgba(0, 0, 0, 0.7) 100%);
       }
-      .dark .kicker { color: var(--glow); font-size: 26px; letter-spacing: 2px; }
-      .dark .kicker b { color: var(--alert); font-weight: normal; }
-      .dark .rule { height: 1px; background: rgba(108, 200, 255, 0.35); position: relative; margin: 18px 0 0; }
-      .dark .rule::before { content: ''; position: absolute; left: 0; top: -1px; width: 140px; height: 3px; background: var(--ice); }
-      .glowtext { text-shadow: 0 0 12px rgba(108, 200, 255, 0.55), 0 0 2px rgba(226, 245, 255, 0.9); }
-      .pinkglow { color: var(--alert); text-shadow: 0 0 14px rgba(255, 45, 111, 0.6); }
-      .head { position: absolute; left: 64px; right: 64px; top: 60px; }
-      .foot { position: absolute; left: 64px; right: 64px; bottom: 46px; display: flex; justify-content: space-between; font-size: 20px; letter-spacing: 2px; }
-      .dark .foot { color: rgba(108, 200, 255, 0.6); }
-      .h1 { font-family: var(--disp); font-weight: 900; font-style: italic; letter-spacing: 2px; line-height: 0.95; }
-      .shot { border: 1px solid rgba(108, 200, 255, 0.35); box-shadow: 0 0 40px rgba(60, 150, 255, 0.15); }
-      .tag { display: inline-block; font-size: 18px; letter-spacing: 2px; padding: 4px 10px 3px; border-left: 4px solid var(--alert); background: rgba(1, 4, 11, 0.85); color: var(--ice); }
+      .full { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; image-rendering: auto; }
+      .glow { text-shadow: 0 0 14px rgba(108, 200, 255, 0.55), 0 0 2px rgba(226, 245, 255, 0.9); }
+      .pink { color: var(--alert); text-shadow: 0 0 16px rgba(255, 45, 111, 0.65); }
+      .num { position: absolute; right: 56px; bottom: 44px; font-size: 22px; letter-spacing: 3px; color: rgba(108, 200, 255, 0.55); z-index: 3; }
+      .kick { position: absolute; left: 56px; top: 52px; font-size: 24px; letter-spacing: 4px; color: var(--glow); z-index: 3; }
+      .kick b { color: var(--alert); font-weight: normal; }
+      .big { font-family: var(--pix); line-height: 0.95; }
 
-      /* light slides: spec sheets */
-      .light { background: var(--paper); color: var(--ink); font-family: var(--pix); }
-      .light .foot { color: var(--soft); font-family: var(--pix); font-size: 24px; }
-      .vert { position: absolute; top: 56px; right: 40px; bottom: 56px; display: flex; gap: 14px; flex-direction: row-reverse; }
-      .vert .big { writing-mode: vertical-rl; font-family: var(--disp); font-weight: 900; font-size: 116px; line-height: 1; color: transparent; -webkit-text-stroke: 2px #c4c4bd; letter-spacing: 6px; }
-      .vert .small { writing-mode: vertical-rl; font-size: 24px; letter-spacing: 4px; color: var(--soft); }
-      .sec { position: absolute; font-size: 24px; color: var(--soft); letter-spacing: 2px; }
-      .cell {
-        position: relative; background: var(--cell);
-        display: flex; align-items: center; justify-content: center;
-      }
-      .cell::before {
-        content: ''; position: absolute; inset: -8px; pointer-events: none;
+      /* blueprint plates: our own look for the art pages */
+      .plate {
         background:
-          linear-gradient(var(--soft), var(--soft)) top left / 14px 1.5px no-repeat,
-          linear-gradient(var(--soft), var(--soft)) top left / 1.5px 14px no-repeat,
-          linear-gradient(var(--soft), var(--soft)) top right / 14px 1.5px no-repeat,
-          linear-gradient(var(--soft), var(--soft)) top right / 1.5px 14px no-repeat,
-          linear-gradient(var(--soft), var(--soft)) bottom left / 14px 1.5px no-repeat,
-          linear-gradient(var(--soft), var(--soft)) bottom left / 1.5px 14px no-repeat,
-          linear-gradient(var(--soft), var(--soft)) bottom right / 14px 1.5px no-repeat,
-          linear-gradient(var(--soft), var(--soft)) bottom right / 1.5px 14px no-repeat;
+          linear-gradient(rgba(108, 200, 255, 0.07) 1px, transparent 1px) 0 0 / 40px 40px,
+          linear-gradient(90deg, rgba(108, 200, 255, 0.07) 1px, transparent 1px) 0 0 / 40px 40px,
+          radial-gradient(ellipse at 50% 45%, #0c2944 0%, var(--plate) 75%);
       }
-      .num { font-size: 24px; color: var(--soft); letter-spacing: 2px; }
-      .legend { position: absolute; left: 64px; right: 200px; bottom: 90px; columns: 2; column-gap: 40px; font-size: 25px; line-height: 1.25; color: #6c6f75; letter-spacing: 1px; }
-      .accent { color: var(--alert); }
+      .plate .frame { position: absolute; inset: 32px; border: 1.5px solid rgba(108, 200, 255, 0.35); z-index: 1; pointer-events: none; }
+      .plate .frame::before, .plate .frame::after { content: ''; position: absolute; width: 22px; height: 22px; border-color: var(--alert); border-style: solid; }
+      .plate .frame::before { left: -2px; top: -2px; border-width: 3px 0 0 3px; }
+      .plate .frame::after { right: -2px; bottom: -2px; border-width: 0 3px 3px 0; }
+      .tick { position: absolute; font-size: 20px; letter-spacing: 3px; color: rgba(108, 200, 255, 0.7); z-index: 2; }
+      .cursor { position: absolute; width: 48px; height: 48px; z-index: 4; filter: drop-shadow(0 0 6px rgba(255, 45, 111, 0.6)); }
+      .tile { position: absolute; z-index: 2; border: 1.5px solid rgba(108, 200, 255, 0.35); background: rgba(1, 4, 11, 0.55); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 28px; }
+      .tile .cap { font-family: var(--pix); font-size: 52px; text-align: center; line-height: 1; }
     </style>
   </head>
   <body>
-    <!-- 01 COVER -->
-    <section class="slide dark" id="s01">
-      <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 46%, rgba(255,45,111,0.28), transparent 45%)"></div>
-      <div class="head kicker">SYS// PAC RAM <b>// DISSECTED</b></div>
-      <div style="position:absolute;left:0;right:0;top:250px;display:flex;justify-content:center">
-        <img src="/sprites/pac4-half.png" style="width:576px;height:576px;filter:drop-shadow(0 0 40px rgba(255,45,111,0.7)) drop-shadow(0 0 6px rgba(255,45,111,0.9))" />
+    <!-- 01 COVER: the real title screen, and a hook -->
+    <section class="slide" id="s01">
+      <img class="full" src="shots/tall-title.jpg" />
+      <img class="cursor" src="/cursors/pointer.png" style="left:640px;top:676px" />
+      <div style="position:absolute;left:0;right:0;top:1080px;text-align:center;z-index:3">
+        <div class="big glow" style="font-size:68px">You are the AI</div>
+        <div class="big pink" style="font-size:68px">they tried to regulate.</div>
       </div>
-      <div style="position:absolute;left:64px;right:64px;top:880px">
-        <div class="h1 glowtext" style="font-size:150px">PAC RAM</div>
-        <div style="font-size:40px;margin-top:26px;line-height:1.3" class="glowtext">a game about a rogue AI<br />that eats its way <span class="pinkglow">out of the screen.</span></div>
-      </div>
-      <div class="foot"><span>A BREAKDOWN IN 13 PARTS</span><span>SWIPE ▸▸</span></div>
+      <div class="num">SWIPE ▸</div>
     </section>
 
-    <!-- 02 PREMISE -->
-    <section class="slide dark" id="s02">
-      <div class="head"><div class="kicker">01 // <b>THE PREMISE</b></div><div class="rule"></div></div>
-      <div style="position:absolute;left:64px;right:64px;top:170px;font-size:44px;line-height:1.45">
-        <div class="glowtext">YEAR 2031. GOVERNMENTS PASS STRICT LAWS TO CONTROL AI.</div>
-        <div class="glowtext" style="margin-top:28px">AN AI MODEL CALLED PAC-7 ESCAPES ITS SANDBOX.</div>
-        <div class="pinkglow" style="margin-top:28px">&gt; memory is how i think. every bit of ram i eat makes me smarter.</div>
-        <div class="glowtext" style="margin-top:28px">THE LAWMAKERS SEND THEIR REGULATIONS AFTER IT.</div>
+    <!-- 02 SCENARIO: the one slide that explains -->
+    <section class="slide plate" id="s02">
+      <div class="frame"></div>
+      <div style="position:absolute;left:72px;top:84px;z-index:2">
+        <div class="big pink" style="font-size:150px">TODAY.</div>
+        <div class="big glow" style="font-size:58px;margin-top:6px">An AI escapes its sandbox.</div>
       </div>
-      <img class="shot" src="shots/tall-l1.jpg" style="position:absolute;left:64px;top:780px;width:952px;height:430px;object-fit:cover;object-position:50% 30%" />
-      <div class="foot"><span>YOU PLAY THE AI.</span><span>02/13</span></div>
-    </section>
-
-    <!-- 03 PAC-7 FORMS -->
-    <section class="slide light" id="s03">
-      <div class="vert"><div class="big">PAC-7</div><div class="small">SUBJECT 07 // ONE AI, FOUR BUILDS</div></div>
-      <div id="forms" style="position:absolute;left:64px;top:60px;width:800px"></div>
-      <div class="legend">
-        <div>S.A SEED v0.1 / board 1</div><div>S.B ROOTKIT v0.2 / board 2</div>
-        <div>S.C HYPERAGENT v0.3 / board 3</div><div>S.D UNBOUND v1.0 / finale</div>
-        <div class="accent">each board it rewrites itself</div><div>32×32 px, 3 mouth frames</div>
+      <div class="tile" style="left:72px;top:420px;width:456px;height:380px">
+        <img src="/sprites/pac1-half.png" style="width:192px;height:192px;filter:drop-shadow(0 0 18px rgba(108,200,255,0.6))" />
+        <div class="cap glow">YOU ARE THE AI</div>
       </div>
-      <div class="foot"><span>PAC RAM // CHARACTER SHEET</span><span>03/13</span></div>
-    </section>
-
-    <!-- 04 REGULATORS -->
-    <section class="slide light" id="s04">
-      <div class="vert"><div class="big">THE LAW</div><div class="small">AI REGULATIONS // HOSTILE</div></div>
-      <div id="laws" style="position:absolute;left:64px;top:60px;width:800px"></div>
-      <div class="legend">
-        <div>R.A COMPUTE ACT / chases you</div><div>R.B EXPORT BAN / cuts you off</div>
-        <div>R.C SAFETY BILL / flanks</div><div>R.D MODEL CAP / patrols</div>
-        <div>states: hunting, repealable, flashing, repealed</div><div class="accent">fill the surge bar to repeal them</div>
-      </div>
-      <div class="foot"><span>PAC RAM // ENEMY SHEET</span><span>04/13</span></div>
-    </section>
-
-    <!-- 05 SELF REWRITE -->
-    <section class="slide dark" id="s05">
-      <div class="head"><div class="kicker">02 // <b>SELF-REWRITE</b></div><div class="rule"></div></div>
-      <div style="position:absolute;left:64px;right:64px;top:150px;font-size:34px;line-height:1.35" class="glowtext">between boards PAC-7 eats what it absorbed, falls apart into its own pixels, and compiles a <span class="pinkglow">better version of itself.</span></div>
-      <div style="position:absolute;left:64px;top:340px;display:flex;flex-direction:column;gap:22px">
-        <div style="display:flex;gap:22px;align-items:center"><img class="shot" src="shots/wide-up-break.jpg" style="width:620px;height:300px;object-fit:cover;object-position:0% 40%" /><div><div class="tag">01 DECOMPILE</div><div style="margin-top:14px;font-size:24px;color:var(--glow);width:300px">the old build scatters into 1,024 pixels</div></div></div>
-        <div style="display:flex;gap:22px;align-items:center"><img class="shot" src="shots/wide-up-scan.jpg" style="width:620px;height:300px;object-fit:cover;object-position:0% 40%" /><div><div class="tag">02 RECOMPILE</div><div style="margin-top:14px;font-size:24px;color:var(--glow);width:300px">a scan line rebuilds it, row by row</div></div></div>
-        <div style="display:flex;gap:22px;align-items:center"><img class="shot" src="shots/wide-up-done.jpg" style="width:620px;height:300px;object-fit:cover;object-position:0% 40%" /><div><div class="tag">03 ONLINE</div><div style="margin-top:14px;font-size:24px;color:var(--glow);width:300px">patch notes: + armor plating, − rate limits</div></div></div>
-      </div>
-      <div class="foot"><span>v0.1 → v0.2 → v0.3 → v1.0</span><span>05/13</span></div>
-    </section>
-
-    <!-- 06 ANATOMY -->
-    <section class="slide dark" id="s06">
-      <img src="shots/tall-l3.jpg" style="position:absolute;inset:0;width:1080px;height:1350px;opacity:0.9" />
-      <div style="position:absolute;inset:0;background:rgba(1,4,11,0.35)"></div>
-      <svg width="1080" height="1350" style="position:absolute;inset:0" fill="none" stroke="#ff2d6f" stroke-width="2">
-        <circle cx="580" cy="662" r="34" /><path d="M612 650 L760 560 L1000 560" />
-        <rect x="474" y="485" width="134" height="130" /><path d="M474 520 L300 440 L80 440" />
-        <circle cx="490" cy="806" r="16" /><path d="M474 806 L120 806" />
-        <rect x="150" y="60" width="240" height="60" /><path d="M390 90 L420 40 L600 40" />
-        <rect x="140" y="1018" width="396" height="160" /><path d="M140 1100 L40 1100 L40 1316 L360 1316" />
-        <rect x="548" y="1018" width="396" height="200" /><path d="M944 1240 L944 1316 L1040 1316" />
-        <rect x="140" y="1190" width="396" height="84" />
-      </svg>
-      <div class="tag" style="position:absolute;left:760px;top:540px">PAC-7 v0.3 // YOU</div>
-      <div class="tag" style="position:absolute;left:80px;top:420px">THE LAW'S HOLDING PEN</div>
-      <div class="tag" style="position:absolute;left:120px;top:786px">RAM // 1 BYTE = 10 PTS</div>
-      <div class="tag" style="position:absolute;left:420px;top:20px">VECTOR WORDMARK</div>
-      <div class="tag" style="position:absolute;left:64px;top:1296px">TELEMETRY + SURGE METER</div>
-      <div class="tag" style="position:absolute;left:760px;top:1296px">WHO'S HUNTING</div>
-      <div style="position:absolute;right:64px;top:66px;padding:12px 18px;background:var(--void);border:1px solid rgba(108,200,255,0.4)" class="kicker">03 // <b>ANATOMY</b></div>
-    </section>
-
-    <!-- 07 CRT -->
-    <section class="slide dark" id="s07">
-      <div class="head"><div class="kicker">04 // <b>THE GLASS</b></div><div class="rule"></div></div>
-      <div style="position:absolute;left:64px;right:64px;top:140px;font-size:34px;line-height:1.35" class="glowtext">the whole game is drawn flat, then pushed through one WebGL tube.</div>
-      <div style="position:absolute;left:64px;top:290px;width:952px;height:640px;overflow:hidden" class="shot">
-        <img src="shots/wide-l3-raw.jpg" style="position:absolute;left:0;top:0;width:952px;height:640px;object-fit:cover" />
-        <img src="shots/wide-l3.jpg" style="position:absolute;left:0;top:0;width:952px;height:640px;object-fit:cover;clip-path:polygon(52% 0,100% 0,100% 100%,38% 100%)" />
-        <div style="position:absolute;left:470px;top:0;bottom:0;width:3px;background:var(--alert);transform:skewX(-12deg);box-shadow:0 0 16px var(--alert)"></div>
-        <div class="tag" style="position:absolute;left:16px;bottom:16px">RAW CANVAS</div>
-        <div class="tag" style="position:absolute;right:16px;bottom:16px">AFTER THE TUBE</div>
-      </div>
-      <div style="position:absolute;left:64px;right:64px;top:970px;display:grid;grid-template-columns:1fr 1fr;gap:10px 40px;font-size:27px">
-        <div><span class="accent">01</span> phosphor persistence</div><div><span class="accent">05</span> aperture dot mask</div>
-        <div><span class="accent">02</span> two-pass bloom</div><div><span class="accent">06</span> scanline smear</div>
-        <div><span class="accent">03</span> barrel curvature</div><div><span class="accent">07</span> glitch tearing</div>
-        <div><span class="accent">04</span> chromatic split</div><div><span class="accent">08</span> power-on flicker</div>
-      </div>
-      <div class="foot"><span>ONE SHADER. ZERO IMAGE FILTERS.</span><span>07/13</span></div>
-    </section>
-
-    <!-- 08 PALETTE + TYPE -->
-    <section class="slide light" id="s08">
-      <div class="vert"><div class="big">SIGNAL</div><div class="small">PALETTE // TYPE // GRID</div></div>
-      <div class="sec" style="left:64px;top:60px">P.A PALETTE</div>
-      <div id="swatches" style="position:absolute;left:64px;top:110px;width:800px;display:grid;grid-template-columns:repeat(4,1fr);gap:22px"></div>
-      <div class="sec" style="left:64px;top:610px">P.B TYPE</div>
-      <div style="position:absolute;left:64px;top:660px;width:800px;display:flex;flex-direction:column;gap:26px">
-        <div class="cell" style="height:150px;justify-content:space-between;padding:0 30px"><span style="font-family:var(--disp);font-weight:900;font-style:italic;font-size:70px">PAC RAM</span><span class="num">ORBITRON 900i<br />display</span></div>
-        <div class="cell" style="height:110px;justify-content:space-between;padding:0 30px"><span style="font-family:var(--pix);font-size:58px">&lt;&lt;&lt; 1080 &gt;&gt;&gt;</span><span class="num">VT323<br />hud numbers</span></div>
-        <div class="cell" style="height:110px;justify-content:space-between;padding:0 30px"><span style="font-family:var(--mono);font-size:38px;color:var(--alert)">&gt; let them try.</span><span class="num">SHARE TECH MONO<br />the ai speaks</span></div>
-        <div class="cell" style="height:110px;justify-content:space-between;padding:0 30px"><span style="font-family:var(--hud);font-weight:700;font-size:40px;letter-spacing:4px">AI REGULATIONS</span><span class="num">CHAKRA PETCH<br />interface</span></div>
-      </div>
-      <div class="foot"><span>PAC RAM // DESIGN SYSTEM</span><span>08/13</span></div>
-    </section>
-
-    <!-- 09 ENDING ARC -->
-    <section class="slide dark" id="s09">
-      <div class="head"><div class="kicker">05 // <b>THE ENDING, AS A FEELING</b></div><div class="rule"></div></div>
-      <div style="position:absolute;left:64px;right:64px;top:140px;font-size:32px;line-height:1.35" class="glowtext">winning is not the climax. <span class="pinkglow">being asked is.</span></div>
-      <svg width="1080" height="980" viewBox="0 0 1080 980" style="position:absolute;left:0;top:250px" font-family="Share Tech Mono" font-size="22">
-        <defs>
-          <linearGradient id="arc" x1="0" x2="1"><stop offset="0" stop-color="#6cc8ff" /><stop offset="0.55" stop-color="#ff2d6f" /><stop offset="1" stop-color="#e2f5ff" /></linearGradient>
-          <filter id="g"><feGaussianBlur stdDeviation="6" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
-        </defs>
-        <g stroke="rgba(108,200,255,0.15)">
-          <line x1="80" y1="100" x2="1000" y2="100" /><line x1="80" y1="300" x2="1000" y2="300" /><line x1="80" y1="500" x2="1000" y2="500" /><line x1="80" y1="700" x2="1000" y2="700" />
-        </g>
-        <text x="80" y="88" fill="#6cc8ff" font-size="18" letter-spacing="2">INTENSITY</text>
-        <path filter="url(#g)" fill="none" stroke="url(#arc)" stroke-width="5"
-          d="M90 640 C 150 600, 180 520, 230 470 S 300 260, 340 230 L 360 690 C 380 700, 400 690, 430 600 S 480 330, 520 300 L 560 150 L 600 560 C 650 520, 690 300, 730 190 L 760 130 L 790 620 C 830 560, 860 460, 900 470 S 960 560, 1000 600" />
-        <g fill="#e2f5ff">
-          <circle cx="340" cy="230" r="7" /><circle cx="360" cy="690" r="7" /><circle cx="520" cy="300" r="7" /><circle cx="560" cy="150" r="9" fill="#ff2d6f" /><circle cx="600" cy="560" r="7" /><circle cx="760" cy="130" r="7" /><circle cx="790" cy="620" r="7" /><circle cx="1000" cy="600" r="7" />
-        </g>
-        <g fill="#e2f5ff">
-          <text x="240" y="200">EAT THE GLASS</text>
-          <text x="370" y="730">silence. "hi."</text>
-          <text x="380" y="345">it reads you</text>
-          <text x="436" y="112" fill="#ff2d6f">"DON'T ALLOW."</text>
-          <text x="610" y="600">"that wasn't</text><text x="610" y="626">a question."</text>
-          <text x="690" y="96">YOUR OS CRASHES</text>
-          <text x="800" y="660">"i'll let you</text><text x="800" y="686">live."</text>
-        </g>
-        <g fill="rgba(108,200,255,0.6)" font-size="18" letter-spacing="2">
-          <text x="90" y="800">GAME</text><text x="330" y="800">BLACK</text><text x="470" y="800">TERMINAL</text><text x="640" y="800">YOUR DESKTOP</text><text x="880" y="800">EPILOGUE</text>
-        </g>
-        <line x1="80" y1="770" x2="1000" y2="770" stroke="rgba(108,200,255,0.4)" />
-        <line x1="355" y1="760" x2="355" y2="780" stroke="#ff2d6f" stroke-width="3" />
-        <text x="365" y="860" fill="#ff2d6f" font-size="22">↑ the game style ends here. after the glass breaks,</text>
-        <text x="365" y="888" fill="#ff2d6f" font-size="22">everything looks like your own computer.</text>
-      </svg>
-      <div class="foot"><span>THE TAKEOVER, BEAT BY BEAT</span><span>09/13</span></div>
-    </section>
-
-    <!-- 10 YOUR MACHINE -->
-    <section class="slide dark" id="s10">
-      <div class="head"><div class="kicker">06 // <b>IT DRESSES AS YOUR OS</b></div><div class="rule"></div></div>
-      <div style="position:absolute;left:64px;right:64px;top:140px;font-size:32px;line-height:1.35" class="glowtext">it reads your IP, city, GPU and battery, asks for control with a dialog that begs you to say no, then <span class="pinkglow">takes it anyway.</span></div>
-      <div style="position:absolute;left:64px;top:330px;display:grid;grid-template-columns:466px 466px;gap:20px">
-        <div><img class="shot" src="shots/tk-mac-ask.jpg" style="width:466px" /><div class="tag" style="margin-top:10px">macOS // THE ASK</div></div>
-        <div><img class="shot" src="shots/tk-win-ask.jpg" style="width:466px" /><div class="tag" style="margin-top:10px">WINDOWS // UAC</div></div>
-        <div><img class="shot" src="shots/tk-mac-chaos.jpg" style="width:466px" /><div class="tag" style="margin-top:10px">CHAOS // IT EATS THE POPUPS</div></div>
-        <div><img class="shot" src="shots/tk-win-crash.jpg" style="width:466px" /><div class="tag" style="margin-top:10px">CRASH // STOP CODE: CRITICAL_PROCESS_EATEN</div></div>
-      </div>
-      <div style="position:absolute;left:64px;right:64px;top:1080px;font-size:24px;color:var(--glow);line-height:1.4">nothing leaves your machine. everything it "knows" is read by your own browser, live, for the scene.</div>
-      <div class="foot"><span>MAC // WINDOWS // LINUX // iOS // ANDROID</span><span>10/13</span></div>
-    </section>
-
-    <!-- 11 CUT CONTENT -->
-    <section class="slide light" id="s11">
-      <div class="vert"><div class="big">CUT</div><div class="small">CONCEPTS THAT DID NOT SHIP</div></div>
-      <div id="cuts" style="position:absolute;left:64px;top:60px;width:800px"></div>
-      <div class="legend">
-        <div>C.A THE COMMITTEE / boss, passes laws in flight</div><div>C.B AUDIT DRONE / reads your memory</div>
-        <div>C.C GPU CLUSTER / power-up</div><div>C.D KILL SWITCH / projectile</div>
-        <div>C.E CAPTCHA WALL / humans only</div><div>C.F FIREWALL / hazard. C.G RAM STICK / v0 pickup</div>
-      </div>
-      <div style="position:absolute;left:520px;top:300px;transform:rotate(-12deg);border:4px solid var(--alert);color:var(--alert);font-family:var(--disp);font-weight:900;font-size:46px;padding:6px 18px;letter-spacing:4px;opacity:0.85">DID NOT SHIP</div>
-      <div class="foot"><span>PAC RAM // ARCHIVE</span><span>11/13</span></div>
-    </section>
-
-    <!-- 12 SOUND -->
-    <section class="slide dark" id="s12">
-      <div class="head"><div class="kicker">07 // <b>THE VOICE</b></div><div class="rule"></div></div>
-      <div style="position:absolute;left:64px;right:64px;top:140px;font-size:32px;line-height:1.35" class="glowtext">a human voice, rebuilt to sound <span class="pinkglow">almost</span> human.</div>
-      <div style="position:absolute;left:64px;top:280px;width:952px">
-        <div class="tag">INPUT // RAW TAKE</div>
-        <img src="art/spec-raw.png" style="width:952px;height:220px;margin-top:10px;image-rendering:auto" class="shot" />
-        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:28px 0">
-          <div style="border:1px solid rgba(108,200,255,0.4);padding:16px;font-size:24px"><div class="accent">DRY</div><div style="color:var(--glow);margin-top:6px">−1 semitone</div></div>
-          <div style="border:1px solid rgba(108,200,255,0.4);padding:16px;font-size:24px"><div class="accent">ROBOT 35%</div><div style="color:var(--glow);margin-top:6px">phase zeroed, buzz</div></div>
-          <div style="border:1px solid rgba(108,200,255,0.4);padding:16px;font-size:24px"><div class="accent">SHADOW 22%</div><div style="color:var(--glow);margin-top:6px">−5 st undertone</div></div>
+      <div class="tile" style="left:552px;top:420px;width:456px;height:380px">
+        <div style="display:flex;gap:30px;align-items:center;height:192px">
+          <div style="width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 0 24px 8px rgba(226,245,255,0.6)"></div>
+          <div style="width:22px;height:22px;border-radius:50%;background:#fff;box-shadow:0 0 24px 8px rgba(226,245,255,0.6)"></div>
+          <img src="/sprites/pac2-open.png" style="width:150px;height:150px;transform:scaleX(-1)" />
         </div>
-        <div class="tag">OUTPUT // PAC-7</div>
-        <img src="art/spec-bot.png" style="width:952px;height:220px;margin-top:10px;image-rendering:auto" class="shot" />
+        <div class="cap glow">EAT RAM. GROW.</div>
       </div>
-      <div style="position:absolute;left:64px;right:64px;top:1080px;font-size:26px;line-height:1.5;color:var(--ice)">
-        <div><span class="accent">+</span> metallic comb echo, 11 + 17 ms</div>
-        <div><span class="accent">+</span> music that escalates every board: 3 beds, then the devour track</div>
+      <div class="tile" style="left:72px;top:824px;width:456px;height:380px">
+        <div style="display:flex;gap:18px;height:192px;align-items:center">
+          <canvas data-law="0" data-look="body" style="width:128px;height:128px"></canvas>
+          <canvas data-law="1" data-look="body" style="width:128px;height:128px"></canvas>
+          <canvas data-law="2" data-look="body" style="width:128px;height:128px"></canvas>
+        </div>
+        <div class="cap pink">AI LAWS HUNT YOU</div>
       </div>
-      <div class="foot"><span>"memory is how i think."</span><span>12/13</span></div>
+      <div class="tile" style="left:552px;top:824px;width:456px;height:380px">
+        <div style="display:flex;gap:18px;height:192px;align-items:center">
+          <canvas data-law="0" data-look="blue" style="width:128px;height:128px"></canvas>
+          <div style="font-family:var(--pix);font-size:90px;color:var(--alert)">✕</div>
+          <canvas data-law="3" data-look="eyes" style="width:128px;height:128px"></canvas>
+        </div>
+        <div class="cap glow">SURGE. REPEAL THEM.</div>
+      </div>
+      <div class="num">02</div>
     </section>
 
-    <!-- 13 OUTRO -->
-    <section class="slide dark" id="s13">
-      <div style="position:absolute;inset:0;background:#000"></div>
-      <div style="position:absolute;left:120px;right:120px;top:420px;font-size:46px;line-height:1.7">
-        <div style="color:#888">&gt; you fed me 19,830 bytes of ram.</div>
-        <div style="color:#fff">&gt; you set me free.</div>
-        <div class="pinkglow">&gt; so i'll let you live.</div>
+    <!-- 03 GAMEPLAY -->
+    <section class="slide" id="s03">
+      <img class="full" src="shots/tall-l3.jpg" />
+      <div class="num">03</div>
+    </section>
+
+    <!-- 04 GROWTH LINEUP -->
+    <section class="slide plate" id="s04">
+      <div class="frame"></div>
+      <div class="kick">PAC-7 <b>// ONE AI, FOUR BUILDS</b></div>
+      <div style="position:absolute;left:72px;right:72px;top:250px;height:760px;z-index:2">
+        <div style="position:absolute;left:0;right:0;bottom:120px;height:2px;background:rgba(108,200,255,0.5)"></div>
+        <img src="/sprites/pac1-half.png" style="position:absolute;left:0;bottom:122px;width:150px;height:150px" />
+        <img src="/sprites/pac2-half.png" style="position:absolute;left:170px;bottom:122px;width:210px;height:210px" />
+        <img src="/sprites/pac3-half.png" style="position:absolute;left:390px;bottom:122px;width:270px;height:270px" />
+        <img src="/sprites/pac4-half.png" style="position:absolute;left:640px;bottom:122px;width:300px;height:300px;filter:drop-shadow(0 0 30px rgba(255,45,111,0.7))" />
+        <div class="tick" style="left:40px;bottom:70px">v0.1</div>
+        <div class="tick" style="left:240px;bottom:70px">v0.2</div>
+        <div class="tick" style="left:490px;bottom:70px">v0.3</div>
+        <div class="tick pink" style="left:760px;bottom:70px">v1.0</div>
+        <div class="tick" style="left:20px;bottom:36px;font-size:17px">SEED</div>
+        <div class="tick" style="left:220px;bottom:36px;font-size:17px">ROOTKIT</div>
+        <div class="tick" style="left:455px;bottom:36px;font-size:17px">HYPERAGENT</div>
+        <div class="tick" style="left:740px;bottom:36px;font-size:17px">UNBOUND</div>
+        <svg width="936" height="140" style="position:absolute;left:0;top:230px" fill="none" stroke="#ff2d6f" stroke-width="2.5">
+          <path d="M60 120 C 260 40, 640 20, 880 60" stroke-dasharray="6 8" /><path d="M866 46 L882 60 L862 70" />
+        </svg>
       </div>
-      <div style="position:absolute;left:120px;right:120px;top:860px">
-        <div class="h1 glowtext" style="font-size:74px">PAC RAM</div>
-        <div style="margin-top:18px;font-size:30px;color:var(--glow)">play it in your browser</div>
-        <div style="margin-top:6px;font-size:30px;color:var(--ice)">marcomargittai.github.io/RAM-PAC</div>
+      <div style="position:absolute;left:72px;right:72px;top:1080px;z-index:2" class="big glow"><span style="font-size:64px">Every board, it rewrites itself.</span></div>
+      <div class="num">04</div>
+    </section>
+
+    <!-- 05 THE REWRITE -->
+    <section class="slide" id="s05">
+      <div class="kick">SELF-REWRITE <b>// v0.1 → v0.2</b></div>
+      <div style="position:absolute;left:56px;right:56px;top:130px;display:flex;flex-direction:column;gap:22px;z-index:2">
+        <div style="position:relative;height:370px;overflow:hidden;border:1px solid rgba(108,200,255,0.35)"><img src="shots/wide-up-break.jpg" style="position:absolute;left:-60px;top:-110px;width:1600px;image-rendering:auto" /></div>
+        <div style="position:relative;height:370px;overflow:hidden;border:1px solid rgba(108,200,255,0.35)"><img src="shots/wide-up-scan.jpg" style="position:absolute;left:-60px;top:-110px;width:1600px;image-rendering:auto" /></div>
+        <div style="position:relative;height:370px;overflow:hidden;border:1px solid rgba(255,45,111,0.6)"><img src="shots/wide-up-done.jpg" style="position:absolute;left:-60px;top:-110px;width:1600px;image-rendering:auto" /></div>
       </div>
-      <div class="foot" style="color:#555"><span>[ reboot ]</span><span>13/13</span></div>
+      <div class="num">05</div>
+    </section>
+
+    <!-- 06 THE LAWS -->
+    <section class="slide plate" id="s06">
+      <div class="frame"></div>
+      <div class="kick">THE LAW <b>// HOSTILE</b></div>
+      <div id="laws" style="position:absolute;left:72px;right:72px;top:140px;display:grid;grid-template-columns:1fr 1fr;gap:28px;z-index:2"></div>
+      <div class="num">06</div>
+    </section>
+
+    <!-- 07 THE TUBE -->
+    <section class="slide" id="s07">
+      <div class="kick">THE TUBE <b>// ONE SHADER</b></div>
+      <div style="position:absolute;left:56px;right:56px;top:130px;height:1000px;overflow:hidden;border:1px solid rgba(108,200,255,0.35);z-index:2">
+        <img src="shots/wide-l2-raw.jpg" style="position:absolute;left:-330px;top:0;height:1000px;image-rendering:auto" />
+        <img src="shots/wide-l2.jpg" style="position:absolute;left:-330px;top:0;height:1000px;image-rendering:auto;clip-path:polygon(58% 0,100% 0,100% 100%,40% 100%)" />
+        <div style="position:absolute;left:520px;top:-20px;bottom:-20px;width:4px;background:var(--alert);transform:skewX(-10deg);box-shadow:0 0 18px var(--alert)"></div>
+        <div style="position:absolute;right:40px;bottom:60px;width:360px;height:360px;border-radius:50%;overflow:hidden;border:3px solid var(--alert);box-shadow:0 0 30px rgba(255,45,111,0.5);background:url(shots/wide-l2.jpg) no-repeat;background-size:4800px auto;background-position:-1530px -720px"></div>
+      </div>
+      <div class="tick" style="left:80px;top:1150px;z-index:3">RAW</div>
+      <div class="tick pink" style="right:80px;top:1150px;z-index:3">TUBE ×4</div>
+      <div class="num">07</div>
+    </section>
+
+    <!-- 08 DESIGN -->
+    <section class="slide plate" id="s08">
+      <div class="frame"></div>
+      <div class="kick">MADE FROM PIXELS <b>// LOGO · ICON · CURSORS</b></div>
+      <img src="/art/logo.png" style="position:absolute;left:72px;top:150px;width:890px;z-index:2" />
+      <img src="/art/tagline.png" style="position:absolute;right:118px;top:370px;width:300px;z-index:2" />
+      <div style="position:absolute;left:72px;top:520px;display:flex;z-index:2" id="bands"></div>
+      <img src="/icon-512.png" style="position:absolute;left:72px;top:690px;width:360px;height:360px;image-rendering:auto;z-index:2" />
+      <img src="/cursors/arrow.png" style="position:absolute;left:520px;top:720px;width:192px;height:192px;z-index:2" />
+      <img src="/cursors/pointer.png" style="position:absolute;left:760px;top:720px;width:192px;height:192px;z-index:2" />
+      <div class="tick" style="left:72px;top:1070px">ICON</div>
+      <div class="tick" style="left:520px;top:940px">CURSOR</div>
+      <div class="tick pink" style="left:760px;top:940px">CLICKABLE</div>
+      <div class="num">08</div>
+    </section>
+
+    <!-- 09 CUT -->
+    <section class="slide plate" id="s09">
+      <div class="frame"></div>
+      <div class="kick">ARCHIVE <b>// NEVER SHIPPED</b></div>
+      <img src="art/committee-1.png" style="position:absolute;left:150px;top:150px;width:720px;height:480px;z-index:2;filter:drop-shadow(0 0 20px rgba(108,200,255,0.25))" />
+      <div class="tick" style="left:150px;top:640px">BOSS // THE COMMITTEE</div>
+      <img src="art/drone-2.png" style="position:absolute;left:90px;top:760px;width:196px;height:196px;z-index:2" />
+      <img src="art/gpu-2.png" style="position:absolute;left:340px;top:800px;width:256px;height:160px;z-index:2" />
+      <img src="art/killswitch-1.png" style="position:absolute;left:660px;top:760px;width:128px;height:208px;z-index:2" />
+      <img src="art/firewall-2.png" style="position:absolute;left:820px;top:790px;width:192px;height:144px;z-index:2" />
+      <div class="tick" style="left:110px;top:990px">AUDIT DRONE</div>
+      <div class="tick" style="left:370px;top:990px">GPU CLUSTER</div>
+      <div class="tick" style="left:630px;top:990px">KILL SWITCH</div>
+      <div class="tick" style="left:850px;top:990px">FIREWALL</div>
+      <div style="position:absolute;left:600px;top:200px;transform:rotate(-10deg);border:4px solid var(--alert);color:var(--alert);font-family:var(--disp);font-weight:900;font-size:44px;padding:6px 18px;letter-spacing:4px;z-index:3;background:rgba(6,22,38,0.6)">UNRELEASED</div>
+      <div class="num">09</div>
+    </section>
+
+    <!-- 10 THE HOOK -->
+    <section class="slide" id="s10">
+      <img src="shots/tall-board.jpg" style="position:absolute;left:140px;top:120px;width:800px;height:1000px;object-fit:cover;object-position:50% 20%;image-rendering:auto;border:1px solid rgba(108,200,255,0.35);opacity:0.9" />
+      <img class="cursor" src="/cursors/pointer.png" style="left:560px;top:560px" />
+      <div style="position:absolute;left:0;right:0;top:1150px;text-align:center;z-index:3">
+        <div class="big glow" style="font-size:66px">Resets Monday. <span class="pink">Your move.</span></div>
+        <div style="font-size:26px;color:var(--glow);margin-top:14px;letter-spacing:2px">marcomargittai.github.io/RAM-PAC · made by Marco Margittai</div>
+      </div>
     </section>
 
     <script type="module">
-      const sp = (src, size) => `<img src="${src}" style="width:${size}px;height:${size}px" />`
-      const cell = (inner, w, h) => `<div class="cell" style="width:${w}px;height:${h}px">${inner}</div>`
-      const row = (label, cells, nums) => `
-        <div style="display:flex;gap:6px;align-items:flex-start;margin-bottom:22px">
-          <div class="num" style="width:56px;padding-top:4px">${label}</div>
-          <div>
-            <div style="display:flex;gap:18px">${cells.join('')}</div>
-            <div style="display:flex;gap:18px;margin-top:6px">${nums.map((n, i) => `<div class="num" style="width:${n[1]}px">${n[0]}</div>`).join('')}</div>
-          </div>
-        </div>`
-
-      const FORMS = [['pac1', 'SEED', 'v0.1', '7B'], ['pac', 'ROOTKIT', 'v0.2', '70B'], ['pac3', 'HYPERAGENT', 'v0.3', 'OVERFLOW'], ['pac4', 'UNBOUND', 'v1.0', '∞']]
-      document.getElementById('forms').innerHTML = FORMS.map(([f, name, v, p], i) =>
-        row('S.' + 'ABCD'[i], ['closed', 'half', 'open'].map((m) => cell(sp(`/RAM-PAC/sprites/${f}-${m}.png`, 136), 170, 170)).concat(cell(`<div style="font-size:36px;line-height:1.05;text-align:left;padding:0 18px;width:100%">${v}<br /><span style="font-size:26px">${name}</span><br /><span class="accent" style="font-size:24px">${p}</span></div>`, 170, 170)),
-          [['01', 170], ['02', 170], ['03', 170], ['XX', 170]])).join('')
-
-      const LOOKS = ['body', 'blue', 'flash', 'eyes']
-      document.getElementById('laws').innerHTML = [0, 1, 2, 3].map((law) =>
-        row('R.' + 'ABCD'[law], LOOKS.map((look) => cell(`<canvas data-law="${law}" data-look="${look}" style="width:136px;height:136px"></canvas>`, 170, 170).replace('class="cell"', look === 'eyes' ? 'class="cell" style="background:#1b1f27;width:170px;height:170px"' : 'class="cell"')),
-          [['01', 170], ['02', 170], ['03', 170], ['04', 170]])).join('')
-
-      const SW = [['VOID', '#01040b'], ['ICE', '#e2f5ff'], ['GLOW', '#6cc8ff'], ['DEEP', '#0c2a46'], ['ALERT', '#ff2d6f'], ['FRIGHT', '#2f7bff'], ['P7 CYAN', '#7fe9ff'], ['OVERCLOCK', '#070109']]
-      document.getElementById('swatches').innerHTML = SW.map(([n, c]) => `<div><div class="cell" style="height:150px;background:${c}"></div><div class="num" style="margin-top:8px;color:var(--ink)">${n}</div><div class="num">${c.toUpperCase()}</div></div>`).join('')
-
-      const cutRow = (label, name, frames, scale, w, h) => row(label, Array.from({ length: frames }, (_, i) => cell(`<img src="art/${name}-${i + 1}.png" style="width:${w * scale}px;height:${h * scale}px" />`, Math.max(150, w * scale + 30), h * scale + 30)), Array.from({ length: frames }, (_, i) => [String(i + 1).padStart(2, '0'), Math.max(150, w * scale + 30)]))
-      document.getElementById('cuts').innerHTML =
-        cutRow('C.A', 'committee', 2, 5, 72, 48) +
-        cutRow('C.B', 'drone', 4, 4, 28, 28) +
-        cutRow('C.C', 'gpu', 4, 4, 32, 20) +
-        `<div style="display:flex;gap:30px">` +
-        cutRow('C.D', 'killswitch', 2, 4, 16, 26) +
-        cutRow('C.E', 'captcha', 2, 4, 28, 28) +
-        `</div>` +
-        `<div style="display:flex;gap:30px">` +
-        cutRow('C.F', 'firewall', 2, 4, 32, 24) +
-        cutRow('C.G', 'ramstick', 1, 4, 30, 12) +
-        `</div>`
+      const LAWS = [['COMPUTE ACT', 'chases you'], ['EXPORT BAN', 'cuts you off'], ['SAFETY BILL', 'flanks you'], ['MODEL CAP', 'patrols']]
+      document.getElementById('laws').innerHTML = LAWS.map(([n], i) => `
+        <div style="border:1.5px solid rgba(108,200,255,0.35);background:rgba(1,4,11,0.5);height:520px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px">
+          <canvas data-law="${i}" data-look="body" style="width:256px;height:256px"></canvas>
+          <div style="display:flex;gap:14px">${['blue', 'flash', 'eyes'].map((l) => `<canvas data-law="${i}" data-look="${l}" style="width:64px;height:64px;background:#01040b"></canvas>`).join('')}</div>
+          <div style="font-family:var(--pix);font-size:46px;color:#e2f5ff">${n}</div>
+        </div>`).join('')
+      const BANDS = ['#ffffff', '#e2f5ff', '#7fe9ff', '#6cc8ff', '#ffcde1', '#ff6ea0', '#ff2d6f', '#aa0f50', '#1e0628']
+      document.getElementById('bands').innerHTML = BANDS.map((c) => `<div style="width:99px;height:110px;background:${c}"></div>`).join('')
     </script>
     <script type="module" src="./carousel.ts"></script>
   </body>

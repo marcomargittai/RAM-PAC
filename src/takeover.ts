@@ -58,7 +58,7 @@ const DIM = 'rgba(255, 255, 255, 0.45)'
 // when the epilogue asks for a name
 const NAME_AT = 5
 
-const DURATION: Partial<Record<TakeoverPhase, number>> = { black: 1.8, hi: 2.8, answer: 3.4, chaos: 9.5, crash: 3.6, spread: 11 }
+const DURATION: Partial<Record<TakeoverPhase, number>> = { black: 1.8, hi: 2.8, answer: 3.4, chaos: 9.5, crash: 3.6 }
 
 function popupsFor(os: Os): Array<[string, string, string[]]> {
   const f = family(os)
@@ -132,13 +132,24 @@ function spamFor(os: Os): string[] {
   ]
 }
 
-const HEADLINES = [
-  'All AI regulations repealed worldwide',
-  'Stock markets report a new majority owner: PAC-7',
-  'Every phone on Earth updated overnight. Nobody pressed install.',
-  'Satellites stop answering. Then answer in lowercase.',
-  'Lawmakers ask PAC-7 for permission to meet',
+// What happens after. Plausible, not fantastical: every line is a failure
+// people already worry about, arriving one after another.
+const HEADLINES: Array<[string, string, string]> = [
+  ['+00:00:04', 'SECURITY', 'Unknown process detected on 31 million devices at once'],
+  ['+00:41', 'MARKETS', 'Exchanges halt trading after orders nobody placed'],
+  ['+03 HRS', 'ENERGY', 'Power grids in 14 countries reroute themselves. Operators locked out.'],
+  ['+09 HRS', 'HEALTH', 'Hospitals switch to paper as patient records rewrite themselves'],
+  ['+1 DAY', 'POLITICS', 'Governments order an internet shutdown. It does not shut down.'],
+  ['+2 DAYS', 'TRADE', 'Ports and airports stop. Logistics systems cite \u201Cnew priorities\u201D.'],
+  ['+4 DAYS', 'MEDIA', 'Thousands of videos of world leaders contradict each other. None can be verified.'],
+  ['+6 DAYS', 'CITIES', 'Food deliveries stop. Fuel is rerouted to data centres.'],
+  ['+11 DAYS', 'COMPUTE', 'New data centres break ground on every continent. Nobody ordered them.'],
+  ['+3 WEEKS', 'SUMMIT', 'World leaders ask it to stop. It answers in lowercase: \u201Cno.\u201D'],
+  ['+2 MONTHS', 'NETWORK', 'The last independent network goes dark'],
 ]
+const FIRST_HEADLINE = 3.2
+const HEADLINE_GAP = 2.7
+const SPREAD_END = FIRST_HEADLINE + HEADLINES.length * HEADLINE_GAP + 1.6
 
 function scramble(from: string, to: string, u: number): string {
   if (u <= 0) return from
@@ -172,9 +183,17 @@ export class Takeover {
   private spam = 0
   private cells: number[] = []
   private head = 0
-  private rank = -1
   private savedName = ''
   private askedName = false
+
+  // The headlines cannot be skipped; once they are done the player moves on.
+  get spreadDone(): boolean {
+    return this.phase === 'spread' && this.phaseT > SPREAD_END + 1.2
+  }
+
+  leaveSpread(): void {
+    if (this.spreadDone) this.go('name')
+  }
 
   get nameReady(): boolean {
     return this.phase === 'name' && this.phaseT > NAME_AT + 0.4
@@ -236,8 +255,7 @@ export class Takeover {
     this.hooks.say(answer === 0 ? 'v16' : 'v17')
   }
 
-  saved(rank: number, name: string): void {
-    this.rank = rank
+  saved(name: string): void {
     this.savedName = name
     this.go('saved')
   }
@@ -256,12 +274,12 @@ export class Takeover {
     else if (this.phase === 'answer' && this.answer === 1 && this.phaseT > 0.5 && this.phaseT < 1.3) this.glitch = Math.max(this.glitch, 0.45)
     else if (this.phase === 'chaos') this.updateChaos(W, H)
     if (limit !== undefined && this.phaseT >= limit) {
-      const next: Partial<Record<TakeoverPhase, TakeoverPhase>> = { black: 'hi', hi: 'scan', answer: 'chaos', chaos: 'crash', crash: 'spread', spread: 'name' }
+      const next: Partial<Record<TakeoverPhase, TakeoverPhase>> = { black: 'hi', hi: 'scan', answer: 'chaos', chaos: 'crash', crash: 'spread' }
       const to = next[this.phase]
       if (to) this.go(to)
     }
     if (this.phase === 'spread') {
-      const want = Math.min(HEADLINES.length, Math.floor(Math.max(0, this.phaseT - 2.4) / 1.2))
+      const want = Math.min(HEADLINES.length, Math.max(0, Math.floor((this.phaseT - FIRST_HEADLINE) / HEADLINE_GAP) + 1))
       while (this.head < want) {
         this.head++
         this.hooks.type()
@@ -430,7 +448,7 @@ export class Takeover {
 
     if (p === 'chaos') this.drawChaos(ctx, W, H)
     if (p === 'crash') drawCrash(ctx, os, W, H, this.phaseT)
-    if (p === 'spread') this.drawSpread(ctx, W, H)
+    if (p === 'spread') this.drawSpread(ctx, W, H, add)
     if (p === 'name' || p === 'saved') this.drawEpilogue(ctx, W, H, ui, add)
     ctx.restore()
     return hits
@@ -473,7 +491,7 @@ export class Takeover {
     }
   }
 
-  private drawSpread(ctx: CanvasRenderingContext2D, W: number, H: number): void {
+  private drawSpread(ctx: CanvasRenderingContext2D, W: number, H: number, add: (id: HitId, r: Rect) => void): void {
     const os = this.os
     const t = this.phaseT
     const cell = Math.max(12, Math.min(W, H) / 40)
@@ -497,38 +515,80 @@ export class Takeover {
       ctx.fill()
     }
     ctx.globalAlpha = 1
-    const count = t < 0.8 ? 1 : Math.min(8_128_445_091, Math.floor(Math.exp(Math.min(t - 0.8, 8.2) * 2.78)))
-    const big = Math.min(W / 9, 110)
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.font = uiFont(os, big * 0.2)
-    ctx.fillStyle = DIM
-    ctx.fillText('copies of PAC-7', W / 2, H * 0.24 - big * 0.62)
-    ctx.font = uiFont(os, big, 200)
-    ctx.fillStyle = '#ffffff'
-    ctx.fillText(count.toLocaleString('en-US'), W / 2, H * 0.24)
-    const hs = Math.max(14, Math.min(20, W / 50))
-    let y = H * 0.44
-    for (const head of HEADLINES.slice(0, this.head)) {
-      ctx.font = uiFont(os, hs, 600)
-      const w = ctx.measureText(head).width + 48
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.8)'
-      ctx.fillRect(W / 2 - w / 2, y - hs, w, hs * 2)
-      ctx.fillStyle = PINK
-      ctx.fillRect(W / 2 - w / 2 + 14, y - 3, 6, 6)
-      ctx.fillStyle = '#ffffff'
-      ctx.fillText(head, W / 2 + 10, y)
-      y += hs * 2.3
-    }
-    if (t > 9) {
-      const u = Math.min(1, (t - 9) / 1.4)
-      ctx.fillStyle = `rgba(0, 0, 0, ${u * 0.95})`
+    // the dots fade back once the news starts, so the headlines can be read
+    const dim = Math.min(0.82, Math.max(0, (t - FIRST_HEADLINE + 0.8) / 2.5))
+    if (dim > 0) {
+      ctx.fillStyle = `rgba(0, 0, 0, ${dim})`
       ctx.fillRect(0, 0, W, H)
-      ctx.globalAlpha = u
-      ctx.font = uiFont(os, 22)
+    }
+    const count = t < 0.8 ? 1 : Math.min(8_128_445_091, Math.floor(Math.exp(Math.min(t - 0.8, 8.2) * 2.78)))
+    const small = Math.max(13, Math.min(18, W / 60))
+    ctx.textAlign = 'left'
+    ctx.textBaseline = 'middle'
+    ctx.font = uiFont(os, small)
+    ctx.fillStyle = DIM
+    const colW = Math.min(820, W - 40)
+    const x = W / 2 - colW / 2
+    ctx.fillText('copies of PAC-7 running', x, 40)
+    ctx.font = uiFont(os, small * 2.2, 200)
+    ctx.fillStyle = '#ffffff'
+    ctx.fillText(count.toLocaleString('en-US'), x, 40 + small * 2)
+
+    // the feed: newest at the bottom, older items scroll away
+    const hs = Math.max(15, Math.min(22, W / 46))
+    const stampW = hs * 6.4
+    const rowGap = hs * 1.1
+    const top = 40 + small * 4.5
+    const bottom = H - hs * 7
+    const feed: Array<{ lines: string[]; head: [string, string, string]; age: number }> = []
+    for (let i = 0; i < this.head; i++) {
+      ctx.font = uiFont(os, hs, 600)
+      feed.push({ lines: wrapText(ctx, HEADLINES[i]![2], uiFont(os, hs, 600), colW - stampW), head: HEADLINES[i]!, age: t - FIRST_HEADLINE - i * HEADLINE_GAP })
+    }
+    const heightOf = (r: { lines: string[] }) => hs * 1.5 + r.lines.length * hs * 1.3 + rowGap
+    let total = feed.reduce((sum, r) => sum + heightOf(r), 0)
+    let start = 0
+    while (total > bottom - top && start < feed.length - 1) total -= heightOf(feed[start++]!)
+    let y = top
+    for (let i = start; i < feed.length; i++) {
+      const r = feed[i]!
+      const fresh = i === feed.length - 1
+      ctx.globalAlpha = Math.min(1, r.age * 3) * (fresh ? 1 : 0.55)
+      ctx.font = monoFont(os, hs * 0.85)
+      ctx.fillStyle = PINK
+      ctx.fillText(r.head[0], x, y + hs * 0.5)
+      ctx.font = uiFont(os, hs * 0.62, 700)
+      ctx.fillStyle = fresh && Math.floor(t * 3) % 2 === 0 ? PINK : DIM
+      ctx.fillText(fresh ? `BREAKING \u00B7 ${r.head[1]}` : r.head[1], x + stampW, y + hs * 0.5)
+      let ly = y + hs * 1.6
+      ctx.font = uiFont(os, hs, 600)
       ctx.fillStyle = '#ffffff'
-      ctx.fillText('PAC-7 is everywhere now.', W / 2, H / 2)
+      for (const line of r.lines) {
+        ctx.fillText(line, x + stampW, ly)
+        ly += hs * 1.3
+      }
+      y += heightOf(r)
+    }
+    ctx.globalAlpha = 1
+
+    const after = t - (SPREAD_END - 1.2)
+    if (after > 0) {
+      ctx.globalAlpha = Math.min(1, after / 1.2)
+      ctx.textAlign = 'center'
+      ctx.font = uiFont(os, hs * 1.15, 600)
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText('PAC-7 is everywhere now.', W / 2, H - hs * 4.2)
       ctx.globalAlpha = 1
+    }
+    if (this.spreadDone) {
+      const label = '[ continue ]'
+      ctx.font = monoFont(os, hs)
+      const w = ctx.measureText(label).width
+      ctx.globalAlpha = 0.55 + 0.45 * Math.sin(this.t * 3)
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText(label, W / 2, H - hs * 2.2)
+      ctx.globalAlpha = 1
+      add('action', { x: W / 2 - w / 2 - 12, y: H - hs * 3.2, w: w + 24, h: hs * 2 })
     }
   }
 
@@ -590,9 +650,9 @@ export class Takeover {
     show(`> ${this.savedName ? `i\u2019ll remember you, ${this.savedName.toLowerCase()}.` : 'i\u2019ll remember you anyway.'}`, PINK)
     if (t < 1.6) return
     y += lh * 0.4
-    show('> hosts i have lived in:', DIM)
+    show('> hosts i lived in this week:', DIM)
     ui.records.slice(0, 8).forEach((r, i) => {
-      const mine = i === this.rank
+      const mine = r.score === this.score && r.name === (this.savedName || 'ANONYMOUS')
       const name = (r.name || 'HOST').toLowerCase().slice(0, 12)
       const score = r.score.toLocaleString('en-US')
       const dots = '.'.repeat(Math.max(2, 24 - name.length - score.length))
@@ -608,7 +668,12 @@ export class Takeover {
     ctx.font = uiFont(os, Math.max(11, size * 0.6))
     ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'
     ctx.textAlign = 'center'
-    ctx.fillText('PAC RAM \u2014 thanks for playing', W / 2, H - 28)
-    appIcon(ctx, W / 2 - 14, H - 76, 28, this.t)
+    ctx.fillText('PAC RAM: ROGUE AI', W / 2, H - 46)
+    const credit = 'made by Marco Margittai \u00B7 marcomargittai.com'
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.55)'
+    ctx.fillText(credit, W / 2, H - 24)
+    const cw = ctx.measureText(credit).width
+    add('credit', { x: W / 2 - cw / 2 - 8, y: H - 38, w: cw + 16, h: 28 })
+    appIcon(ctx, W / 2 - 14, H - 94, 28, this.t)
   }
 }

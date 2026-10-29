@@ -1,11 +1,10 @@
 #!/usr/bin/env python3
 """Draws PAC-7's growth forms as 32x32 sprites.
 
-v0.2 is the original hand-drawn sprite (public/sprites/pac-*.png). This
-script draws the others in the same palette and outline so they read as one
-family:
+All four builds share one palette and outline so they read as one family:
 
   v0.1 SEED        level 1. small, unfinished, mostly wireframe
+  v0.2 ROOTKIT     level 2. a finished shell, a screen for a face, memory contacts
   v0.3 HYPERAGENT  level 3. armored, pink core, crown of antennae
   v1.0 UNBOUND     finale. dark body, glowing circuits, teeth
 
@@ -38,6 +37,7 @@ C = {
     'v': (30, 6, 40),  # void violet
     'w': (70, 18, 80),  # violet
     's': (120, 150, 200),  # steel
+    'y': (255, 225, 74),  # contact gold
 }
 
 N = 32
@@ -116,6 +116,44 @@ def seed(frame):
     put(g, 13, 12, '4', mask)
     if frame == 'closed':
         closed_line(g, cx, cy, mask, 26)
+    return g
+
+
+def rootkit(frame):
+    """v0.2: the first finished shell. A screen for a face, memory contacts on its back."""
+    cx, cy, r = 15.5, 15.5, 12.8
+    full = disc(cx, cy, r)
+    mask = mouth_cut(full, cx, cy, MOUTH[frame])
+    g = blank()
+    for (x, y) in mask:
+        g[y][x] = '1'
+    outline(g, mask)
+    # shading: the underside of the shell
+    for (x, y) in mask:
+        if g[y][x] != '0' and math.hypot(x - cx, y - (cy - 3)) > 12.2 and y > cy:
+            g[y][x] = '3'
+    # memory contacts along the back of the head
+    for i in range(14):
+        a = math.radians(115 + i * 9)
+        x = round(cx + math.cos(a) * 10.4)
+        y = round(cy - math.sin(a) * 10.4)
+        put(g, x, y, 'm' if i % 2 else 'y', mask)
+    # the face: a small dark screen with a cyan iris and a purple pupil
+    rect(g, 9, 7, 17, 13, 'k', mask)
+    rect(g, 10, 8, 16, 12, 'n', mask)
+    rect(g, 12, 8, 15, 12, '4', mask)
+    rect(g, 13, 9, 14, 11, '5', mask)
+    put(g, 12, 8, '2', mask)
+    # scan line across the screen
+    for x in range(10, 17):
+        if g[10][x] == 'n':
+            g[10][x] = 'm'
+    # a trace running from the screen down the cheek
+    for (x, y) in ((9, 14), (8, 15), (8, 16), (8, 17), (9, 18), (10, 18), (11, 18), (12, 19)):
+        put(g, x, y, '4', mask)
+    put(g, 12, 20, 'p', mask)
+    if frame == 'closed':
+        closed_line(g, cx, cy, mask, 28)
     return g
 
 
@@ -242,15 +280,12 @@ def save(g, path):
 
 
 def main():
-    forms = {'pac1': seed, 'pac3': hyper, 'pac4': unbound}
+    forms = {'pac1': seed, 'pac2': rootkit, 'pac3': hyper, 'pac4': unbound}
     sheet = Image.new('RGBA', (N * 3 * 8 + 40, N * 4 * 8 + 60), (24, 24, 30, 255))
     row = 0
-    for name in ('pac1', 'pac-', 'pac3', 'pac4'):
+    for name in ('pac1', 'pac2', 'pac3', 'pac4'):
         for i, frame in enumerate(('closed', 'half', 'open')):
-            if name == 'pac-':
-                im = Image.open(os.path.join(OUT, f'pac-{frame}.png')).convert('RGBA')
-            else:
-                im = save(forms[name](frame), os.path.join(OUT, f'{name}-{frame}.png'))
+            im = save(forms[name](frame), os.path.join(OUT, f'{name}-{frame}.png'))
             big = im.resize((N * 8, N * 8), Image.NEAREST)
             sheet.paste(big, (i * (N * 8 + 20), row * (N * 8 + 20)), big)
         row += 1

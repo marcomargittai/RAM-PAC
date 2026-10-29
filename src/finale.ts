@@ -12,7 +12,10 @@ import { FINALE_LINES } from './story'
 const CHUNK = 20
 const VEC: Record<Dir, [number, number]> = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] }
 
-export type FinalePhase = 'maze' | 'ui' | 'vacuum' | 'glass' | 'gone'
+export type FinalePhase = 'maze' | 'pause' | 'ui' | 'vacuum' | 'glass' | 'gone'
+
+// How long the world holds still after the maze is gone, before the rest opens up.
+const PAUSE = 4.2
 
 interface Bit {
   x: number
@@ -25,6 +28,7 @@ interface Bit {
 
 interface Hooks {
   chomp(): void
+  rumble(): void
   say(id: string): number
   shatter(): void
   glitch(): void
@@ -57,6 +61,21 @@ export class Finale {
   private totalEaten = 0
   private bits: Bit[] = []
   private said = new Set<string>()
+  private rumbled = false
+
+  // The music each phase wants: a held breath while eating the maze, silence
+  // when the maze is gone and again before the glass, the full track between.
+  get bed(): 'tense' | 'hush' | 'finale' {
+    if (this.phase === 'maze') return this.phaseT < 1.2 ? 'hush' : 'tense'
+    if (this.phase === 'ui' || this.phase === 'vacuum') return 'finale'
+    return 'hush'
+  }
+
+  // How hard the frozen interface shakes, 0 to 1.
+  get tremor(): number {
+    if (this.phase !== 'pause') return 0
+    return Math.max(0, (this.phaseT - 2.4) / (PAUSE - 2.4)) ** 2
+  }
 
   constructor(
     snap: HTMLCanvasElement,
@@ -161,16 +180,28 @@ export class Finale {
       this.eatAround()
       const boardDone = this.boardInk ? this.boardEaten / this.boardInk : 1
       if (this.phase === 'maze' && (boardDone > 0.72 || this.phaseT > 22)) {
-        this.setPhase('ui')
-        this.glitch = 1
-        this.hooks.glitch()
-        this.line('outside')
+        this.setPhase('pause')
+        this.rumbled = false
       }
       if (this.phase === 'ui') {
         const outside = this.totalInk - this.boardInk
         const outEaten = this.totalEaten - this.boardEaten
         if (outside && outEaten / outside > 0.35) this.line('delicious')
         if (this.progress > 0.9 || this.phaseT > 40) this.setPhase('vacuum')
+      }
+    } else if (this.phase === 'pause') {
+      // The maze is gone. Nothing moves. Then something under the interface does.
+      if (this.phaseT > 1.4) this.line('wait')
+      if (this.phaseT > 2.4 && !this.rumbled) {
+        this.rumbled = true
+        this.hooks.rumble()
+      }
+      this.glitch = Math.max(this.glitch, this.tremor * 0.5)
+      if (this.phaseT > PAUSE) {
+        this.setPhase('ui')
+        this.glitch = 1
+        this.hooks.glitch()
+        this.line('outside')
       }
     } else if (this.phase === 'vacuum') {
       // The rest of the screen falls into the mouth on its own.
@@ -249,7 +280,8 @@ export class Finale {
 
   draw(ctx: CanvasRenderingContext2D, time: number): void {
     const { W, H } = this.lay
-    ctx.drawImage(this.remaining, 0, 0, W, H)
+    const shake = this.tremor * 7
+    ctx.drawImage(this.remaining, (Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake, W, H)
 
     for (const bit of this.bits) {
       ctx.globalAlpha = Math.min(1, bit.life * 3)
@@ -273,7 +305,8 @@ export class Finale {
       fill(ctx, 'rgba(0, 0, 0, 0.8)', hx, hy, 330, 74)
       fill(ctx, ALERT, hx, hy, 4, 74)
       label(ctx, `CONSUMING // ${String(pct).padStart(3, '0')}%`, hx + 16, hy + 22, 28, ALERT, 'left')
-      label(ctx, this.phase === 'maze' ? 'EAT THE MAZE' : 'EAT EVERYTHING', hx + 16, hy + 54, 24, ICE, 'left')
+      const goal = this.phase === 'maze' ? 'EAT THE MAZE' : this.phase === 'pause' ? (this.phaseT < 2.4 ? 'NO MAZE LEFT' : 'SIGNAL OUTSIDE MAZE') : 'EAT EVERYTHING'
+      label(ctx, goal, hx + 16, hy + 54, 24, this.phase === 'pause' && Math.floor(this.t * 4) % 2 === 0 ? ALERT : ICE, 'left')
     }
     if (this.subtitleLife > 0 && this.subtitle) {
       ctx.globalAlpha = Math.min(1, this.subtitleLife)
