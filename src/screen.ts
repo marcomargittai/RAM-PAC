@@ -147,7 +147,7 @@ export function button(
   size = 14,
 ): void {
   const lit = frame.view.hover === id || frame.view.held.has(id)
-  ctx.fillStyle = lit ? 'rgba(108, 200, 255, 0.16)' : 'rgba(1, 4, 11, 0.6)'
+  ctx.fillStyle = lit ? 'rgba(150, 214, 255, 0.16)' : 'rgba(1, 4, 11, 0.6)'
   ctx.fillRect(x, y, w, h)
   ctx.strokeStyle = lit ? ICE : tone
   ctx.globalAlpha = lit ? 1 : 0.75
@@ -160,9 +160,9 @@ export function button(
 }
 
 export function module(ctx: CanvasRenderingContext2D, title: string, x: number, y: number, w: number, h: number, tone: string): void {
-  ctx.fillStyle = 'rgba(108, 200, 255, 0.035)'
+  ctx.fillStyle = 'rgba(150, 214, 255, 0.035)'
   ctx.fillRect(x, y, w, h)
-  ctx.strokeStyle = 'rgba(108, 200, 255, 0.16)'
+  ctx.strokeStyle = 'rgba(150, 214, 255, 0.16)'
   ctx.lineWidth = 1
   ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1)
   brackets(ctx, tone, x, y, w, h, 10, 1)
@@ -237,7 +237,7 @@ export function snapshot(game: Game, view: View, scale: number): { canvas: HTMLC
 
 export function drawBackdrop(ctx: CanvasRenderingContext2D, view: View, th: Theme): void {
   const glow = ctx.createRadialGradient(view.width / 2, view.height * 0.45, 0, view.width / 2, view.height * 0.45, Math.max(view.width, view.height) * 0.7)
-  glow.addColorStop(0, 'rgba(60, 150, 255, 0.10)')
+  glow.addColorStop(0, 'rgba(110, 180, 255, 0.08)')
   glow.addColorStop(1, 'rgba(0, 0, 0, 0)')
   ctx.fillStyle = glow
   ctx.fillRect(0, 0, view.width, view.height)
@@ -285,7 +285,7 @@ function drawBoot(ctx: CanvasRenderingContext2D, view: View): void {
     ctx.roundRect(left + 4, y - barH / 2 + 4, (barW - 8) * steps, barH - 8, (barH - 8) / 2)
     ctx.fill()
   }
-  label(ctx, 'PRESS START TO SKIP', left, y + lineH * 1.3, size * 0.7, 'rgba(108, 200, 255, 0.5)', 'left')
+  label(ctx, 'PRESS START TO SKIP', left, y + lineH * 1.3, size * 0.7, 'rgba(150, 214, 255, 0.5)', 'left')
 }
 
 function drawHeader(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, W: number, th: Theme, compact: boolean): void {
@@ -335,8 +335,8 @@ function drawHeader(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, W: 
 
 function drawField(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: Theme, x: number, y: number): void {
   const size = game.maze.w * tileSize()
-  label(ctx, 'CH 03 // FIELD', x, y - 16, 17, 'rgba(108, 200, 255, 0.55)', 'left')
-  label(ctx, 'RP-3000 · VECTOR DISPLAY', x + size, y - 16, 17, 'rgba(108, 200, 255, 0.55)', 'right')
+  label(ctx, 'CH 03 // FIELD', x, y - 16, 17, 'rgba(150, 214, 255, 0.55)', 'left')
+  label(ctx, 'RP-3000 · VECTOR DISPLAY', x + size, y - 16, 17, 'rgba(150, 214, 255, 0.55)', 'right')
   brackets(ctx, th.line, x - 8, y - 8, size + 16, size + 16, 22, 2)
   ctx.save()
   ctx.translate(x, y)
@@ -364,7 +364,7 @@ function drawCard(ctx: CanvasRenderingContext2D, frame: Frame, card: Card, th: T
   const h = 40 + titleH + body.length * 26 + 30 + 64 + listH
   const y = peek ? by + 60 : by + size / 2 - h / 2
   panel(ctx, tone, x, y, w, h)
-  ctx.fillStyle = 'rgba(108, 200, 255, 0.05)'
+  ctx.fillStyle = 'rgba(150, 214, 255, 0.05)'
   ctx.fillRect(x + 1, y + 1, w - 2, h - 2)
 
   let cy = y + 30
@@ -562,7 +562,7 @@ function drawVitals(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: num
 
 function drawSkip(ctx: CanvasRenderingContext2D, frame: Frame, x: number, y: number): void {
   ctx.globalAlpha = 0.6
-  button(ctx, frame, 'skip', 'SKIP', x, y, 64, 22, 'rgba(108, 200, 255, 0.6)', 10)
+  button(ctx, frame, 'skip', 'SKIP', x, y, 64, 22, 'rgba(150, 214, 255, 0.6)', 10)
   ctx.globalAlpha = 1
 }
 
@@ -575,10 +575,10 @@ function drawLandscape(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, 
   tabs.forEach((name, i) => {
     const tw = (pw - 8) / 3
     const tx = px + i * (tw + 4)
-    ctx.strokeStyle = i === 0 ? 'rgba(108, 200, 255, 0.4)' : 'rgba(108, 200, 255, 0.15)'
+    ctx.strokeStyle = i === 0 ? 'rgba(150, 214, 255, 0.4)' : 'rgba(150, 214, 255, 0.15)'
     ctx.strokeRect(tx + 0.5, 96.5, tw, 26)
-    fill(ctx, i === 0 ? ALERT : 'rgba(108, 200, 255, 0.15)', tx, 96, tw, 2)
-    text(ctx, name, tx + tw / 2, 110, 11, i === 0 ? ICE : 'rgba(108, 200, 255, 0.5)', 'center', 600, 2)
+    fill(ctx, i === 0 ? ALERT : 'rgba(150, 214, 255, 0.15)', tx, 96, tw, 2)
+    text(ctx, name, tx + tw / 2, 110, 11, i === 0 ? ICE : 'rgba(150, 214, 255, 0.5)', 'center', 600, 2)
   })
   drawTelemetry(ctx, game, th, px, 134, pw)
   drawSurge(ctx, game, th, px, 304, pw, frame.view.time)
@@ -586,7 +586,7 @@ function drawLandscape(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, 
   drawLaws(ctx, game, th, px, 400, pw, lawsH, frame.view.time)
   const vy = 400 + lawsH + 12
   drawVitals(ctx, game, th, px, vy, pw, Math.max(250, 872 - vy), frame.view.time)
-  label(ctx, 'BRIGHT ||||||||||||||||||||||||| CONTRAST', 36 + 380, 884, 15, 'rgba(108, 200, 255, 0.3)')
+  label(ctx, 'BRIGHT ||||||||||||||||||||||||| CONTRAST', 36 + 380, 884, 15, 'rgba(150, 214, 255, 0.3)')
   drawSkip(ctx, frame, 36, 872)
 }
 

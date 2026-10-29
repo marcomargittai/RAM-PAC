@@ -63,7 +63,7 @@ Until then, and whenever the network fails, the page shows this device's board.
 
 ## Title screen and art
 
-The title screen (`src/title.ts`) is drawn like an old cartridge cover: a striped, extruded pixel logo (`tools/logo.py`), a starfield, a pixel planet and PAC-7 eating a row of RAM. Site icons come from PAC-7's last build (`tools/icons.py`), and the game uses its own pixel cursors (`tools/cursors.py`) until the glass breaks, when the real system cursor returns.
+The title screen (`src/title.ts`) is drawn like an old cartridge cover: 3D pixel key art with the ROGUE AI plate built in (`tools/keyart.py`: chrome block letters in perspective with a deep extrusion), PAC-7 rising out of the horizon like a sun, a moving grid floor and PAC-7 eating a row of RAM along the horizon. Site icons come from PAC-7's last build (`tools/icons.py`), and the game uses its own pixel cursors (`tools/cursors.py`) until the glass breaks, when the real system cursor returns.
 
 ## Sound
 

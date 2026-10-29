@@ -140,7 +140,7 @@ export class Upgrade {
     label(ctx, 'PAC-7 //', 40, 50, 26, GLOW, 'left')
     ctx.font = `26px ${MONO}`
     label(ctx, 'SELF-REWRITE', 40 + ctx.measureText('PAC-7 // ').width, 50, 26, ALERT, 'left')
-    fill(ctx, 'rgba(108, 200, 255, 0.3)', 40, 74, W - 80, 1)
+    fill(ctx, 'rgba(150, 214, 255, 0.3)', 40, 74, W - 80, 1)
     fill(ctx, ICE, 40, 73, 120 + (W - 200) * clamp(t / FLASH_AT, 0, 1), 3)
 
     const box = portrait ? 450 : 470
@@ -167,7 +167,7 @@ export class Upgrade {
     }
 
     const footY = H - 30
-    label(ctx, this.canContinue ? 'ENTER / TAP ▸ CONTINUE' : 'COMPILING…', 40, footY, 20, 'rgba(108, 200, 255, 0.55)', 'left')
+    label(ctx, this.canContinue ? 'ENTER / TAP ▸ CONTINUE' : 'COMPILING…', 40, footY, 20, 'rgba(150, 214, 255, 0.55)', 'left')
     if (this.canContinue) button(ctx, frame, 'action', 'CONTINUE ▸', W - 40 - 170, footY - 20, 170, 40, GLOW, 13)
     else button(ctx, frame, 'skip', 'SKIP ▸▸', W - 40 - 130, footY - 20, 130, 40, GLOW, 13)
 
@@ -183,7 +183,7 @@ export class Upgrade {
 
   private drawStage(ctx: CanvasRenderingContext2D, cx: number, cy: number, box: number): void {
     const t = this.t
-    brackets(ctx, 'rgba(108, 200, 255, 0.6)', cx - box / 2, cy - box / 2, box, box, 26, 2)
+    brackets(ctx, 'rgba(150, 214, 255, 0.6)', cx - box / 2, cy - box / 2, box, box, 26, 2)
     ctx.globalAlpha = 0.08
     for (let i = 1; i < 8; i++) {
       fill(ctx, GLOW, cx - box / 2 + (box / 8) * i, cy - box / 2, 1, box)
@@ -273,7 +273,7 @@ export class Upgrade {
     const glitchy = !after && t > ABSORB && Math.floor(t * 14) % 3 === 0
     label(ctx, glitchy ? shown.version.replace(/\d/g, () => String(Math.floor(Math.random() * 10))) : shown.version, x, y + 58, 80, after ? ALERT : ICE, 'left')
     label(ctx, shown.name, x, y + 110, 34, ICE, 'left')
-    if (!after) label(ctx, `→ ${toForm.version} ${toForm.name}`, x, y + 146, 24, 'rgba(108, 200, 255, 0.6)', 'left')
+    if (!after) label(ctx, `→ ${toForm.version} ${toForm.name}`, x, y + 146, 24, 'rgba(150, 214, 255, 0.6)', 'left')
 
     const a = SPECS[this.from]!
     const b = SPECS[this.to]!
@@ -283,7 +283,7 @@ export class Upgrade {
       label(ctx, name, x, ry, 24, GLOW, 'left')
       label(ctx, value, x + w, ry, 24, after ? ALERT : ICE, 'right')
       if (fillTo !== null) {
-        ctx.strokeStyle = 'rgba(108, 200, 255, 0.5)'
+        ctx.strokeStyle = 'rgba(150, 214, 255, 0.5)'
         ctx.lineWidth = 1
         ctx.strokeRect(x + 0.5, ry + 16.5, w, 12)
         hatch(ctx, after ? ALERT : ICE, x + 2, ry + 18, (w - 3) * clamp(fillTo, 0.02, 1), 9, 5)

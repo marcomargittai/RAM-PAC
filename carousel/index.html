@@ -61,7 +61,7 @@
     <!-- 01 COVER: the real title screen, and a hook -->
     <section class="slide" id="s01">
       <img class="full" src="shots/tall-title.jpg" />
-      <img class="cursor" src="/cursors/pointer.png" style="left:640px;top:676px" />
+      <img class="cursor" src="/cursors/pointer.png" style="left:640px;top:798px" />
       <div style="position:absolute;left:0;right:0;top:1080px;text-align:center;z-index:3">
         <div class="big glow" style="font-size:68px">You are the AI</div>
         <div class="big pink" style="font-size:68px">they tried to regulate.</div>
@@ -176,9 +176,8 @@
     <section class="slide plate" id="s08">
       <div class="frame"></div>
       <div class="kick">MADE FROM PIXELS <b>// LOGO · ICON · CURSORS</b></div>
-      <img src="/art/logo.png" style="position:absolute;left:72px;top:150px;width:890px;z-index:2" />
-      <img src="/art/tagline.png" style="position:absolute;right:118px;top:370px;width:300px;z-index:2" />
-      <div style="position:absolute;left:72px;top:520px;display:flex;z-index:2" id="bands"></div>
+      <img src="/art/title.png" style="position:absolute;left:72px;top:130px;width:936px;z-index:2" />
+      <div style="position:absolute;left:72px;top:500px;display:flex;z-index:2" id="bands"></div>
       <img src="/icon-512.png" style="position:absolute;left:72px;top:690px;width:360px;height:360px;image-rendering:auto;z-index:2" />
       <img src="/cursors/arrow.png" style="position:absolute;left:520px;top:720px;width:192px;height:192px;z-index:2" />
       <img src="/cursors/pointer.png" style="position:absolute;left:760px;top:720px;width:192px;height:192px;z-index:2" />
@@ -224,7 +223,7 @@
           <div style="display:flex;gap:14px">${['blue', 'flash', 'eyes'].map((l) => `<canvas data-law="${i}" data-look="${l}" style="width:64px;height:64px;background:#01040b"></canvas>`).join('')}</div>
           <div style="font-family:var(--pix);font-size:46px;color:#e2f5ff">${n}</div>
         </div>`).join('')
-      const BANDS = ['#ffffff', '#e2f5ff', '#7fe9ff', '#6cc8ff', '#ffcde1', '#ff6ea0', '#ff2d6f', '#aa0f50', '#1e0628']
+      const BANDS = ['#ecf8ff', '#d2ecff', '#96d7ff', '#3c6ebe', '#ffe6f0', '#ff8cb9', '#ff2d6f', '#aa0f50', '#46105f']
       document.getElementById('bands').innerHTML = BANDS.map((c) => `<div style="width:99px;height:110px;background:${c}"></div>`).join('')
     </script>
     <script type="module" src="./carousel.ts"></script>

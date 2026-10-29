@@ -32,7 +32,7 @@ export function drawStory(ctx: CanvasRenderingContext2D, view: View, story: Stor
     label(ctx, `${scene.chapter} //`, 40, 50, 26, GLOW, 'left')
     ctx.font = `26px ${MONO}`
     label(ctx, scene.title, 40 + ctx.measureText(`${scene.chapter} // `).width, 50, 26, ALERT, 'left')
-    fill(ctx, 'rgba(108, 200, 255, 0.3)', 40, 74, W - 80, 1)
+    fill(ctx, 'rgba(150, 214, 255, 0.3)', 40, 74, W - 80, 1)
     fill(ctx, ICE, 40, 73, 120, 3)
 
     const visX = portrait ? W / 2 : W - 250
@@ -69,7 +69,7 @@ export function drawStory(ctx: CanvasRenderingContext2D, view: View, story: Stor
   }
 
   const footY = H - 30
-  label(ctx, story.choosing ? '◀ ▶ CHOOSE · ENTER CONFIRMS' : 'ENTER / TAP ▸ CONTINUE', 40, footY, 20, flat ? 'rgba(255,255,255,0.35)' : 'rgba(108, 200, 255, 0.55)', 'left')
+  label(ctx, story.choosing ? '◀ ▶ CHOOSE · ENTER CONFIRMS' : 'ENTER / TAP ▸ CONTINUE', 40, footY, 20, flat ? 'rgba(255,255,255,0.35)' : 'rgba(150, 214, 255, 0.55)', 'left')
   if (!story.choosing) button(ctx, frame, 'skip', 'SKIP ▸▸', W - 40 - 130, footY - 20, 130, 40, flat ? '#ffffff' : GLOW, 13)
   ctx.restore()
   return frame.hits
@@ -91,7 +91,7 @@ function drawChoice(ctx: CanvasRenderingContext2D, frame: Frame, story: StoryPla
 function drawGrowth(ctx: CanvasRenderingContext2D, x: number, y: number, growth: number, params: string, t: number): void {
   const size = 40 + growth * 230 + Math.sin(t * 2.2) * 4
   const box = 300
-  brackets(ctx, 'rgba(108, 200, 255, 0.6)', x - box / 2, y - box / 2, box, box, 24, 2)
+  brackets(ctx, 'rgba(150, 214, 255, 0.6)', x - box / 2, y - box / 2, box, box, 24, 2)
   for (let r = 1; r <= 3; r++) {
     ctx.globalAlpha = 0.12
     ctx.strokeStyle = GLOW
@@ -112,7 +112,7 @@ function drawGrowth(ctx: CanvasRenderingContext2D, x: number, y: number, growth:
   label(ctx, 'PARAMETERS', x - box / 2, y + box / 2 + 52, 22, GLOW, 'left')
   label(ctx, params, x + box / 2, y + box / 2 + 52, 22, ALERT, 'right')
   const bw = box
-  ctx.strokeStyle = 'rgba(108, 200, 255, 0.5)'
+  ctx.strokeStyle = 'rgba(150, 214, 255, 0.5)'
   ctx.strokeRect(x - box / 2 + 0.5, y + box / 2 + 70.5, bw, 14)
   hatch(ctx, ALERT, x - box / 2 + 2, y + box / 2 + 72, (bw - 3) * clamp(growth, 0.04, 1), 11, 5)
 }
@@ -180,7 +180,7 @@ export function drawEntry(ctx: CanvasRenderingContext2D, view: View, data: { sco
   const bw = 520
   const bx = W / 2 - bw / 2
   const by = 445
-  ctx.fillStyle = 'rgba(108, 200, 255, 0.08)'
+  ctx.fillStyle = 'rgba(150, 214, 255, 0.08)'
   ctx.fillRect(bx, by, bw, 76)
   ctx.strokeStyle = data.focused ? ICE : GLOW
   ctx.lineWidth = data.focused ? 2 : 1
@@ -193,7 +193,7 @@ export function drawEntry(ctx: CanvasRenderingContext2D, view: View, data: { sco
   }
   hit(frame, 'name', bx, by, bw, 76)
   button(ctx, frame, 'save', 'SAVE RECORD', W / 2 - 150, 560, 300, 56, tone, 18)
-  button(ctx, frame, 'skip', 'DON’T SAVE', W / 2 - 90, 640, 180, 40, 'rgba(108, 200, 255, 0.6)', 12)
+  button(ctx, frame, 'skip', 'DON’T SAVE', W / 2 - 90, 640, 180, 40, 'rgba(150, 214, 255, 0.6)', 12)
   ctx.restore()
   return frame.hits
 }
@@ -221,14 +221,14 @@ export function drawLeaderboard(ctx: CanvasRenderingContext2D, view: View, board
   logo(ctx, 'WEEKLY LEADERBOARD', W / 2, 118, 46, ICE, 'center')
   label(ctx, `RESETS IN ${countdown()}  \u00B7  MONDAY 00:00 UTC`, W / 2, 168, 24, ALERT)
   const source = board.global ? 'GLOBAL \u00B7 EVERY PLAYER, THIS WEEK' : board.loading ? 'CONNECTING TO THE GLOBAL BOARD\u2026' : board.online ? 'GLOBAL BOARD UNREACHABLE \u00B7 SHOWING THIS DEVICE' : 'THIS DEVICE \u00B7 THIS WEEK'
-  label(ctx, source, W / 2, 198, 19, 'rgba(108, 200, 255, 0.6)')
+  label(ctx, source, W / 2, 198, 19, 'rgba(150, 214, 255, 0.6)')
 
   const top = 250
   text(ctx, 'RANK', x + 40, top, 13, GLOW, 'left', 700, 3)
   text(ctx, 'NAME', x + 130, top, 13, GLOW, 'left', 700, 3)
   text(ctx, 'REACHED', x + w - 280, top, 13, GLOW, 'left', 700, 3)
   text(ctx, 'RAM', x + w - 40, top, 13, GLOW, 'right', 700, 3)
-  fill(ctx, 'rgba(108, 200, 255, 0.3)', x + 30, top + 16, w - 60, 1)
+  fill(ctx, 'rgba(150, 214, 255, 0.3)', x + 30, top + 16, w - 60, 1)
 
   const isMine = (r: Entry) => board.mine !== null && r.name === board.mine.name && r.score === board.mine.score
   const mineAt = board.records.findIndex(isMine)
@@ -308,7 +308,7 @@ export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
   const textW = W - textX - 70
   let y = portrait ? 260 : 230
   for (const [name, desc, icon] of rows) {
-    brackets(ctx, 'rgba(108, 200, 255, 0.5)', iconX - 56, y - 44, 112, 88, 12, 1)
+    brackets(ctx, 'rgba(150, 214, 255, 0.5)', iconX - 56, y - 44, 112, 88, 12, 1)
     icon(iconX, y)
     const body = portrait ? 32 : 25
     label(ctx, name, textX, y - 26, portrait ? 42 : 34, name === 'AI REGULATIONS' ? ALERT : ICE, 'left')
