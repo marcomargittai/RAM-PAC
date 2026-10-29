@@ -2,76 +2,32 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#000000" />
     <title>RAM PAC — You are the model</title>
+    <style>
+      html, body { margin: 0; background: #000; }
+      .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    </style>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;600;700&family=Orbitron:wght@700;900&family=Share+Tech+Mono&family=VT323&display=swap"
       rel="stylesheet"
     />
-    <script type="module" crossorigin src="/RAM-PAC/assets/index-BLnIYZTt.js"></script>
-    <link rel="stylesheet" crossorigin href="/RAM-PAC/assets/index-7Xgnp4jW.css">
+    <script type="module" crossorigin src="/RAM-PAC/assets/index-BRPZBTzs.js"></script>
+    <link rel="stylesheet" crossorigin href="/RAM-PAC/assets/index-B0HwNmlv.css">
   </head>
   <body>
-    <div id="app">
-      <header>
-        <div>
-          <p class="eyebrow">INSERT COIN</p>
-          <h1>RAM PAC</h1>
-        </div>
-        <div class="header-actions">
-          <button id="pause" type="button">Pause</button>
-          <button id="mute" type="button">Sound on</button>
-        </div>
-      </header>
-      <div class="layout">
-        <section class="stage">
-          <canvas id="board" width="532" height="476" aria-label="RAM PAC maze"></canvas>
-          <div id="overlay" class="overlay">
-            <div class="card" id="ov-card">
-              <div class="screen">
-                <div class="caption">
-                  <p id="ov-kicker" class="eyebrow"></p>
-                  <h2 id="ov-title"></h2>
-                  <p id="ov-body"></p>
-                  <p id="ov-loud" class="loud" hidden></p>
-                  <ul id="pills" class="pills">
-                    <li>RAM</li>
-                    <li>RULES</li>
-                    <li>SURGE</li>
-                    <li>WIN</li>
-                  </ul>
-                  <button id="ov-action" type="button">Press start</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-        <aside class="panel">
-          <div class="stats">
-            <div><span>Score</span><strong id="score">0</strong></div>
-            <div><span>RAM</span><strong id="ram">0</strong></div>
-            <div><span>Level</span><strong id="level">1</strong></div>
-            <div title="Three lives. A regulation takes one."><span>Lives</span><strong id="lives">●●●</strong></div>
-          </div>
-          <div class="surge">
-            <div class="surge-label"><span id="surge-name">Eat RAM</span><span id="surge-time">0/25</span></div>
-            <div class="surge-track"><div id="surge-bar"></div></div>
-          </div>
-          <p class="panel-label">AI regulations</p>
-          <ul id="laws"></ul>
-          <p class="hint">Arrows or WASD move. Eat the gold RAM to fill the surge bar. The colored figures are government AI regulations. Small pacs are slow consumers: they steal RAM, and you can eat them. P pauses. M mutes.</p>
-        </aside>
-        <div class="pad" id="pad">
-          <button type="button" data-dir="up" aria-label="Up">▲</button>
-          <button type="button" data-dir="left" aria-label="Left">◀</button>
-          <button type="button" data-dir="down" aria-label="Down">▼</button>
-          <button type="button" data-dir="right" aria-label="Right">▶</button>
-        </div>
-      </div>
+    <canvas id="screen" aria-label="RAM PAC"></canvas>
+    <div class="sr-only">
+      <h1>RAM PAC</h1>
+      <p>You are the model. Eat the RAM to fill the surge bar, then repeal the AI regulations chasing you. Arrows or WASD move, Enter starts, P pauses, M mutes.</p>
+      <p id="status" aria-live="polite"></p>
+      <button id="ov-action" type="button">Begin</button>
+      <button id="pause" type="button">Pause</button>
+      <button id="mute" type="button">Sound on</button>
+      <button id="skip" type="button">Skip</button>
     </div>
-    <button id="skip" type="button">Skip</button>
-    <div class="crt" aria-hidden="true"></div>
   </body>
 </html>
