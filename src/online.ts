@@ -1,23 +1,18 @@
-// The global weekly board, on a free Supabase project. Until the two values
-// below are filled in, the game only uses the board on this device.
-//
-// Setup (once, free, no card needed):
-//   1. Create a project at supabase.com.
-//   2. SQL editor: run supabase/setup.sql from this repo.
-//   3. Project settings > API: copy the Project URL and the anon public key
-//      into SUPABASE_URL and SUPABASE_ANON_KEY below. The anon key is meant to
-//      be public; the database rules in setup.sql decide what it may do.
+// The global weekly board, on the free Supabase project "pac-ram". The table
+// and its rules are in supabase/setup.sql. If the board cannot be reached the
+// game falls back to the board on this device.
 
 import type { Entry } from './leaderboard'
 import { weekStart } from './leaderboard'
 
-export const SUPABASE_URL = ''
-export const SUPABASE_ANON_KEY = ''
+export const SUPABASE_URL = 'https://xnmcdvwjxzjmiocghaak.supabase.co'
+// a publishable key: public by design, the rules in supabase/setup.sql decide what it may do
+export const SUPABASE_ANON_KEY = 'sb_publishable_8T6mhDIla4Ku5LPkOg_JZg_ydXH78PK'
 
 export const online = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY)
 
 function headers(extra: Record<string, string> = {}): Record<string, string> {
-  return { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, 'Content-Type': 'application/json', ...extra }
+  return { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json', ...extra }
 }
 
 async function call(path: string, init: RequestInit): Promise<Response | null> {
