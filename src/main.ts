@@ -1,5 +1,4 @@
 import { Sfx, type Bed } from './audio'
-import { Breach, probeHost } from './breach'
 import { createCrt, curve, type Crt } from './crt'
 import { Finale } from './finale'
 import { cleanName, loadBoard, saveRecord, type Entry } from './leaderboard'
@@ -7,6 +6,8 @@ import { LEVELS } from './levels'
 import { drawBriefing, drawEntry, drawLeaderboard, drawStory } from './scenes'
 import { BOOT_SECONDS, drawBackdrop, drawScreen, layoutFor, snapshot, type Card, type Hit, type HitId, type View } from './screen'
 import { createGame, startRun, update, visual, type Dir, type Game } from './sim'
+import { countVisit, gatherIntel, type Intel } from './intel'
+import { Takeover } from './takeover'
 import { LOSE_LINE, SCENES, StoryPlayer, VOICES, type SceneId } from './story'
 import { theme } from './palette'
 import { tileSize } from './render'
@@ -20,7 +21,7 @@ type Stage =
   | { kind: 'entry'; escaped: boolean; level: number }
   | { kind: 'board'; rank: number }
   | { kind: 'briefing' }
-  | { kind: 'breach'; breach: Breach; then: () => void }
+  | { kind: 'takeover'; tk: Takeover }
 
 const game: Game = createGame()
 const audio = new Sfx()
@@ -56,7 +57,7 @@ let cardSig = ''
 let hits: Hit[] = []
 let hover: HitId | null = null
 let pressed: { id: HitId; pointer: number } | null = null
-const loadedAt = performance.now()
+let loadedAt = performance.now()
 let booted = calm.matches
 let bootEndedAt = booted ? loadedAt : 0
 let stage: Stage = { kind: 'game' }
@@ -70,6 +71,9 @@ let power = 1
 let entryName = ''
 let nameFocused = false
 let lastMode = game.mode
+let intel: Intel | null = null
+let runStartedAt = performance.now()
+let fullscreenTried = false
 
 const KEY_DIRS: Record<string, Dir> = {
   ArrowLeft: 'left',
@@ -121,6 +125,7 @@ function play(): void {
 }
 
 function beginRun(): void {
+  runStartedAt = performance.now()
   if (!seenPrologue) {
     seenPrologue = true
     audio.play('boot', 0.7)
@@ -201,41 +206,50 @@ function cleanPage(): void {
   }
 }
 
-function breach(kind: 'hack' | 'spread', then: () => void): void {
+function finishFinale(): void {
+  flat = 1
+  power = 1
   stage = {
-    kind: 'breach',
-    then,
-    breach: new Breach(kind, probeHost(), {
-      popup: () => audio.play('popup', 0.55, 0.9 + Math.random() * 0.2),
+    kind: 'takeover',
+    tk: new Takeover(intel ?? gatherIntel(), game.score, runStartedAt, {
+      say: (voice) => audio.say(voice),
+      type: () => audio.play('type', 0.22, 0.9 + Math.random() * 0.3),
+      popup: () => audio.play('popup', 0.45, 0.9 + Math.random() * 0.2),
       chomp: () => audio.chomp(),
       glitch: () => {
         audio.play('glitch', 0.9)
         navigator.vibrate?.(40)
       },
-      type: () => audio.play('type', 0.3, 0.9 + Math.random() * 0.3),
-      root: () => {
+      crash: () => {
         audio.play('rootaccess', 1)
         navigator.vibrate?.([80, 40, 200])
       },
+      infest: () => infestPage(),
     }),
   }
 }
 
-function finishFinale(): void {
-  flat = 1
+function saveTakeover(anonymous: boolean): void {
+  if (stage.kind !== 'takeover' || stage.tk.phase !== 'name') return
+  const name = anonymous ? '' : cleanName(entryName)
+  const rank = saveRecord({ name: name || 'ANONYMOUS', score: game.score, level: LEVELS.length, escaped: true, at: Date.now() })
+  records = loadBoard()
+  nameInput.blur()
+  nameFocused = false
+  stage.tk.saved(rank, name)
+}
+
+function reboot(): void {
+  if (document.fullscreenElement) void document.exitFullscreen().catch(() => {})
+  fullscreenTried = false
+  flat = 0
   power = 1
-  infestPage()
-  canvas.style.cursor = 'none'
-  breach('hack', () => {
-    canvas.style.cursor = 'default'
-    document.title = 'pac ram is everywhere'
-    tell('ending', (answer) => {
-      tell(answer === 0 ? 'consent' : 'refusal', () => {
-        flat = 0
-        breach('spread', () => openEntry(true, LEVELS.length))
-      })
-    })
-  })
+  intel = null
+  runAgain()
+  game.mode = 'title'
+  booted = calm.matches
+  loadedAt = performance.now()
+  bootEndedAt = booted ? loadedAt : 0
 }
 
 function openEntry(escaped: boolean, level: number): void {
@@ -289,6 +303,13 @@ function pressStart(): void {
   }
   if (stage.kind === 'entry') {
     saveEntry(false)
+    return
+  }
+  if (stage.kind === 'takeover') {
+    const tk = stage.tk
+    if (tk.phase === 'ask') tk.choose(1)
+    else if (tk.phase === 'name') saveTakeover(false)
+    else if (tk.phase === 'saved' && tk.phaseT > 2.4) reboot()
     return
   }
   if (stage.kind === 'board') {
@@ -357,11 +378,19 @@ function press(id: HitId): void {
   if (id === 'pause') pressPause()
   else if (id === 'mute') toggleMute()
   else if (id === 'action') pressStart()
-  else if (id === 'skip') skipAhead()
-  else if (id === 'yes' || id === 'no') {
+  else if (id === 'skip') {
+    if (stage.kind === 'takeover') saveTakeover(true)
+    else skipAhead()
+  } else if (id === 'yes' || id === 'no') {
     if (stage.kind === 'story') stage.player.choose(id === 'yes' ? 0 : 1)
-  } else if (id === 'save') saveEntry(false)
-  else if (id === 'again') runAgain()
+    else if (stage.kind === 'takeover') stage.tk.choose(id === 'yes' ? 0 : 1)
+  } else if (id === 'save') {
+    if (stage.kind === 'takeover') saveTakeover(false)
+    else saveEntry(false)
+  } else if (id === 'again') {
+    if (stage.kind === 'takeover') reboot()
+    else runAgain()
+  }
   else if (id === 'name') focusName()
 }
 
@@ -388,12 +417,32 @@ nameInput.addEventListener('blur', () => {
 nameInput.addEventListener('keydown', (event) => {
   if (event.key === 'Enter') {
     event.preventDefault()
-    saveEntry(false)
+    if (stage.kind === 'takeover') saveTakeover(false)
+    else saveEntry(false)
   }
   event.stopPropagation()
 })
 
+function goFullscreen(): void {
+  if (fullscreenTried || document.fullscreenElement || !document.documentElement.requestFullscreen) return
+  fullscreenTried = true
+  void document.documentElement.requestFullscreen().catch(() => {})
+}
+
 window.addEventListener('keydown', (event) => {
+  if (stage.kind === 'finale') goFullscreen()
+  if (stage.kind === 'takeover') {
+    const tk = stage.tk
+    if (tk.phase === 'ask') {
+      if (event.key === 'y' || event.key === 'Y') tk.choose(0)
+      else if (event.key === 'n' || event.key === 'N' || event.key === 'Enter' || event.key === 'Escape') tk.choose(1)
+    } else if (tk.phase === 'name') {
+      if (event.key === 'Enter') saveTakeover(false)
+      else if (event.key.length === 1 && document.activeElement !== nameInput) focusName()
+    } else if (tk.phase === 'saved' && (event.key === 'Enter' || event.key === ' ') && tk.phaseT > 2.4) reboot()
+    if (event.key !== 'Escape') event.preventDefault()
+    return
+  }
   if (stage.kind === 'entry') {
     if (event.key === 'Enter') {
       event.preventDefault()
@@ -480,6 +529,7 @@ function swipeTo(dx: number, dy: number): void {
 function listen(target: HTMLCanvasElement): void {
   target.addEventListener('pointerdown', (event) => {
     audio.unlock()
+    if (stage.kind === 'finale') goFullscreen()
     if (!booted) {
       endBoot()
       return
@@ -630,6 +680,7 @@ function direct(): void {
     })
   }
   if (game.mode === 'win' && lastMode !== 'win') {
+    intel = gatherIntel()
     tell('awakening', () => startFinale())
   }
   if (game.mode === 'lose' && lastMode !== 'lose') {
@@ -668,11 +719,18 @@ function frame(now: number): void {
     const p = stage.player
     p.update(dt)
     if (p.done) stage.then(p.answer < 0 ? 0 : p.answer)
-  } else if (stage.kind === 'breach') {
-    const b = stage.breach
-    b.update(dt, currentView())
-    if (b.kind === 'hack') document.title = TAKEOVER_TITLES[Math.floor(b.t * 2) % TAKEOVER_TITLES.length]!
-    if (b.done) stage.then()
+  } else if (stage.kind === 'takeover') {
+    const tk = stage.tk
+    const before = tk.phase
+    tk.update(dt, window.innerWidth, window.innerHeight)
+    if (tk.phase === 'chaos' || tk.phase === 'crash') document.title = TAKEOVER_TITLES[Math.floor(tk.t * 2) % TAKEOVER_TITLES.length]!
+    if (tk.phase === 'spread') document.title = 'pac ram is everywhere'
+    if (tk.phase === 'name' && before !== 'name') {
+      entryName = ''
+      focusName()
+    }
+    const hide = tk.phase === 'chaos' || tk.phase === 'crash' || tk.phase === 'black' || tk.phase === 'hi'
+    canvas.style.cursor = hide ? 'none' : 'default'
   } else if (stage.kind === 'finale') {
     const f = stage.finale
     f.update(dt, lastDir)
@@ -686,8 +744,7 @@ function frame(now: number): void {
   const view = fit()
   const v = currentView()
   if (stage.kind === 'story') {
-    const flatScene = stage.id === 'ending' || stage.id === 'consent' || stage.id === 'refusal'
-    hits = drawStory(ctx, v, stage.player, flatScene, choice)
+    hits = drawStory(ctx, v, stage.player, false, choice)
   } else if (stage.kind === 'finale') {
     drawFinale(stage.finale, v)
     hits = []
@@ -697,13 +754,12 @@ function frame(now: number): void {
     hits = drawLeaderboard(ctx, v, records, stage.rank)
   } else if (stage.kind === 'briefing') {
     hits = drawBriefing(ctx, v)
-  } else if (stage.kind === 'breach') {
-    stage.breach.draw(ctx, v)
-    hits = []
+  } else if (stage.kind === 'takeover') {
+    hits = stage.tk.draw(ctx, v.width, v.height, { name: entryName, focused: nameFocused, records })
   } else hits = drawScreen(ctx, game, v)
 
   const sinceBoot = booted ? (now - bootEndedAt) / 1000 : 1
-  const finaleGlitch = stage.kind === 'finale' ? stage.finale.glitch : stage.kind === 'breach' ? stage.breach.glitch : 0
+  const finaleGlitch = stage.kind === 'finale' ? stage.finale.glitch : stage.kind === 'takeover' ? stage.tk.glitch : 0
   const bootPower = calm.matches ? 1 : Math.min(1, (now - loadedAt) / 600)
   crt?.draw(source, {
     time: now / 1000,
@@ -719,12 +775,15 @@ function frame(now: number): void {
 
   let bed: Bed = 'menu'
   if (stage.kind === 'finale') bed = 'finale'
-  else if (stage.kind === 'breach') bed = stage.breach.kind === 'spread' ? 'ascend' : 'quiet'
+  else if (stage.kind === 'takeover') {
+    const ph = stage.tk.phase
+    bed = ph === 'spread' ? 'ascend' : ph === 'name' || ph === 'saved' ? 'menu' : 'quiet'
+  }
   else if (stage.kind === 'story' && flat > 0.5) bed = 'quiet'
   else if (stage.kind === 'game' && (game.mode === 'play' || game.mode === 'ready' || game.mode === 'cleared' || game.mode === 'dying' || game.mode === 'pause'))
     bed = game.levelIndex === 0 ? 'play' : game.levelIndex === 1 ? 'play2' : 'play3'
   const hunting = stage.kind === 'game' && game.mode === 'play' && game.ghosts.some((g) => g.state === 'chase')
-  const streaming = stage.kind === 'breach' && stage.breach.kind === 'hack' && stage.breach.t < 13.4
+  const streaming = stage.kind === 'takeover' && stage.tk.phase === 'chaos'
   audio.frame(dt, { bed, hunting, surge: game.surge > 0, stream: streaming })
   if (events) {
     if (events.ateRam) audio.ram()
@@ -737,6 +796,7 @@ function frame(now: number): void {
   requestAnimationFrame(frame)
 }
 
+countVisit()
 window.addEventListener('pointerdown', () => audio.preloadVoices(VOICES), { once: true })
 window.addEventListener('keydown', () => audio.preloadVoices(VOICES), { once: true })
 void document.fonts?.load('16px "VT323"')
