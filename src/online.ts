@@ -53,11 +53,29 @@ export async function fetchWeekly(limit = 50): Promise<Entry[] | null> {
   }
 }
 
-export async function submit(entry: Entry): Promise<boolean> {
-  const res = await call('scores', {
+// A run ticket from the server. Scores are only accepted for a ticket the
+// server handed out, once, and only if the score is possible in the time since.
+export async function startRun(): Promise<string | null> {
+  const res = await call('rpc/start_run', { method: 'POST', headers: headers(), body: '{}' })
+  if (!res) return null
+  try {
+    return String(await res.json())
+  } catch {
+    return null
+  }
+}
+
+// Returns this week's rank, or null when the server refused or was unreachable.
+export async function submit(entry: Entry, run: string): Promise<number | null> {
+  const res = await call('rpc/submit_score', {
     method: 'POST',
-    headers: headers({ Prefer: 'return=minimal' }),
-    body: JSON.stringify({ name: entry.name, score: entry.score, level: entry.level, escaped: entry.escaped }),
+    headers: headers(),
+    body: JSON.stringify({ run, p_name: entry.name, p_score: entry.score, p_level: entry.level, p_escaped: entry.escaped }),
   })
-  return res !== null
+  if (!res) return null
+  try {
+    return Number(await res.json())
+  } catch {
+    return null
+  }
 }

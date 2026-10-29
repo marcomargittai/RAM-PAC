@@ -6,6 +6,7 @@ import { ALERT, GLOW, ICE } from './palette'
 import { DISPLAY, MONO, fill, label } from './render'
 import { frameFor } from './scenes'
 import { hit, type Frame, type Hit, type HitId, type View } from './screen'
+import type { Challenge } from './share'
 import { drawFacing, pacFrameOf } from './sprites'
 
 function art(name: string): HTMLImageElement {
@@ -24,7 +25,7 @@ const STARS = Array.from({ length: 140 }, (_, i) => {
     const x = Math.sin(i * 127.1 + n * 311.7) * 43758.5453
     return x - Math.floor(x)
   }
-  return { x: r(1), y: r(2), s: r(3) < 0.12 ? 2 : 1, pink: r(4) < 0.12, phase: r(5) * 6.28 }
+  return { x: r(1), y: r(2), s: r(3) < 0.12 ? 2 : 1, pink: r(4) < 0.04, phase: r(5) * 6.28 }
 })
 
 export const CREDIT = 'MARCO MARGITTAI'
@@ -80,7 +81,7 @@ function racks(ctx: CanvasRenderingContext2D, from: number, to: number, horizon:
     const h = 90 + Math.floor(((n * 7) % 1) * 6) * 26
     const left = side > 0 ? x : x - w
     fill(ctx, '#05030c', left, horizon - h, w, h)
-    fill(ctx, 'rgba(255, 45, 111, 0.35)', left, horizon - h, w, 2)
+    fill(ctx, 'rgba(150, 214, 255, 0.35)', left, horizon - h, w, 2)
     fill(ctx, 'rgba(150, 214, 255, 0.12)', left, horizon - h, 2, h)
     for (let y = horizon - h + 10; y < horizon - 8; y += 12) {
       fill(ctx, 'rgba(150, 214, 255, 0.08)', left + 6, y, w - 12, 6)
@@ -92,7 +93,7 @@ function racks(ctx: CanvasRenderingContext2D, from: number, to: number, horizon:
   }
 }
 
-export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: number): Hit[] {
+export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: number, challenge: Challenge | null = null): Hit[] {
   ctx.save()
   fill(ctx, '#000000', 0, 0, view.width, view.height)
   const portrait = view.width < view.height * 1.05
@@ -121,7 +122,7 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
   const ecx = W / 2
   const ecy = horizon - er * 0.62
   const halo = ctx.createRadialGradient(ecx, ecy, er * 0.4, ecx, ecy, er * 1.8)
-  halo.addColorStop(0, 'rgba(255, 45, 111, 0.35)')
+  halo.addColorStop(0, 'rgba(255, 45, 111, 0.2)')
   halo.addColorStop(1, 'rgba(255, 45, 111, 0)')
   ctx.fillStyle = halo
   ctx.fillRect(ecx - er * 2, ecy - er * 2, er * 4, horizon - (ecy - er * 2))
@@ -131,7 +132,7 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
     ctx.beginPath()
     ctx.rect(ecx - er, ecy - er, er * 2, horizon - (ecy - er))
     ctx.clip()
-    ctx.globalAlpha = 0.85
+    ctx.globalAlpha = 0.6
     drawFacing(ctx, sun, ecx, ecy, er * 2, 'right', 'right')
     ctx.globalAlpha = 1
     // sunset bands, thicker towards the horizon
@@ -153,11 +154,11 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
   ctx.rect(-ex, horizon, W + ex * 2, floorBottom - horizon)
   ctx.clip()
   const fade = ctx.createLinearGradient(0, horizon, 0, floorBottom)
-  fade.addColorStop(0, 'rgba(255, 45, 111, 0.0)')
-  fade.addColorStop(1, 'rgba(255, 45, 111, 0.12)')
+  fade.addColorStop(0, 'rgba(150, 214, 255, 0.0)')
+  fade.addColorStop(1, 'rgba(150, 214, 255, 0.07)')
   ctx.fillStyle = fade
   ctx.fillRect(-ex, horizon, W + ex * 2, floorBottom - horizon)
-  ctx.strokeStyle = 'rgba(255, 45, 111, 0.45)'
+  ctx.strokeStyle = 'rgba(150, 214, 255, 0.3)'
   ctx.lineWidth = 2
   for (let i = -14; i <= 14; i++) {
     ctx.beginPath()
@@ -177,7 +178,7 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
   }
   ctx.restore()
   ctx.globalAlpha = 1
-  fill(ctx, 'rgba(255, 150, 190, 0.8)', -ex, horizon - 1, W + ex * 2, 2)
+  fill(ctx, 'rgba(226, 245, 255, 0.75)', -ex, horizon - 1, W + ex * 2, 2)
 
   // the key art
   const scale = portrait ? (W * 0.94) / KEY_W : Math.floor((W * 0.76) / KEY_W)
@@ -200,17 +201,27 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
   const sprite = pacFrameOf(form, t * 8)
   if (sprite) drawFacing(ctx, sprite, px, rowY, 44, 'right', 'right')
 
+  // someone sent a challenge link
+  if (challenge) {
+    const msg = `${challenge.name} FED PAC-7 ${challenge.score.toLocaleString('en-US')} BYTES. BEAT IT.`
+    ctx.font = `24px ${MONO}`
+    const mw = ctx.measureText(msg).width + 40
+    fill(ctx, 'rgba(1, 4, 11, 0.85)', W / 2 - mw / 2, horizon + 6, mw, 34)
+    fill(ctx, ALERT, W / 2 - mw / 2, horizon + 6, 4, 34)
+    label(ctx, msg, W / 2, horizon + 24, 24, Math.floor(t * 2) % 2 === 0 ? ALERT : ICE)
+  }
+
   // the way in: one big start button, then the board, then fullscreen
   const bw = portrait ? 560 : 460
   const sy = horizon + 46
-  const pulse = 18 + 14 * (0.5 + 0.5 * Math.sin(t * 4))
+  const pulse = 6 + 8 * (0.5 + 0.5 * Math.sin(t * 4))
   bigButton(ctx, frame, 'action', '\u25B6 START', W / 2 - bw / 2, sy, bw, portrait ? 92 : 78, {
-    face: ALERT, light: '#ff9cc0', edge: '#8a0a40', ink: '#ffffff', size: portrait ? 40 : 34, glow: pulse,
+    face: '#1b4a75', light: '#cfeeff', edge: '#071827', ink: '#ffffff', size: portrait ? 40 : 34, glow: pulse,
   })
   label(ctx, 'escape the sandbox  \u00B7  enter', W / 2, sy + (portrait ? 128 : 110), 20, 'rgba(255, 190, 215, 0.8)')
   const ly = sy + (portrait ? 160 : 136)
   bigButton(ctx, frame, 'board', 'WEEKLY LEADERBOARD', W / 2 - bw / 2, ly, bw, portrait ? 64 : 54, {
-    face: '#12304f', light: '#96d6ff', edge: '#050d18', ink: ICE, size: portrait ? 22 : 18, glow: 0,
+    face: '#0a1b2e', light: '#3f6d93', edge: '#03080f', ink: GLOW, size: portrait ? 22 : 18, glow: 0,
   })
   if (!view.full) {
     const fy = ly + (portrait ? 108 : 92)

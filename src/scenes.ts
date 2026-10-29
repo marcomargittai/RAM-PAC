@@ -254,7 +254,10 @@ export function drawLeaderboard(ctx: CanvasRenderingContext2D, view: View, board
   }
 
   const by = H - 120
-  button(ctx, frame, 'again', board.from === 'title' ? '\u25C2 BACK' : 'RUN AGAIN', W / 2 - 150, by, 300, 58, ICE, 18)
+  if (board.from === 'run' && board.mine) {
+    button(ctx, frame, 'share', 'SHARE YOUR RUN', W / 2 - 310, by, 300, 58, ALERT, 18)
+    button(ctx, frame, 'again', 'RUN AGAIN', W / 2 + 10, by, 300, 58, ICE, 18)
+  } else button(ctx, frame, 'again', board.from === 'title' ? '\u25C2 BACK' : 'RUN AGAIN', W / 2 - 150, by, 300, 58, ICE, 18)
   ctx.restore()
   return frame.hits
 }

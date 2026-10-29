@@ -687,6 +687,11 @@ export class Takeover {
     ctx.fillStyle = '#ffffff'
     ctx.fillText(label, x, y)
     add('again', { x: x - 8, y: y - lh / 2, w: ctx.measureText(label).width + 16, h: lh })
+    const sx = x + ctx.measureText(label).width + size * 2
+    const share = '[ share your run ]'
+    ctx.fillStyle = PINK
+    ctx.fillText(share, sx, y)
+    add('share', { x: sx - 8, y: y - lh / 2, w: ctx.measureText(share).width + 16, h: lh })
     ctx.font = uiFont(os, Math.max(11, size * 0.6))
     ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'
     ctx.textAlign = 'center'

@@ -54,7 +54,13 @@ The IP lookup is a single request from the player's own browser to ipapi.co, wit
 
 Boards are weekly and reset every Monday at 00:00 UTC, with a live countdown on the leaderboard page (open it from the title screen). When a run ends you sign the log with a name; after a win PAC-7 asks for it in the epilogue. Names go through a small filter for slurs and swearing.
 
-Every score is kept in the browser's localStorage (`src/leaderboard.ts`) and sent to the global board, a free Supabase project called `pac-ram` (`src/online.ts`). The table and its rules are in `supabase/setup.sql`: anyone can read and add scores, nobody can change or delete them, names and scores are checked by the database, and the same name can post at most 5 scores a minute. The key in `src/online.ts` is a publishable key, public by design. If the board cannot be reached the page shows this device's board.
+Every score is kept in the browser's localStorage (`src/leaderboard.ts`) and sent to the global board, a free Supabase project called `pac-ram` (`src/online.ts`, rules in `supabase/setup.sql`).
+
+Scores are verified by the server. Starting a run asks the database for a one-time run ticket and records the server time. A score is only accepted through `submit_score` with an unused ticket, and only if it is possible: enough real time has passed for the board reached, it is under the ceiling for that board, and under a points-per-second ceiling. Direct inserts are off, tickets are rate-limited per IP, nobody can change or delete scores, and the board-skip shortcut only exists with `?dev` in the address. The key in `src/online.ts` is a publishable key, public by design. A daily GitHub Actions job (`.github/workflows/keepalive.yml`) reads the board so the free project never pauses for inactivity.
+
+## Sharing
+
+After a run, SHARE YOUR RUN (on the leaderboard, and at the end of the epilogue) makes a 1080 × 1350 score card from the run (`src/share.ts`): the PAC-7 build reached, the score, the weekly rank and the link. Phones get the native share sheet with the image; desktops save the image and copy a challenge link. Challenge links (`?c=NAME&s=SCORE`) make the title screen show "NAME FED PAC-7 N BYTES. BEAT IT." Shared links unfurl with a large preview (`public/og.jpg`).
 
 ## Title screen and art
 
