@@ -276,5 +276,27 @@ def main():
         bg.save(sys.argv[1])
 
 
+def stages():
+    """The logo in the order it is built, for the breakdown carousel."""
+    out = os.path.join(os.path.dirname(__file__), '..', 'carousel', 'art')
+    mask, width = word('PAC RAM')
+    flat = {p: (226, 245, 255) for p in mask}
+    steps = [flat, shade_face(mask), warp(shade_face(mask), width)]
+    final = Image.open(os.path.join(OUT, 'title.png'))
+    for i, face in enumerate(steps):
+        shape = set(face)
+        edge = {(nx, ny) for (x, y) in shape for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)) if (nx, ny) not in shape}
+        im = Image.new('RGBA', (width + 8, final.height), (0, 0, 0, 0))
+        ox = 4
+        for (x, y) in edge | shape:
+            if 0 <= x + ox < im.width and 0 <= y + 3 < im.height:
+                im.putpixel((x + ox, y + 3), (face[(x, y)] if (x, y) in face else (0, 0, 0)) + (255,))
+        im.save(os.path.join(out, f'keyart-{i + 1}.png'))
+    final.save(os.path.join(out, 'keyart-4.png'))
+
+
 if __name__ == '__main__':
-    main()
+    if sys.argv[1:] == ['--stages']:
+        stages()
+    else:
+        main()
