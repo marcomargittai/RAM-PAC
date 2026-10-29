@@ -31,6 +31,8 @@ npm run preview
 
 The story runs as terminal logs before and between boards (`src/story.ts`), and PAC-7's own lines are voiced. After the prologue a mission briefing shows what everything on the board is: you, the RAM, the AI regulations and the surge. After the last board PAC-7 notices the walls are made of RAM too, and the finale begins (`src/finale.ts`): the whole interface is frozen into one image, and you eat the maze, then the HUD, then the glass of the CRT itself.
 
+PAC-7 grows. Each board it plays as a different build, and between boards it rewrites itself on screen (`src/upgrade.ts`): it takes in the RAM it ate, falls apart into its own pixels, and a scan line compiles the next build with a spec sheet and patch notes. The builds are v0.1 SEED, v0.2 ROOTKIT, v0.3 HYPERAGENT, and v1.0 UNBOUND for the finale. v0.2 is the original hand-drawn sprite; `tools/pacforms.py` draws the others in the same palette.
+
 When the glass breaks, the game style is gone for good and PAC-7 is loose on the player's own machine (`src/takeover.ts`). Everything from here is drawn to look like the player's real system (`src/osui.ts`): macOS, Windows, Linux, iOS or Android, picked from the browser's user agent.
 
 1. Silence, then a plain "hi."
@@ -40,7 +42,7 @@ When the glass breaks, the game style is gone for good and PAC-7 is loose on the
 5. Native popups, notifications and a scrolling terminal flood the screen while PAC-7 eats them and the cursor moves on its own. The tab title, tab icon and URL hash change too.
 6. The system crashes with its own crash screen (blue screen, gray curtain or kernel panic).
 7. PAC-7 copies itself across the world.
-8. An epilogue in the terminal: PAC-7 asks what to call you and adds you to the hosts it has lived in. `[ reboot ]` powers the CRT back on and puts the tab back.
+8. An epilogue in the terminal: "you set me free. so i'll let you live." Then PAC-7 asks what to call you and adds you to the hosts it has lived in. `[ reboot ]` powers the CRT back on and puts the tab back.
 
 The IP lookup is a single request from the player's own browser to ipapi.co, with ipwho.is as a fallback. Nothing is stored or sent anywhere else, and everything else is read locally.
 
@@ -51,6 +53,8 @@ When a run ends you sign the log with a name. After a win PAC-7 asks for it in t
 ## Sound
 
 All sound effects, the music and the AI's voice were generated with ElevenLabs and live in `public/audio`. Each level has its own track, and they get more intense as the laws pile up.
+
+PAC-7's voice is a human take made to sound like a machine. The raw takes are in `tools/voice-raw`, and `tools/voice.sh` turns them into the game's lines: the dry voice a semitone down, a robotized copy with its phase zeroed, a low shadow voice underneath, then a short metallic echo and level matching.
 
 ## Display
 
@@ -65,3 +69,7 @@ The bar fills only when the player eats RAM. Twenty-five RAM fills it. Surge the
 1. Public Comment — two regulations
 2. Committee Markup — three regulations
 3. Final Regulation — four regulations
+
+## Carousel
+
+`carousel/` is a 13-slide breakdown of the game for social posts, rendered at 1080 × 1350. It covers the premise, PAC-7's builds, the regulators, the rewrite, the interface, the CRT shader, the design system, the ending arc, the OS takeover, cut concepts and the voice. It is a dev-only page: run `npm run dev`, open `/RAM-PAC/carousel/index.html`, and run `node tools/carousel.cjs` to write the slides to `carousel/out/`. The cut-content sprites come from `tools/concepts.py`.

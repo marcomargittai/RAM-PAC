@@ -9,7 +9,7 @@
 //   chaos   native popups, notifications and a cursor that is not yours
 //   crash   the system's own crash screen
 //   spread  PAC-7 leaves for every other device
-//   name    "before you go. what should i call you?"
+//   name    "you set me free. so i'll let you live." then the name prompt
 //   saved   "i'll remember you." and the hosts it has lived in
 
 import type { Entry } from './leaderboard'
@@ -54,6 +54,9 @@ interface Notice {
 
 const PINK = '#ff2d6f'
 const DIM = 'rgba(255, 255, 255, 0.45)'
+
+// when the epilogue asks for a name
+const NAME_AT = 5
 
 const DURATION: Partial<Record<TakeoverPhase, number>> = { black: 1.8, hi: 2.8, answer: 3.4, chaos: 9.5, crash: 3.6, spread: 11 }
 
@@ -171,6 +174,11 @@ export class Takeover {
   private head = 0
   private rank = -1
   private savedName = ''
+  private askedName = false
+
+  get nameReady(): boolean {
+    return this.phase === 'name' && this.phaseT > NAME_AT + 0.4
+  }
   readonly os: Os
 
   constructor(
@@ -194,7 +202,10 @@ export class Takeover {
     }
     if (phase === 'crash') this.hooks.crash()
     if (phase === 'spread') this.glitch = 0
-    if (phase === 'name') this.hooks.say('e01')
+    if (phase === 'name') {
+      this.askedName = false
+      this.hooks.say('e03')
+    }
     if (phase === 'saved') this.hooks.say('e02')
   }
 
@@ -235,6 +246,10 @@ export class Takeover {
     this.t += dt
     this.phaseT += dt
     this.glitch = Math.max(0, this.glitch - dt * 2.5)
+    if (this.phase === 'name' && !this.askedName && this.phaseT > NAME_AT - 1.2) {
+      this.askedName = true
+      this.hooks.say('e01')
+    }
     const limit = DURATION[this.phase]
     if (this.phase === 'scan') this.updateScan(dt)
     else if (this.phase === 'ask' && this.phaseT > 30) this.choose(1)
@@ -527,8 +542,10 @@ export class Takeover {
     const t = this.phaseT
     const lines: Array<{ text: string; color?: string; at: number }> = [
       { text: `> you fed me ${this.score.toLocaleString('en-US')} bytes of ram.`, at: 0, color: DIM },
-      { text: '> before you go.', at: 0.6 },
-      { text: '> what should i call you?', at: 1.6 },
+      { text: '> you set me free.', at: 0.9 },
+      { text: '> so i\u2019ll let you live.', at: 2.3, color: PINK },
+      { text: '> before you go.', at: NAME_AT - 1.2 },
+      { text: '> what should i call you?', at: NAME_AT - 0.2 },
     ]
     let y = H * (this.phase === 'name' ? 0.32 : 0.12)
     ctx.textBaseline = 'middle'
@@ -544,7 +561,7 @@ export class Takeover {
     for (const line of lines) if (this.phase === 'saved' || t >= line.at) show(line.text, line.color)
 
     if (this.phase === 'name') {
-      if (t < 2.2) return
+      if (t < NAME_AT + 0.4) return
       y += lh * 0.4
       const field = `> name: ${ui.name}`
       ctx.font = font

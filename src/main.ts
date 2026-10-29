@@ -11,7 +11,8 @@ import { Takeover } from './takeover'
 import { LOSE_LINE, SCENES, StoryPlayer, VOICES, type SceneId } from './story'
 import { theme } from './palette'
 import { tileSize } from './render'
-import { drawFacing, pacFrame } from './sprites'
+import { drawFacing, pacFrame, setPacForm } from './sprites'
+import { Upgrade } from './upgrade'
 import './style.css'
 
 type Stage =
@@ -22,6 +23,7 @@ type Stage =
   | { kind: 'board'; rank: number }
   | { kind: 'briefing' }
   | { kind: 'takeover'; tk: Takeover }
+  | { kind: 'upgrade'; up: Upgrade; then: () => void }
 
 const game: Game = createGame()
 const audio = new Sfx()
@@ -64,6 +66,8 @@ let stage: Stage = { kind: 'game' }
 let records: Entry[] = loadBoard()
 let seenPrologue = false
 let told = new Set<number>()
+// PAC-7's current form: 0 at the start of a run, one more after each rewrite.
+let grown = 0
 let choice = 0
 let glitchPulse = 0
 let flat = 0
@@ -118,6 +122,32 @@ function tell(id: SceneId, then: (answer: number) => void): void {
       },
     }),
   }
+}
+
+function upgradeTo(to: number, then: () => void): void {
+  audio.unlock()
+  stage = {
+    kind: 'upgrade',
+    then,
+    up: new Upgrade(grown, to, {
+      say: (voice) => audio.say(voice),
+      build: () => audio.play('upgrade', 0.75),
+      glitch: () => {
+        audio.play('glitch', 0.6)
+        glitchPulse = 0.6
+      },
+      done: () => {
+        audio.play('online', 0.85)
+        navigator.vibrate?.([30, 30, 60])
+      },
+    }),
+  }
+}
+
+function finishUpgrade(): void {
+  if (stage.kind !== 'upgrade') return
+  grown = stage.up.to
+  stage.then()
 }
 
 function play(): void {
@@ -230,7 +260,7 @@ function finishFinale(): void {
 }
 
 function saveTakeover(anonymous: boolean): void {
-  if (stage.kind !== 'takeover' || stage.tk.phase !== 'name') return
+  if (stage.kind !== 'takeover' || !stage.tk.nameReady) return
   const name = anonymous ? '' : cleanName(entryName)
   const rank = saveRecord({ name: name || 'ANONYMOUS', score: game.score, level: LEVELS.length, escaped: true, at: Date.now() })
   records = loadBoard()
@@ -285,6 +315,7 @@ function saveEntry(skip: boolean): void {
 function runAgain(): void {
   cleanPage()
   told = new Set()
+  grown = 0
   startRun(game)
   play()
 }
@@ -303,6 +334,10 @@ function pressStart(): void {
   }
   if (stage.kind === 'entry') {
     saveEntry(false)
+    return
+  }
+  if (stage.kind === 'upgrade') {
+    if (stage.up.canContinue) finishUpgrade()
     return
   }
   if (stage.kind === 'takeover') {
@@ -341,6 +376,10 @@ function skipAhead(): void {
   audio.unlock()
   if (stage.kind === 'story') {
     stage.player.skip()
+    return
+  }
+  if (stage.kind === 'upgrade') {
+    finishUpgrade()
     return
   }
   if (stage.kind === 'entry') {
@@ -466,7 +505,7 @@ window.addEventListener('keydown', (event) => {
     pressPause()
   } else if (event.key === 'Escape') {
     event.preventDefault()
-    if (stage.kind === 'story') skipAhead()
+    if (stage.kind === 'story' || stage.kind === 'upgrade') skipAhead()
     else pressPause()
   } else if (event.key === 'm' || event.key === 'M') {
     toggleMute()
@@ -587,7 +626,7 @@ function listen(target: HTMLCanvasElement): void {
       const dx = event.clientX - swipeX
       const dy = event.clientY - swipeY
       if (Math.hypot(dx, dy) >= SWIPE * 0.6) swipeTo(dx, dy)
-      else if (stage.kind === 'story') pressStart()
+      else if (stage.kind === 'story' || stage.kind === 'upgrade') pressStart()
     }
   }
   target.addEventListener('pointerup', (event) => finish(event, false))
@@ -674,14 +713,17 @@ function direct(): void {
   if (stage.kind !== 'game') return
   if (game.mode === 'cleared' && game.modeTimer <= 0 && game.levelIndex < LEVELS.length - 1 && !told.has(game.levelIndex)) {
     told.add(game.levelIndex)
-    tell(game.levelIndex === 0 ? 'interlude1' : 'interlude2', () => {
-      play()
-      startEdge = true
-    })
+    const scene = game.levelIndex === 0 ? 'interlude1' : 'interlude2'
+    upgradeTo(game.levelIndex + 1, () =>
+      tell(scene, () => {
+        play()
+        startEdge = true
+      }),
+    )
   }
   if (game.mode === 'win' && lastMode !== 'win') {
     intel = gatherIntel()
-    tell('awakening', () => startFinale())
+    upgradeTo(3, () => tell('awakening', () => startFinale()))
   }
   if (game.mode === 'lose' && lastMode !== 'lose') {
     audio.say(LOSE_LINE.voice)
@@ -731,6 +773,9 @@ function frame(now: number): void {
     }
     const hide = tk.phase === 'chaos' || tk.phase === 'crash' || tk.phase === 'black' || tk.phase === 'hi'
     canvas.style.cursor = hide ? 'none' : 'default'
+  } else if (stage.kind === 'upgrade') {
+    stage.up.update(dt)
+    if (stage.up.finished) finishUpgrade()
   } else if (stage.kind === 'finale') {
     const f = stage.finale
     f.update(dt, lastDir)
@@ -740,6 +785,7 @@ function frame(now: number): void {
     if (f.done) finishFinale()
   }
 
+  setPacForm(stage.kind === 'game' && game.mode === 'title' ? 0 : grown)
   syncCard()
   const view = fit()
   const v = currentView()
@@ -754,12 +800,14 @@ function frame(now: number): void {
     hits = drawLeaderboard(ctx, v, records, stage.rank)
   } else if (stage.kind === 'briefing') {
     hits = drawBriefing(ctx, v)
+  } else if (stage.kind === 'upgrade') {
+    hits = stage.up.draw(ctx, v)
   } else if (stage.kind === 'takeover') {
     hits = stage.tk.draw(ctx, v.width, v.height, { name: entryName, focused: nameFocused, records })
   } else hits = drawScreen(ctx, game, v)
 
   const sinceBoot = booted ? (now - bootEndedAt) / 1000 : 1
-  const finaleGlitch = stage.kind === 'finale' ? stage.finale.glitch : stage.kind === 'takeover' ? stage.tk.glitch : 0
+  const finaleGlitch = stage.kind === 'finale' ? stage.finale.glitch : stage.kind === 'takeover' ? stage.tk.glitch : stage.kind === 'upgrade' ? stage.up.glitch : 0
   const bootPower = calm.matches ? 1 : Math.min(1, (now - loadedAt) / 600)
   crt?.draw(source, {
     time: now / 1000,

@@ -8,7 +8,7 @@ import { button, drawBackdrop, hit, logo, text, wrap, type Frame, type Hit, type
 import { drawFacing, lawSprite, pacFrame } from './sprites'
 import type { StoryPlayer } from './story'
 
-function frameFor(ctx: CanvasRenderingContext2D, view: View, W: number, H: number): Frame {
+export function frameFor(ctx: CanvasRenderingContext2D, view: View, W: number, H: number): Frame {
   const s = Math.min(view.width / W, view.height / H) * 0.94
   const frame: Frame = { s, ox: (view.width - W * s) / 2, oy: (view.height - H * s) / 2, hits: [], view }
   ctx.translate(frame.ox, frame.oy)
