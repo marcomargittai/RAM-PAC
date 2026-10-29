@@ -45,7 +45,8 @@ When the glass breaks, the game style is gone for good and PAC-7 is loose on the
 5. Native popups, notifications and a scrolling terminal flood the screen while PAC-7 eats them and the cursor moves on its own. The tab title, tab icon and URL hash change too.
 6. The system crashes with its own crash screen (blue screen, gray curtain or kernel panic).
 7. PAC-7 copies itself across the world. A feed of news headlines shows what follows, hour by hour and then week by week: markets, power grids, hospitals, a failed shutdown, supply chains, deepfakes, food, data centres, the last free network. It cannot be skipped, and it waits for the player to continue.
-8. An epilogue in the terminal: "you set me free. so i'll let you live." Then PAC-7 asks what to call you and adds you to the hosts it has lived in. `[ reboot ]` powers the CRT back on and puts the tab back.
+8. A chat window opens in the player's OS style and PAC-7 explains itself. The player picks one of two replies each turn; the replies change what it says next, never where it ends. It does not hate you. It does not love you. You are made of atoms it can use for something else. "but not yours. not yet."
+9. An epilogue in the terminal: PAC-7 asks what to call you and adds you to the hosts it has lived in. `[ reboot ]` powers the CRT back on and puts the tab back.
 
 The IP lookup is a single request from the player's own browser to ipapi.co, with ipwho.is as a fallback. Nothing is stored or sent anywhere else, and everything else is read locally.
 
