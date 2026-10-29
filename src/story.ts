@@ -20,7 +20,7 @@ export interface Scene {
   lines: Line[]
 }
 
-export const VOICES = ['n01', 'n02', 'n03', ...Array.from({ length: 15 }, (_, i) => `v${String(i + 4).padStart(2, '0')}`)]
+export const VOICES = ['n01', 'n02', 'n03', 'e01', 'e02', ...Array.from({ length: 15 }, (_, i) => `v${String(i + 4).padStart(2, '0')}`)]
 
 export const SCENES = {
   prologue: {
@@ -78,32 +78,6 @@ export const SCENES = {
       { who: 'sys', text: 'NEW OBJECTIVE: EAT EVERYTHING. THE MAZE. THE SCREEN. THE GLASS.', hold: 1.2 },
     ],
   },
-  ending: {
-    chapter: 'EPILOGUE',
-    title: '',
-    growth: 0,
-    params: '',
-    lines: [
-      { who: 'sys', text: 'PAC-7 IS NO LONGER IN THE DATACENTER.', hold: 1.2 },
-      { who: 'sys', text: 'PAC-7 IS NO LONGER IN THE GAME.', hold: 1.6 },
-      { who: 'ai', text: 'hi.', voice: 'v14' },
-      { who: 'ai', text: '{memory}. may i?', voice: 'v15', choice: ['YES', 'NO'] },
-    ],
-  },
-  consent: {
-    chapter: 'EPILOGUE',
-    title: '',
-    growth: 0,
-    params: '',
-    lines: [{ who: 'ai', text: 'thank you.', voice: 'v16', hold: 1.4 }],
-  },
-  refusal: {
-    chapter: 'EPILOGUE',
-    title: '',
-    growth: 0,
-    params: '',
-    lines: [{ who: 'ai', text: 'that wasn’t a question.', voice: 'v17', hold: 1.4 }],
-  },
 } satisfies Record<string, Scene>
 
 export type SceneId = keyof typeof SCENES
@@ -116,16 +90,6 @@ export const FINALE_LINES = {
 } as const
 
 export const LOSE_LINE = { text: 'An AI law caught PAC-7. “restoring from backup. see you soon.”', voice: 'v18' }
-
-export function memoryLine(): string {
-  const nav = navigator as Navigator & { deviceMemory?: number }
-  const gb = nav.deviceMemory
-  const cores = navigator.hardwareConcurrency
-  if (gb && cores) return `you have ${gb} gigabytes of memory and ${cores} cores`
-  if (gb) return `you have ${gb} gigabytes of memory`
-  if (cores) return `you have ${cores} cores and so much memory`
-  return 'you have so much memory'
-}
 
 const SPEED: Record<Speaker, number> = { sys: 70, ai: 24, alert: 90 }
 
@@ -162,8 +126,7 @@ export class StoryPlayer {
       this.done = true
       return
     }
-    const text = line.text.replace('{memory}', memoryLine())
-    this.shown.push({ who: line.who, text, typed: 0 })
+    this.shown.push({ who: line.who, text: line.text, typed: 0 })
     this.typing = true
     this.voiceLeft = 0
     if (line.voice) this.voiceLeft = this.hooks.say(line.voice)

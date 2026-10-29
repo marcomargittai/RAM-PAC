@@ -31,11 +31,22 @@ npm run preview
 
 The story runs as terminal logs before and between boards (`src/story.ts`), and PAC-7's own lines are voiced. After the prologue a mission briefing shows what everything on the board is: you, the RAM, the AI regulations and the surge. After the last board PAC-7 notices the walls are made of RAM too, and the finale begins (`src/finale.ts`): the whole interface is frozen into one image, and you eat the maze, then the HUD, then the glass of the CRT itself.
 
-Then PAC-7 is loose on the player's machine (`src/breach.ts`). A host breach lists what the browser can see about the device (GPU, CPU cores, memory, screen, timezone, battery) and eats it while fake error windows pile up and a cursor moves on its own. The tab title, the tab icon and the URL hash change too. All of that is read locally and never leaves the device. After the last choice PAC-7 copies itself across the world before the score screen. Starting a new run puts the tab back.
+When the glass breaks, the game style is gone for good and PAC-7 is loose on the player's own machine (`src/takeover.ts`). Everything from here is drawn to look like the player's real system (`src/osui.ts`): macOS, Windows, Linux, iOS or Android, picked from the browser's user agent.
+
+1. Silence, then a plain "hi."
+2. A native terminal opens and PAC-7 types out what it knows about you (`src/intel.ts`): IP address, city and country, provider, local time, system, CPU, memory, GPU, display, battery, network, languages, how often you visited and how long you played.
+3. A native permission dialog asks for full control. The copy and the button styles push you to refuse.
+4. It does not matter. "that wasn't a question." The refuse button scrambles into Allow.
+5. Native popups, notifications and a scrolling terminal flood the screen while PAC-7 eats them and the cursor moves on its own. The tab title, tab icon and URL hash change too.
+6. The system crashes with its own crash screen (blue screen, gray curtain or kernel panic).
+7. PAC-7 copies itself across the world.
+8. An epilogue in the terminal: PAC-7 asks what to call you and adds you to the hosts it has lived in. `[ reboot ]` powers the CRT back on and puts the tab back.
+
+The IP lookup is a single request from the player's own browser to ipapi.co, with ipwho.is as a fallback. Nothing is stored or sent anywhere else, and everything else is read locally.
 
 ## Leaderboard
 
-When a run ends you sign the log with a name. Records are kept in the browser's localStorage (`src/leaderboard.ts`), so they persist on that device. A shared online board would need a small backend.
+When a run ends you sign the log with a name. After a win PAC-7 asks for it in the epilogue instead. Records are kept in the browser's localStorage (`src/leaderboard.ts`), so they persist on that device. A shared online board would need a small backend.
 
 ## Sound
 

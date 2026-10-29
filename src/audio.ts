@@ -229,11 +229,11 @@ export class Sfx {
 
   ram(): void {
     const now = performance.now()
-    if (now - this.lastRam < 60) return
+    if (now - this.lastRam < 30) return
     this.lastRam = now
     this.ramTake = (this.ramTake + 1) % 3
     const take = (['ram1', 'ram2', 'ram3'] as const)[this.ramTake]!
-    this.play(take, 0.2, 0.97 + Math.random() * 0.06)
+    this.play(take, 0.3, 0.97 + Math.random() * 0.06)
   }
 
   chomp(): void {
