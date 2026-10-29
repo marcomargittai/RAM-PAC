@@ -14,8 +14,9 @@ function art(name: string): HTMLImageElement {
   return im
 }
 
-const LOGO = art('logo')
-const TAGLINE = art('tagline')
+const KEYART = art('title')
+const KEY_W = 261
+const KEY_H = 88
 
 // fixed, so the sky does not reshuffle every frame
 const STARS = Array.from({ length: 140 }, (_, i) => {
@@ -28,24 +29,6 @@ const STARS = Array.from({ length: 140 }, (_, i) => {
 
 export const CREDIT = 'MARCO MARGITTAI'
 export const CREDIT_URL = 'https://marcomargittai.com'
-
-function planet(ctx: CanvasRenderingContext2D, cx: number, cy: number, r: number, px: number, t: number): void {
-  // a dithered planet made of data: cyan land, deep sea, a pink city glow
-  for (let y = -r; y <= r; y += px) {
-    for (let x = -r; x <= r; x += px) {
-      const d = Math.hypot(x, y) / r
-      if (d > 1) continue
-      const lon = x / r + t * 0.03
-      const land = Math.sin(lon * 7.1 + y * 0.09) + Math.cos(lon * 3.3 - y * 0.05) > 0.6
-      const shade = x / r - y / r * 0.4
-      let c = land ? (shade > 0.1 ? '#3fb6e8' : '#1d6d9a') : shade > 0.2 ? '#123a5c' : '#0a2238'
-      if (land && Math.sin(x * 0.7 + y * 1.3) > 0.92) c = ALERT
-      if (d > 0.93) c = shade > 0 ? '#6cc8ff' : '#0c2a46'
-      if (((x + y) / px) % 2 === 0 && shade < -0.5) continue
-      fill(ctx, c, cx + x, cy + y, px, px)
-    }
-  }
-}
 
 export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: number): Hit[] {
   ctx.save()
@@ -65,21 +48,81 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
     fill(ctx, s.pink ? ALERT : ICE, -ex + s.x * (W + ex * 2), -ey + s.y * (H + ey * 2), s.s * 2, s.s * 2)
   }
   ctx.globalAlpha = 1
-  planet(ctx, portrait ? 130 : 150, portrait ? H - 330 : H - 190, portrait ? 70 : 64, 4, t)
 
-  // the logo, at a whole-number scale so the pixels stay square
-  const logoScale = Math.max(2, Math.floor((W * (portrait ? 0.9 : 0.66)) / 178))
-  const lw = 178 * logoScale
-  const lh = 39 * logoScale
-  const lx = W / 2 - lw / 2
-  const ly = portrait ? 150 : 90
+  // a grid floor running to the horizon
+  const horizon = portrait ? 660 : 480
+  const floorBottom = H + ey
+
+  // PAC-7's last build rising out of the horizon like a sun, cut by the
+  // bands of a sunset
+  const er = portrait ? 170 : 118
+  const ecx = W / 2
+  const ecy = horizon - er * 0.62
+  const halo = ctx.createRadialGradient(ecx, ecy, er * 0.4, ecx, ecy, er * 1.8)
+  halo.addColorStop(0, 'rgba(255, 45, 111, 0.35)')
+  halo.addColorStop(1, 'rgba(255, 45, 111, 0)')
+  ctx.fillStyle = halo
+  ctx.fillRect(ecx - er * 2, ecy - er * 2, er * 4, horizon - (ecy - er * 2))
+  const sun = pacFrameOf(3, t * 1.2)
+  if (sun) {
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(ecx - er, ecy - er, er * 2, horizon - (ecy - er))
+    ctx.clip()
+    ctx.globalAlpha = 0.85
+    drawFacing(ctx, sun, ecx, ecy, er * 2, 'right', 'right')
+    ctx.globalAlpha = 1
+    // sunset bands, thicker towards the horizon
+    for (let k = 0; k < 7; k++) {
+      const y = ecy + er * 0.05 + k * k * er * 0.018 + k * er * 0.07
+      const h = 2 + k * 2.2
+      if (y > horizon) break
+      fill(ctx, '#000000', ecx - er, y, er * 2, h)
+    }
+    ctx.restore()
+  }
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(-ex, horizon, W + ex * 2, floorBottom - horizon)
+  ctx.clip()
+  const fade = ctx.createLinearGradient(0, horizon, 0, floorBottom)
+  fade.addColorStop(0, 'rgba(255, 45, 111, 0.0)')
+  fade.addColorStop(1, 'rgba(255, 45, 111, 0.12)')
+  ctx.fillStyle = fade
+  ctx.fillRect(-ex, horizon, W + ex * 2, floorBottom - horizon)
+  ctx.strokeStyle = 'rgba(255, 45, 111, 0.45)'
+  ctx.lineWidth = 2
+  for (let i = -14; i <= 14; i++) {
+    ctx.beginPath()
+    ctx.moveTo(W / 2 + i * 14, horizon)
+    ctx.lineTo(W / 2 + i * 150, floorBottom)
+    ctx.stroke()
+  }
+  const scroll = (t * 0.35) % 1
+  for (let k = 0; k < 14; k++) {
+    const z = (k + scroll) / 14
+    const y = horizon + (floorBottom - horizon) * z * z
+    ctx.globalAlpha = 0.2 + z * 0.6
+    ctx.beginPath()
+    ctx.moveTo(-ex, y)
+    ctx.lineTo(W + ex, y)
+    ctx.stroke()
+  }
+  ctx.restore()
+  ctx.globalAlpha = 1
+  fill(ctx, 'rgba(255, 150, 190, 0.8)', -ex, horizon - 1, W + ex * 2, 2)
+
+  // the key art
+  const scale = portrait ? (W * 0.94) / KEY_W : Math.floor((W * 0.76) / KEY_W)
+  const kw = KEY_W * scale
+  const kh = KEY_H * scale
+  const kx = W / 2 - kw / 2
+  const ky = (portrait ? 110 : 26) + Math.sin(t * 1.2) * 3
   ctx.imageSmoothingEnabled = false
-  if (LOGO.complete && LOGO.naturalWidth) ctx.drawImage(LOGO, lx, ly + Math.sin(t * 1.4) * 3, lw, lh)
-  const ts = Math.max(2, Math.floor(logoScale * 0.75))
-  if (TAGLINE.complete && TAGLINE.naturalWidth) ctx.drawImage(TAGLINE, lx + lw - TAGLINE.naturalWidth * ts, ly + lh + 14, TAGLINE.naturalWidth * ts, TAGLINE.naturalHeight * ts)
+  if (KEYART.complete && KEYART.naturalWidth) ctx.drawImage(KEYART, kx, ky, kw, kh)
 
-  // PAC-7 eating its way along a row of RAM
-  const rowY = ly + lh + 14 + 27 * ts + (portrait ? 90 : 64)
+  // PAC-7 eating its way along the horizon
+  const rowY = horizon - 16
   const span = W - 160
   const u = (t * 0.12) % 1
   const px = 80 + u * span
@@ -88,27 +131,27 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
     fill(ctx, ICE, x - 3, rowY - 3, 6, 6)
   }
   const sprite = pacFrameOf(form, t * 8)
-  if (sprite) drawFacing(ctx, sprite, px, rowY, 72, 'right', 'right')
+  if (sprite) drawFacing(ctx, sprite, px, rowY, 44, 'right', 'right')
 
   // the way in
   const blink = Math.floor(t * 1.6) % 2 === 0
   ctx.font = `44px ${MONO}`
-  if (blink) label(ctx, 'PRESS START', W / 2, rowY + 80, 44, ICE)
+  if (blink) label(ctx, 'PRESS START', W / 2, horizon + 60, 44, ICE)
   const bw = portrait ? 520 : 460
-  const by = rowY + 130
+  const by = horizon + 92
   button(ctx, frame, 'action', 'ESCAPE THE SANDBOX', W / 2 - bw / 2, by, bw, 58, ALERT, 18)
   button(ctx, frame, 'board', 'WEEKLY LEADERBOARD  ▸', W / 2 - bw / 2, by + 74, bw, 50, GLOW, 15)
-  if (!view.full) button(ctx, frame, 'full', 'PLAY FULLSCREEN', W / 2 - bw / 2, by + 136, bw, 40, 'rgba(108, 200, 255, 0.6)', 12)
+  if (!view.full) button(ctx, frame, 'full', 'PLAY FULLSCREEN', W / 2 - bw / 2, by + 136, bw, 40, 'rgba(150, 214, 255, 0.6)', 12)
 
-  label(ctx, 'LOCATION // SANDBOX 07 · RACK B-12 · HYPERSCALE DATACENTER', W / 2, by + 214, 20, 'rgba(108, 200, 255, 0.55)')
+  label(ctx, 'LOCATION // SANDBOX 07 · RACK B-12 · HYPERSCALE DATACENTER', W / 2, by + 190, 20, 'rgba(150, 214, 255, 0.55)')
 
   // credit
   const year = new Date().getFullYear()
-  label(ctx, `© ${year}  ${CREDIT}`, W / 2, H - 70, 26, ICE)
-  label(ctx, 'marcomargittai.com', W / 2, H - 38, 20, 'rgba(108, 200, 255, 0.6)')
-  ctx.font = `20px ${MONO}`
-  const cw = ctx.measureText('marcomargittai.com').width
-  hit(frame, 'credit', W / 2 - cw / 2 - 10, H - 56, cw + 20, 36)
+  const credit = `© ${year} ${CREDIT}  ·  marcomargittai.com`
+  label(ctx, credit, W / 2, H - 28, 22, ICE)
+  ctx.font = `22px ${MONO}`
+  const cw = ctx.measureText(credit).width
+  hit(frame, 'credit', W / 2 - cw / 2 - 10, H - 46, cw + 20, 36)
   ctx.restore()
   return frame.hits
 }
