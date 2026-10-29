@@ -1,6 +1,7 @@
-// WebGL post pass. The game draws to a 2D source canvas, this module puts it
-// on the visible canvas through a phosphor persistence buffer and a CRT tube:
-// curvature, bloom, aperture grille, scanlines, chroma split, roll and glitch.
+// WebGL tube. The whole screen is drawn to a 2D source canvas, then this puts
+// it on the visible canvas: phosphor persistence, a wide two-pass bloom, then a
+// curved tube with dot-matrix pixels, beam smear, soft focus, chroma split,
+// glitch tearing and a power-on squeeze.
 
 export interface CrtParams {
   time: number
@@ -8,12 +9,25 @@ export interface CrtParams {
   surge: number
   glitch: number
   flash: number
+  power: number
   motion: number
+  cell: number
 }
 
 export interface Crt {
   canvas: HTMLCanvasElement
   draw(source: HTMLCanvasElement, params: CrtParams): void
+}
+
+export const CURVE = { x: 0.035, y: 0.05 }
+
+// Same mapping the tube shader uses: screen uv in, source uv out.
+export function curve(u: number, v: number): { u: number; v: number } {
+  const cx = u * 2 - 1
+  const cy = v * 2 - 1
+  const x = cx + cx * cy * cy * CURVE.x
+  const y = cy + cy * cx * cx * CURVE.y
+  return { u: x * 0.5 + 0.5, v: y * 0.5 + 0.5 }
 }
 
 const VERT = `
@@ -32,10 +46,40 @@ uniform sampler2D u_src;
 uniform sampler2D u_prev;
 uniform float u_decay;
 void main() {
-  vec2 uv = vec2(v_uv.x, 1.0 - v_uv.y);
-  vec3 now = texture2D(u_src, uv).rgb;
+  vec3 now = texture2D(u_src, vec2(v_uv.x, 1.0 - v_uv.y)).rgb;
   vec3 old = texture2D(u_prev, v_uv).rgb * u_decay;
   gl_FragColor = vec4(max(now, old), 1.0);
+}
+`
+
+const DOWN = `
+precision mediump float;
+varying vec2 v_uv;
+uniform sampler2D u_img;
+uniform vec2 u_px;
+void main() {
+  vec3 c = texture2D(u_img, v_uv + u_px * vec2(-1.0, -1.0)).rgb;
+  c += texture2D(u_img, v_uv + u_px * vec2(1.0, -1.0)).rgb;
+  c += texture2D(u_img, v_uv + u_px * vec2(-1.0, 1.0)).rgb;
+  c += texture2D(u_img, v_uv + u_px * vec2(1.0, 1.0)).rgb;
+  c *= 0.25;
+  c = max(c - 0.1, 0.0) * 1.25;
+  gl_FragColor = vec4(c, 1.0);
+}
+`
+
+const BLUR = `
+precision mediump float;
+varying vec2 v_uv;
+uniform sampler2D u_img;
+uniform vec2 u_dir;
+void main() {
+  vec3 c = texture2D(u_img, v_uv).rgb * 0.227;
+  c += texture2D(u_img, v_uv + u_dir * 1.385).rgb * 0.316;
+  c += texture2D(u_img, v_uv - u_dir * 1.385).rgb * 0.316;
+  c += texture2D(u_img, v_uv + u_dir * 3.231).rgb * 0.070;
+  c += texture2D(u_img, v_uv - u_dir * 3.231).rgb * 0.070;
+  gl_FragColor = vec4(c, 1.0);
 }
 `
 
@@ -43,13 +87,15 @@ const TUBE = `
 precision mediump float;
 varying vec2 v_uv;
 uniform sampler2D u_img;
-uniform vec2 u_res;
+uniform sampler2D u_bloom;
 uniform vec2 u_src;
 uniform float u_time;
 uniform float u_surge;
 uniform float u_glitch;
 uniform float u_flash;
+uniform float u_power;
 uniform float u_motion;
+uniform float u_cell;
 
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
@@ -57,8 +103,7 @@ float hash(vec2 p) {
 
 vec2 curve(vec2 uv) {
   vec2 c = uv * 2.0 - 1.0;
-  vec2 off = c.yx * c.yx * vec2(0.045, 0.06);
-  c += c * off;
+  c += c * (c.yx * c.yx) * vec2(${CURVE.x.toFixed(4)}, ${CURVE.y.toFixed(4)});
   return c * 0.5 + 0.5;
 }
 
@@ -68,58 +113,59 @@ vec3 tap(vec2 uv) {
 
 void main() {
   vec2 uv = curve(v_uv);
+
+  float squeeze = clamp(u_power * 2.2 - 0.9, 0.004, 1.0);
+  float widen = clamp(u_power * 3.0, 0.02, 1.0);
+  uv.y = 0.5 + (uv.y - 0.5) / squeeze;
+  uv.x = 0.5 + (uv.x - 0.5) / widen;
+
   if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
     gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
     return;
   }
 
-  float band = floor(uv.y * 48.0);
-  float tear = step(0.82, hash(vec2(band, floor(u_time * 24.0)))) * u_glitch;
-  uv.x += (hash(vec2(band, u_time)) - 0.5) * 0.06 * tear;
-  uv.x += sin(uv.y * 900.0 + u_time * 40.0) * 0.0007 * u_glitch;
+  float band = floor(uv.y * 64.0);
+  float tear = step(0.84, hash(vec2(band, floor(u_time * 20.0)))) * u_glitch;
+  uv.x += (hash(vec2(band, u_time)) - 0.5) * 0.05 * tear;
+  uv.x += sin(uv.y * 700.0 + u_time * 30.0) * 0.0006 * (u_glitch + 0.25 * u_motion);
 
   vec2 px = 1.0 / u_src;
-  float split = (0.9 + u_surge * 1.6 + u_glitch * 5.0) * px.x;
-  vec3 col;
-  col.r = tap(uv + vec2(split, 0.0)).r;
-  col.g = tap(uv).g;
-  col.b = tap(uv - vec2(split, 0.0)).b;
+  float split = (1.2 + u_surge * 1.4 + u_glitch * 6.0) * px.x;
+  vec3 sharp;
+  sharp.r = tap(uv + vec2(split, 0.0)).r;
+  sharp.g = tap(uv).g;
+  sharp.b = tap(uv - vec2(split, 0.4 * px.y)).b;
 
-  vec3 glow = vec3(0.0);
-  float total = 0.0;
-  for (int i = 0; i < 8; i++) {
-    float a = float(i) * 0.7854 + 0.39;
-    vec2 dir = vec2(cos(a), sin(a));
-    glow += tap(uv + dir * px * 4.0) * 0.6;
-    glow += tap(uv + dir * px * 9.0) * 0.5;
-    glow += tap(uv + dir * px * 16.0) * 0.35;
-    total += 1.45;
-  }
-  glow /= total;
-  glow = max(glow - 0.06, 0.0);
-  col += glow * (0.85 + u_surge * 0.2);
+  vec3 soft = tap(uv + px * vec2(1.5, 0.0)) + tap(uv - px * vec2(1.5, 0.0))
+            + tap(uv + px * vec2(0.0, 1.5)) + tap(uv - px * vec2(0.0, 1.5));
+  vec3 base = mix(sharp, soft * 0.25, 0.4);
 
-  float lines = u_src.y * 0.5;
-  float scan = 0.5 + 0.5 * sin(uv.y * lines * 6.28318);
-  col *= mix(1.0, 0.62 + 0.38 * scan, 0.85);
+  vec3 smear = tap(uv - px * vec2(2.0, 0.0)) * 0.5
+             + tap(uv - px * vec2(5.0, 0.0)) * 0.3
+             + tap(uv - px * vec2(9.0, 0.0)) * 0.18;
+  base += smear * 0.28;
 
-  float tri = mod(floor(gl_FragCoord.x), 3.0);
-  vec3 mask = vec3(tri == 0.0 ? 1.0 : 0.72, tri == 1.0 ? 1.0 : 0.72, tri == 2.0 ? 1.0 : 0.72);
-  col *= mix(vec3(1.0), mask * 1.18, 0.55);
+  vec3 glow = texture2D(u_bloom, uv).rgb;
 
-  float roll = 1.0 - fract(u_time * 0.08);
-  float rollBand = smoothstep(0.0, 0.06, 0.06 - abs(uv.y - roll)) * u_motion;
-  col += vec3(0.02, 0.05, 0.05) * rollBand;
+  vec2 cell = gl_FragCoord.xy / u_cell;
+  vec2 f = fract(cell + vec2(mod(floor(cell.y), 2.0) * 0.5, 0.0)) - 0.5;
+  float dotMask = smoothstep(0.52, 0.18, length(f));
+  float mask = mix(0.32, 1.45, dotMask);
 
-  col += (hash(uv * u_res + u_time * 61.0) - 0.5) * (0.045 + u_glitch * 0.12);
-  col *= 1.0 - 0.025 * u_motion * sin(u_time * 120.0);
-  col += vec3(0.85, 1.0, 0.95) * u_flash * 0.16;
+  vec3 col = base * mask + glow * (1.35 + u_surge * 0.5) * (0.55 + 0.45 * dotMask);
+
+  float roll = 1.0 - fract(u_time * 0.07);
+  col += vec3(0.02, 0.04, 0.07) * smoothstep(0.08, 0.0, abs(uv.y - roll)) * u_motion;
+
+  col += vec3(0.002, 0.006, 0.016);
+  col += (hash(uv * u_src + u_time * 61.0) - 0.5) * (0.05 + u_glitch * 0.14);
+  col *= 1.0 - 0.03 * u_motion * sin(u_time * 110.0);
+  col += vec3(0.8, 0.92, 1.0) * u_flash * 0.12;
+  col *= 1.0 + (1.0 - u_power) * 3.0;
 
   vec2 v = uv * (1.0 - uv);
-  float vig = pow(v.x * v.y * 18.0, 0.28);
-  col *= clamp(vig, 0.0, 1.0);
-
-  vec2 edge = smoothstep(vec2(0.0), vec2(0.004), uv) * smoothstep(vec2(0.0), vec2(0.004), 1.0 - uv);
+  col *= clamp(pow(v.x * v.y * 22.0, 0.32), 0.0, 1.0);
+  vec2 edge = smoothstep(vec2(0.0), vec2(0.006), uv) * smoothstep(vec2(0.0), vec2(0.006), 1.0 - uv);
   col *= edge.x * edge.y;
 
   gl_FragColor = vec4(col, 1.0);
@@ -191,11 +237,14 @@ function drop(gl: WebGLRenderingContext, t: Target | null): void {
 
 export function createCrt(): Crt | null {
   const canvas = document.createElement('canvas')
-  const gl = canvas.getContext('webgl', { antialias: false, alpha: false, preserveDrawingBuffer: false })
-  if (!gl) return null
+  const context = canvas.getContext('webgl', { antialias: false, alpha: false, preserveDrawingBuffer: false })
+  if (!context) return null
+  const gl: WebGLRenderingContext = context
   const persist = program(gl, PERSIST)
+  const down = program(gl, DOWN)
+  const blur = program(gl, BLUR)
   const tube = program(gl, TUBE)
-  if (!persist || !tube) return null
+  if (!persist || !down || !blur || !tube) return null
 
   const quad = gl.createBuffer()
   gl.bindBuffer(gl.ARRAY_BUFFER, quad)
@@ -206,22 +255,36 @@ export function createCrt(): Crt | null {
   const srcTex = texture(gl)
   let read: Target | null = null
   let write: Target | null = null
+  let bloomA: Target | null = null
+  let bloomB: Target | null = null
 
   const u = (prog: WebGLProgram, name: string) => gl.getUniformLocation(prog, name)
-  const P = {
-    src: u(persist, 'u_src'),
-    prev: u(persist, 'u_prev'),
-    decay: u(persist, 'u_decay'),
-  }
+  const P = { src: u(persist, 'u_src'), prev: u(persist, 'u_prev'), decay: u(persist, 'u_decay') }
+  const D = { img: u(down, 'u_img'), px: u(down, 'u_px') }
+  const B = { img: u(blur, 'u_img'), dir: u(blur, 'u_dir') }
   const T = {
     img: u(tube, 'u_img'),
-    res: u(tube, 'u_res'),
+    bloom: u(tube, 'u_bloom'),
     src: u(tube, 'u_src'),
     time: u(tube, 'u_time'),
     surge: u(tube, 'u_surge'),
     glitch: u(tube, 'u_glitch'),
     flash: u(tube, 'u_flash'),
+    power: u(tube, 'u_power'),
     motion: u(tube, 'u_motion'),
+    cell: u(tube, 'u_cell'),
+  }
+
+  function pass(prog: WebGLProgram, out: Target | null, w: number, h: number): void {
+    gl.useProgram(prog)
+    gl.bindFramebuffer(gl.FRAMEBUFFER, out ? out.fbo : null)
+    gl.viewport(0, 0, w, h)
+  }
+
+  function bind(unit: number, tex: WebGLTexture, loc: WebGLUniformLocation | null): void {
+    gl.activeTexture(gl.TEXTURE0 + unit)
+    gl.bindTexture(gl.TEXTURE_2D, tex)
+    gl.uniform1i(loc, unit)
   }
 
   return {
@@ -232,40 +295,54 @@ export function createCrt(): Crt | null {
       const h = source.height
       if (!w || !h) return
       if (!read || read.w !== w || read.h !== h) {
-        drop(gl, read)
-        drop(gl, write)
+        for (const t of [read, write, bloomA, bloomB]) drop(gl, t)
         read = target(gl, w, h)
         write = target(gl, w, h)
+        const bw = Math.max(1, Math.round(w / 4))
+        const bh = Math.max(1, Math.round(h / 4))
+        bloomA = target(gl, bw, bh)
+        bloomB = target(gl, bw, bh)
       }
+      const a = bloomA!
+      const b = bloomB!
 
       gl.activeTexture(gl.TEXTURE0)
       gl.bindTexture(gl.TEXTURE_2D, srcTex)
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, source)
 
-      gl.useProgram(persist)
-      gl.bindFramebuffer(gl.FRAMEBUFFER, write!.fbo)
-      gl.viewport(0, 0, w, h)
-      gl.uniform1i(P.src, 0)
-      gl.activeTexture(gl.TEXTURE1)
-      gl.bindTexture(gl.TEXTURE_2D, read.tex)
-      gl.uniform1i(P.prev, 1)
-      const decay = params.motion > 0 ? Math.pow(0.62, params.dt * 60) : 0
-      gl.uniform1f(P.decay, decay)
+      pass(persist, write!, w, h)
+      bind(0, srcTex, P.src)
+      bind(1, read.tex, P.prev)
+      gl.uniform1f(P.decay, params.motion > 0 ? Math.pow(0.7, params.dt * 60) : 0)
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
-      gl.useProgram(tube)
-      gl.bindFramebuffer(gl.FRAMEBUFFER, null)
-      gl.viewport(0, 0, canvas.width, canvas.height)
-      gl.activeTexture(gl.TEXTURE0)
-      gl.bindTexture(gl.TEXTURE_2D, write!.tex)
-      gl.uniform1i(T.img, 0)
-      gl.uniform2f(T.res, canvas.width, canvas.height)
+      pass(down, a, a.w, a.h)
+      bind(0, write!.tex, D.img)
+      gl.uniform2f(D.px, 1 / w, 1 / h)
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+
+      for (const spread of [1, 2.2]) {
+        pass(blur, b, a.w, a.h)
+        bind(0, a.tex, B.img)
+        gl.uniform2f(B.dir, spread / a.w, 0)
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+        pass(blur, a, a.w, a.h)
+        bind(0, b.tex, B.img)
+        gl.uniform2f(B.dir, 0, spread / a.h)
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
+      }
+
+      pass(tube, null, canvas.width, canvas.height)
+      bind(0, write!.tex, T.img)
+      bind(1, a.tex, T.bloom)
       gl.uniform2f(T.src, w, h)
       gl.uniform1f(T.time, params.time)
       gl.uniform1f(T.surge, params.surge)
       gl.uniform1f(T.glitch, params.glitch * params.motion)
       gl.uniform1f(T.flash, params.flash)
+      gl.uniform1f(T.power, params.power)
       gl.uniform1f(T.motion, params.motion)
+      gl.uniform1f(T.cell, params.cell)
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
       const swap = read

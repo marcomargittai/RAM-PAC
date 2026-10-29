@@ -1,84 +1,11 @@
 import { LEVELS } from './levels'
 import { CAUGHT_HOLD, CLEAR_HOLD, MILESTONE_HOLD, SEAL_HOLD, visual, type Dir, type Game, type Ghost } from './sim'
+import { ALERT, FRIGHT, GLOW, ICE, VOID, eraOf, theme, type Theme } from './palette'
 import { drawFacing, lawSprite, pacFrame, type GhostLook } from './sprites'
 
 const TILE = 40
-const MONO = '"VT323", "Share Tech Mono", ui-monospace, monospace'
-const DISPLAY = '"Orbitron", "Chakra Petch", sans-serif'
-
-const VOID = '#000302'
-const BONE = '#e8fff9'
-const RAM = '#ff7a1f'
-const RAM_HOT = '#ffc48a'
-const RED = '#ff2e45'
-const FRIGHT = '#2f7bff'
-
-interface Theme {
-  name: string
-  bg: string
-  line: string
-  inner: string
-  fill: string
-  hatch: string
-  grid: string
-  accent: string
-  pellet: string
-  pelletHot: string
-}
-
-export const ERA_NAMES = ['P1 PHOSPHOR', 'HOLOMAP', 'SECTOR 34']
-
-const THEMES: Theme[] = [
-  {
-    name: ERA_NAMES[0]!,
-    bg: '#010a06',
-    line: '#3dffa0',
-    inner: 'rgba(61, 255, 160, 0.55)',
-    fill: 'rgba(61, 255, 160, 0.05)',
-    hatch: 'rgba(61, 255, 160, 0.09)',
-    grid: 'rgba(61, 255, 160, 0.22)',
-    accent: RED,
-    pellet: RAM,
-    pelletHot: RAM_HOT,
-  },
-  {
-    name: ERA_NAMES[1]!,
-    bg: '#01080b',
-    line: '#4ff6ff',
-    inner: 'rgba(79, 246, 255, 0.55)',
-    fill: 'rgba(79, 246, 255, 0.05)',
-    hatch: 'rgba(79, 246, 255, 0.09)',
-    grid: 'rgba(79, 246, 255, 0.22)',
-    accent: RED,
-    pellet: RAM,
-    pelletHot: RAM_HOT,
-  },
-  {
-    name: ERA_NAMES[2]!,
-    bg: '#070405',
-    line: '#e6f2f4',
-    inner: 'rgba(255, 46, 69, 0.75)',
-    fill: 'rgba(255, 46, 69, 0.05)',
-    hatch: 'rgba(255, 46, 69, 0.12)',
-    grid: 'rgba(230, 242, 244, 0.2)',
-    accent: RED,
-    pellet: RAM,
-    pelletHot: RAM_HOT,
-  },
-]
-
-const SURGE_THEME: Theme = {
-  name: 'OVERCLOCK',
-  bg: '#050100',
-  line: '#ff7a1f',
-  inner: 'rgba(255, 196, 138, 0.5)',
-  fill: 'rgba(255, 122, 31, 0.025)',
-  hatch: 'rgba(255, 122, 31, 0.06)',
-  grid: 'rgba(255, 122, 31, 0.2)',
-  accent: '#4ff6ff',
-  pellet: BONE,
-  pelletHot: '#ffffff',
-}
+export const MONO = '"VT323", "Share Tech Mono", ui-monospace, monospace'
+export const DISPLAY = '"Orbitron", "Chakra Petch", sans-serif'
 
 export function tileSize(): number {
   return TILE
@@ -88,24 +15,16 @@ function snap(value: number): number {
   return Math.round(value)
 }
 
-function clamp(value: number, min: number, max: number): number {
+export function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
 }
 
-function eraOf(level: number): number {
-  return Math.min(2, Math.max(0, level))
-}
-
-function theme(surge: boolean, level: number): Theme {
-  return surge ? SURGE_THEME : THEMES[eraOf(level)]!
-}
-
-function fill(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number): void {
+export function fill(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number): void {
   ctx.fillStyle = color
   ctx.fillRect(snap(x), snap(y), snap(w), snap(h))
 }
 
-function label(
+export function label(
   ctx: CanvasRenderingContext2D,
   text: string,
   x: number,
@@ -123,7 +42,7 @@ function label(
   ctx.fillText(text, snap(x), snap(y))
 }
 
-function headline(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number, color: string): void {
+export function headline(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number, color: string): void {
   ctx.fillStyle = color
   ctx.font = `italic 900 ${size}px ${DISPLAY}`
   ctx.textAlign = 'center'
@@ -131,7 +50,7 @@ function headline(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
   ctx.fillText(text, snap(x), snap(y))
 }
 
-function hatch(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number, gap = 6): void {
+export function hatch(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number, gap = 6): void {
   ctx.save()
   ctx.beginPath()
   ctx.rect(x, y, w, h)
@@ -147,7 +66,7 @@ function hatch(ctx: CanvasRenderingContext2D, color: string, x: number, y: numbe
   ctx.restore()
 }
 
-function brackets(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number, len = 10, t = 2): void {
+export function brackets(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number, len = 10, t = 2): void {
   fill(ctx, color, x, y, len, t)
   fill(ctx, color, x, y, t, len)
   fill(ctx, color, x + w - len, y, len, t)
@@ -158,8 +77,8 @@ function brackets(ctx: CanvasRenderingContext2D, color: string, x: number, y: nu
   fill(ctx, color, x + w - t, y + h - len, t, len)
 }
 
-function panel(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number): void {
-  ctx.fillStyle = 'rgba(0, 3, 2, 0.9)'
+export function panel(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number): void {
+  ctx.fillStyle = 'rgba(1, 4, 11, 0.9)'
   ctx.fillRect(snap(x), snap(y), snap(w), snap(h))
   ctx.strokeStyle = color
   ctx.lineWidth = 1
@@ -167,7 +86,7 @@ function panel(ctx: CanvasRenderingContext2D, color: string, x: number, y: numbe
   brackets(ctx, color, x - 5, y - 5, w + 10, h + 10, 12, 2)
 }
 
-function tag(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number, bg: string, ink: string, bar = RED): void {
+export function tag(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number, bg: string, ink: string, bar = ALERT): void {
   ctx.font = `${size}px ${MONO}`
   const w = Math.ceil(ctx.measureText(text).width) + size
   const h = Math.round(size * 1.05)
@@ -178,7 +97,7 @@ function tag(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, 
   label(ctx, text, x, y + 1, size, ink)
 }
 
-function warning(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string): void {
+export function warning(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string): void {
   ctx.save()
   ctx.strokeStyle = color
   ctx.lineWidth = Math.max(2, size / 9)
@@ -200,12 +119,12 @@ function phosphorColor(color: string, th: Theme): string {
     case '#ff4d6a':
     case '#e23d5c':
     case '#9d1228':
-      return RED
+      return ALERT
     case '#f4f1e4':
     case '#f4efe2':
     case '#f7f1e4':
     case '#7dffe1':
-      return BONE
+      return ICE
     case '#d9c7a2':
     case '#ffb000':
       return th.pellet
@@ -343,8 +262,8 @@ function paintHold(ctx: CanvasRenderingContext2D, maze: Game['maze'], th: Theme)
   const y = pen.y * tile + 4
   const w = pen.w * tile - 8
   const h = pen.h * tile - 8
-  fill(ctx, 'rgba(255, 46, 69, 0.03)', x, y, w, h)
-  hatch(ctx, 'rgba(255, 46, 69, 0.13)', x, y, w, h, 9)
+  fill(ctx, 'rgba(255, 45, 111, 0.015)', x, y, w, h)
+  hatch(ctx, 'rgba(255, 45, 111, 0.07)', x, y, w, h, 9)
   ctx.save()
   ctx.shadowColor = th.line
   ctx.shadowBlur = 8
@@ -371,10 +290,10 @@ function paintHold(ctx: CanvasRenderingContext2D, maze: Game['maze'], th: Theme)
   const tw = Math.ceil(ctx.measureText(text).width) + 10
   const tx = x + w / 2 - tw / 2 + 2
   const ty = y + h - 21
-  fill(ctx, 'rgba(0, 3, 2, 0.9)', tx - 4, ty, tw + 4, 16)
-  fill(ctx, RED, tx - 4, ty, 3, 16)
-  label(ctx, text, tx + tw / 2, ty + 8.5, 17, BONE)
-  label(ctx, '04', x + 6, y + 11, 15, RED, 'left')
+  fill(ctx, 'rgba(1, 4, 11, 0.9)', tx - 4, ty, tw + 4, 16)
+  fill(ctx, ALERT, tx - 4, ty, 3, 16)
+  label(ctx, text, tx + tw / 2, ty + 8.5, 17, ICE)
+  label(ctx, '04', x + 6, y + 11, 15, ALERT, 'left')
 }
 
 export function render(ctx: CanvasRenderingContext2D, game: Game): void {
@@ -401,7 +320,7 @@ export function render(ctx: CanvasRenderingContext2D, game: Game): void {
   drawFx(ctx, game, tile, th)
 
   if (game.flash > 0.02) {
-    ctx.fillStyle = `rgba(232, 255, 249, ${game.flash * 0.22})`
+    ctx.fillStyle = `rgba(226, 245, 255, ${game.flash * 0.22})`
     ctx.fillRect(0, 0, width, height)
   }
   ctx.restore()
@@ -430,33 +349,35 @@ function drawDoor(ctx: CanvasRenderingContext2D, game: Game, th: Theme): void {
   const x0 = door.x * TILE + 4
   const w = TILE - 8
   const on = Math.floor(game.time * 6) % 2 === 0
-  const ink = game.surge > 0 ? th.accent : RED
+  const ink = game.surge > 0 ? th.accent : ALERT
   for (let i = 0; i < w; i += 6) {
     const lit = (i / 6 + (on ? 0 : 1)) % 2 === 0
-    fill(ctx, lit ? ink : 'rgba(255, 46, 69, 0.25)', x0 + i, y - 1, 4, 2)
+    fill(ctx, lit ? ink : 'rgba(255, 45, 111, 0.25)', x0 + i, y - 1, 4, 2)
   }
 }
 
 function drawPellets(ctx: CanvasRenderingContext2D, game: Game, tile: number, th: Theme): void {
   for (const dot of game.dots) {
-    const x = snap(dot.x * tile + tile / 2)
-    const y = snap(dot.y * tile + tile / 2)
-    const twinkle = 0.78 + 0.22 * Math.sin(game.time * 3.2 + dot.x * 1.7 + dot.y * 2.3)
-    ctx.globalAlpha = 0.22 * twinkle
-    fill(ctx, th.pellet, x - 6, y - 5, 12, 10)
+    const x = dot.x * tile + tile / 2
+    const y = dot.y * tile + tile / 2
+    const twinkle = 0.72 + 0.28 * Math.sin(game.time * 3.2 + dot.x * 1.7 + dot.y * 2.3)
+    ctx.globalAlpha = 0.18 * twinkle
+    ctx.fillStyle = th.pellet
+    ctx.beginPath()
+    ctx.arc(x, y, 7, 0, Math.PI * 2)
+    ctx.fill()
     ctx.globalAlpha = twinkle
-    fill(ctx, th.pellet, x - 4, y - 3, 8, 6)
-    fill(ctx, th.pelletHot, x - 4, y - 3, 8, 1)
-    fill(ctx, th.pelletHot, x - 4, y - 3, 1, 3)
-    fill(ctx, th.bg, x - 1, y - 1, 2, 2)
-    fill(ctx, th.pellet, x - 3, y - 5, 1, 1)
-    fill(ctx, th.pellet, x + 2, y - 5, 1, 1)
-    fill(ctx, th.pellet, x - 3, y + 4, 1, 1)
-    fill(ctx, th.pellet, x + 2, y + 4, 1, 1)
+    ctx.beginPath()
+    ctx.arc(x, y, 3.4, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillStyle = th.pelletHot
+    ctx.beginPath()
+    ctx.arc(x - 0.8, y - 0.8, 1.5, 0, Math.PI * 2)
+    ctx.fill()
     ctx.globalAlpha = 1
     const callout =
       game.mode === 'play' && game.intro > 0 && game.callouts.some((chip) => chip.x === dot.x && chip.y === dot.y)
-    if (callout) tag(ctx, 'RAM', x + 2, y - 17, 18, BONE, VOID, th.pellet)
+    if (callout) tag(ctx, 'RAM', x + 2, y - 17, 18, 'rgba(1, 4, 11, 0.9)', ICE, th.line)
   }
 }
 
@@ -479,7 +400,7 @@ function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, tile: number, th:
   const y = pos.y * tile + tile / 2
   const lock = size / 2 + 6 + Math.round(Math.sin(game.time * 5) * 1.5)
   ctx.globalAlpha = 0.55
-  brackets(ctx, game.surge > 0 ? th.line : BONE, x - lock, y - lock, lock * 2, lock * 2, 5, 1)
+  brackets(ctx, game.surge > 0 ? th.line : ICE, x - lock, y - lock, lock * 2, lock * 2, 5, 1)
   ctx.globalAlpha = 1
   drawPacAt(ctx, x, y, size, game.player.dir, open)
 }
@@ -514,14 +435,14 @@ function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile
   const art = lawSprite(ghost.law, look)
   if (art) drawFacing(ctx, art, x, y, size, ghost.dir, 'up')
   if (ghost.state === 'eaten') {
-    label(ctx, ghost.tag, x, y - size / 2 - 8, 17, 'rgba(232, 255, 249, 0.45)')
+    label(ctx, ghost.tag, x, y - size / 2 - 8, 17, 'rgba(226, 245, 255, 0.45)')
     return
   }
-  const ink = look === 'blue' ? FRIGHT : look === 'flash' ? BONE : ghost.color
+  const ink = look === 'blue' ? FRIGHT : look === 'flash' ? ICE : ghost.color
   ctx.font = `17px ${MONO}`
   const w = Math.ceil(ctx.measureText(ghost.tag).width) + 8
   const top = y - size / 2 - 17
-  fill(ctx, 'rgba(0, 3, 2, 0.85)', x - w / 2, top, w, 15)
+  fill(ctx, 'rgba(1, 4, 11, 0.85)', x - w / 2, top, w, 15)
   fill(ctx, ink, x - w / 2, top, 2, 15)
   fill(ctx, ink, x - w / 2, top + 14, w, 1)
   label(ctx, ghost.tag, x + 1, top + 8, 17, ink)
@@ -530,15 +451,15 @@ function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile
 function drawClearFanfare(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, th: Theme): void {
   const t = CLEAR_HOLD - game.modeTimer
   const flash = clamp(1 - t / 0.22, 0, 1)
-  if (flash > 0) fill(ctx, `rgba(232, 255, 249, ${flash * 0.6})`, 0, 0, width, height)
+  if (flash > 0) fill(ctx, `rgba(226, 245, 255, ${flash * 0.6})`, 0, 0, width, height)
 
   const pos = visual(game.player)
   const cx = pos.x * TILE + TILE / 2
   const cy = pos.y * TILE + TILE / 2
   const rings: Array<[number, string]> = [
-    [0.05, RAM],
+    [0.05, ALERT],
     [0.2, th.line],
-    [0.38, BONE],
+    [0.38, ICE],
   ]
   for (const [delay, color] of rings) {
     const u = clamp((t - delay) / 0.9, 0, 1)
@@ -553,7 +474,7 @@ function drawClearFanfare(ctx: CanvasRenderingContext2D, game: Game, width: numb
     const x = ((i * 47) % (width + 20)) - 10
     const y = ((i * 29 + t * (90 + (i % 7) * 30)) % (height + 30)) - 16
     const bit = (i + Math.floor(t * 12)) % 3 === 0 ? '1' : '0'
-    label(ctx, bit, x, y, 18, i % 3 === 0 ? RAM : th.line)
+    label(ctx, bit, x, y, 18, i % 3 === 0 ? GLOW : th.line)
   }
 
   const slam = clamp(t / 0.28, 0, 1)
@@ -563,13 +484,13 @@ function drawClearFanfare(ctx: CanvasRenderingContext2D, game: Game, width: numb
   ctx.scale(scale, scale)
   panel(ctx, th.line, -150, -38, 300, 76)
   label(ctx, 'SECTOR STATUS', -138, -26, 13, th.line, 'left')
-  label(ctx, '100%', 138, -26, 13, RAM, 'right')
-  headline(ctx, 'CLEAR', 0, 8, 40, BONE)
+  label(ctx, '100%', 138, -26, 13, GLOW, 'right')
+  headline(ctx, 'CLEAR', 0, 8, 40, ICE)
   ctx.restore()
 
   if (t > 0.32) {
     const name = LEVELS[game.levelIndex]?.name ?? ''
-    tag(ctx, name.toUpperCase(), width / 2, height * 0.4 + 62, 22, BONE, VOID)
+    tag(ctx, name.toUpperCase(), width / 2, height * 0.4 + 62, 22, 'rgba(1, 4, 11, 0.9)', ICE)
   }
 }
 
@@ -581,21 +502,21 @@ function drawMilestone(ctx: CanvasRenderingContext2D, game: Game, width: number,
   ctx.save()
   ctx.translate(snap(width / 2), snap(height * 0.42))
   ctx.scale(scale, scale)
-  panel(ctx, RAM, -170, -50, 340, 100)
-  label(ctx, 'CORE TEMP <<< 999.9 >>>', -158, -36, 13, RAM, 'left')
-  label(ctx, 'OVERCLOCK', 158, -36, 13, BONE, 'right')
-  headline(ctx, 'SURGE', 0, 0, 46, RAM)
-  hatch(ctx, RAM, -158, 28, 96, 10, 5)
-  hatch(ctx, RAM, 62, 28, 96, 10, 5)
-  label(ctx, 'REPEAL THEM', 0, 33, 18, BONE)
+  panel(ctx, ALERT, -170, -50, 340, 100)
+  label(ctx, 'CORE TEMP <<< 999.9 >>>', -158, -36, 13, ALERT, 'left')
+  label(ctx, 'OVERCLOCK', 158, -36, 13, ICE, 'right')
+  headline(ctx, 'SURGE', 0, 0, 46, ALERT)
+  hatch(ctx, ALERT, -158, 28, 96, 10, 5)
+  hatch(ctx, ALERT, 62, 28, 96, 10, 5)
+  label(ctx, 'REPEAL THEM', 0, 33, 18, ICE)
   ctx.restore()
 }
 
 function drawBanner(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, th: Theme): void {
   if (game.bannerTimer <= 0 || !game.banner) return
   const y = snap(Math.min(12, height * 0.04))
-  const ink = game.surge > 0 ? RAM : th.accent
-  fill(ctx, 'rgba(0, 3, 2, 0.92)', 0, y, width, 34)
+  const ink = game.surge > 0 ? ALERT : th.accent
+  fill(ctx, 'rgba(1, 4, 11, 0.92)', 0, y, width, 34)
   fill(ctx, ink, 0, y, width, 1)
   fill(ctx, ink, 0, y + 33, width, 1)
   hatch(ctx, ink, 8, y + 9, 70, 16, 5)
@@ -616,10 +537,10 @@ function drawDeathStamp(ctx: CanvasRenderingContext2D, game: Game, width: number
   ctx.save()
   ctx.translate(snap(width / 2), snap(height / 2))
   ctx.scale(scale, scale)
-  panel(ctx, RED, -150, -42, 300, 84)
-  warning(ctx, -104, -2, 42, RED)
-  headline(ctx, 'CAUGHT', 30, -6, 34, RED)
-  label(ctx, 'SIGNAL LOST // LIFE -1', 30, 24, 15, 'rgba(255, 46, 69, 0.8)')
+  panel(ctx, ALERT, -150, -42, 300, 84)
+  warning(ctx, -104, -2, 42, ALERT)
+  headline(ctx, 'CAUGHT', 30, -6, 34, ALERT)
+  label(ctx, 'SIGNAL LOST // LIFE -1', 30, 24, 15, 'rgba(255, 45, 111, 0.8)')
   ctx.restore()
 }
 
@@ -627,8 +548,8 @@ function drawSeal(ctx: CanvasRenderingContext2D, x: number, y: number, scale: nu
   ctx.save()
   ctx.translate(snap(x), snap(y))
   ctx.scale(scale, scale)
-  panel(ctx, RED, -62, -16, 124, 32)
-  label(ctx, 'REGULATED', 0, 1, 22, RED)
+  panel(ctx, ALERT, -62, -16, 124, 32)
+  label(ctx, 'REGULATED', 0, 1, 22, ALERT)
   ctx.restore()
 }
 
@@ -657,22 +578,22 @@ function drawFx(ctx: CanvasRenderingContext2D, game: Game, tile: number, th: The
   const left = snap(width / 2 - boxW / 2)
   const top = snap(game.maze.h * tile * 0.3)
   if (caught) {
-    panel(ctx, RAM, left, top, boxW, boxH)
-    label(ctx, 'ALERT STATUS:', left + 12, top + 15, 17, RAM, 'left')
-    label(ctx, 'REBOOTING', left + boxW - 12, top + 15, 17, RAM, 'right')
+    panel(ctx, GLOW, left, top, boxW, boxH)
+    label(ctx, 'ALERT STATUS:', left + 12, top + 15, 17, GLOW, 'left')
+    label(ctx, 'REBOOTING', left + boxW - 12, top + 15, 17, GLOW, 'right')
     const lives = game.lives === 1 ? '1 LIFE LEFT' : `${game.lives} LIVES LEFT`
-    headline(ctx, 'STILL RUNNING', width / 2, top + 52, 26, BONE)
-    label(ctx, lives, width / 2, top + 84, 26, RAM)
+    headline(ctx, 'STILL RUNNING', width / 2, top + 52, 26, ICE)
+    label(ctx, lives, width / 2, top + 84, 26, GLOW)
     return
   }
   panel(ctx, th.line, left, top, boxW, boxH)
   label(ctx, `ALERT STATUS: ${game.levelIndex + 1}-${LEVELS.length}`, left + 12, top + 15, 17, th.line, 'left')
   label(ctx, th.name, left + boxW - 12, top + 15, 17, th.line, 'right')
-  label(ctx, `WELCOME TO LEVEL ${game.levelIndex + 1}`, width / 2, top + 42, 22, BONE)
+  label(ctx, `WELCOME TO LEVEL ${game.levelIndex + 1}`, width / 2, top + 42, 22, ICE)
   fill(ctx, th.line, left + 40, top + 56, boxW - 80, 1)
   headline(ctx, (def?.name ?? '').toUpperCase(), width / 2, top + 82, 28, th.line)
   fill(ctx, th.line, left + 40, top + 104, boxW - 80, 1)
-  label(ctx, def?.blurb ?? '', width / 2, top + 122, 21, RAM)
+  label(ctx, def?.blurb ?? '', width / 2, top + 122, 21, GLOW)
 }
 
 function drawLose(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, th: Theme): void {
@@ -685,20 +606,20 @@ function drawLose(ctx: CanvasRenderingContext2D, game: Game, width: number, heig
   const px = snap(pos.x * tile + tile / 2)
   const py = snap(pos.y * tile + tile / 2)
   const law = game.ghosts.find((ghost) => ghost.name === game.caughtName)
-  const ink = law?.color ?? RED
+  const ink = law?.color ?? ALERT
   const caught = lawSprite(law?.law ?? 0, 'body')
   const big = actorSize(game.levelIndex) * 3.2
   if (caught) drawFacing(ctx, caught, px, py, big, 'down', 'up')
-  brackets(ctx, RED, px - big / 2 - 10, py - big / 2 - 10, big + 20, big + 20, 16, 2)
+  brackets(ctx, ALERT, px - big / 2 - 10, py - big / 2 - 10, big + 20, big + 20, 16, 2)
   tag(ctx, law?.tag ?? 'LAW', px, py - big / 2 - 26, 18, ink, VOID)
 
   const plateW = 360
   const plateH = game.caughtName ? 92 : 64
   const plateY = py < height * 0.42 ? height - plateH - 22 : 22
   const plateX = snap(width / 2 - plateW / 2)
-  panel(ctx, RED, plateX, plateY, plateW, plateH)
-  warning(ctx, plateX + 40, plateY + 34, 40, RED)
-  headline(ctx, 'ERROR', plateX + 196, plateY + 28, 30, RED)
-  label(ctx, 'A LAW CAUGHT YOU', plateX + 196, plateY + 56, 18, BONE)
+  panel(ctx, ALERT, plateX, plateY, plateW, plateH)
+  warning(ctx, plateX + 40, plateY + 34, 40, ALERT)
+  headline(ctx, 'ERROR', plateX + 196, plateY + 28, 30, ALERT)
+  label(ctx, 'A LAW CAUGHT YOU', plateX + 196, plateY + 56, 18, ICE)
   if (game.caughtName) label(ctx, game.caughtName.toUpperCase(), plateX + 196, plateY + 78, 18, ink)
 }

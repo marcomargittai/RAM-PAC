@@ -2,7 +2,7 @@
 
 You are the model. The dots are RAM and the walking figures are government AI regulations. Eat enough RAM to fill the surge bar, and for five seconds those regulations can be repealed. They come back. Clear every board.
 
-The board is drawn to a 2D canvas, then pushed through a WebGL CRT pass (`src/crt.ts`): phosphor trails, bloom, curvature, aperture grille and glitch on hits. Without WebGL the plain canvas shows. Reduced motion turns off the trails, roll and glitch.
+The whole screen (header, board, HUD, cards, touch pad) is drawn into one 2D canvas by `src/screen.ts`, then pushed through a WebGL CRT pass (`src/crt.ts`): phosphor trails, wide bloom, curvature, dot-matrix pixels, beam smear and glitch on hits. Taps are mapped back through the same curve. Without WebGL the plain canvas shows. Reduced motion turns off the boot, trails, roll and glitch.
 
 The unused story copy lives in `archive/story.ts`. The game does not import it.
 
@@ -13,7 +13,7 @@ npm install
 npm run dev
 ```
 
-Open http://127.0.0.1:43123
+Open http://127.0.0.1:43123/RAM-PAC/
 
 Production build:
 
