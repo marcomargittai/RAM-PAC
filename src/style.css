@@ -25,3 +25,7 @@ canvas {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+#name-input {
+  font-size: 16px;
+}

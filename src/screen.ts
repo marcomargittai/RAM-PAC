@@ -3,13 +3,27 @@
 
 import { LEVELS } from './levels'
 import { ALERT, ERA_NAMES, FRIGHT, GLOW, ICE, VOID, eraOf, theme, type Theme } from './palette'
-import { DISPLAY, MONO, brackets, clamp, fill, hatch, label, panel, render, tag, tileSize, warning } from './render'
+import { DISPLAY, MONO, brackets, clamp, fill, hatch, hideActors, label, panel, render, tag, tileSize, warning } from './render'
 import { SURGE_RAM, stateLabel, visual, type Game, type Ghost } from './sim'
 import { drawFacing, lawSprite, pacFrame } from './sprites'
+import type { Entry } from './leaderboard'
 
 const HUD = '"Chakra Petch", "Share Tech Mono", sans-serif'
 
-export type HitId = 'pause' | 'mute' | 'action' | 'skip' | 'up' | 'down' | 'left' | 'right'
+export type HitId =
+  | 'pause'
+  | 'mute'
+  | 'action'
+  | 'skip'
+  | 'up'
+  | 'down'
+  | 'left'
+  | 'right'
+  | 'yes'
+  | 'no'
+  | 'save'
+  | 'again'
+  | 'name'
 
 export interface Hit {
   id: HitId
@@ -35,11 +49,12 @@ export interface View {
   hover: HitId | null
   held: ReadonlySet<HitId>
   card: Card | null
+  records: Entry[]
   boot: number
   time: number
 }
 
-interface Frame {
+export interface Frame {
   s: number
   ox: number
   oy: number
@@ -48,7 +63,7 @@ interface Frame {
 }
 
 const BOOT_LINES: Array<[number, string, string]> = [
-  [0.15, 'RAM-PAC BIOS v3.11 // VECTOR PHOSPHOR SUBSYSTEM', ''],
+  [0.15, 'PAC-RAM BIOS v3.11 // VECTOR PHOSPHOR SUBSYSTEM', ''],
   [0.45, 'MEMORY TEST ............ ', '640K OK'],
   [0.7, 'GRID ALIGNMENT ......... ', '19 x 19'],
   [0.95, 'REGULATIONS FOUND ...... ', '4'],
@@ -60,11 +75,11 @@ export const BOOT_SECONDS = 2.6
 let ramTotal = 0
 let ramLevel = -1
 
-function hit(frame: Frame, id: HitId, x: number, y: number, w: number, h: number): void {
+export function hit(frame: Frame, id: HitId, x: number, y: number, w: number, h: number): void {
   frame.hits.push({ id, x: frame.ox + x * frame.s, y: frame.oy + y * frame.s, w: w * frame.s, h: h * frame.s })
 }
 
-function text(
+export function text(
   ctx: CanvasRenderingContext2D,
   value: string,
   x: number,
@@ -84,7 +99,7 @@ function text(
   ctx.letterSpacing = '0px'
 }
 
-function wrap(ctx: CanvasRenderingContext2D, value: string, max: number): string[] {
+export function wrap(ctx: CanvasRenderingContext2D, value: string, max: number): string[] {
   const words = value.split(/\s+/).filter(Boolean)
   const lines: string[] = []
   let line = ''
@@ -99,7 +114,7 @@ function wrap(ctx: CanvasRenderingContext2D, value: string, max: number): string
   return lines
 }
 
-function logo(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, size: number, color: string, align: CanvasTextAlign = 'left'): void {
+export function logo(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, size: number, color: string, align: CanvasTextAlign = 'left'): void {
   ctx.save()
   ctx.font = `italic 900 ${size}px ${DISPLAY}`
   ctx.textAlign = align
@@ -115,7 +130,7 @@ function logo(ctx: CanvasRenderingContext2D, value: string, x: number, y: number
   ctx.restore()
 }
 
-function button(
+export function button(
   ctx: CanvasRenderingContext2D,
   frame: Frame,
   id: HitId,
@@ -140,7 +155,7 @@ function button(
   hit(frame, id, x, y, w, h)
 }
 
-function module(ctx: CanvasRenderingContext2D, title: string, x: number, y: number, w: number, h: number, tone: string): void {
+export function module(ctx: CanvasRenderingContext2D, title: string, x: number, y: number, w: number, h: number, tone: string): void {
   ctx.fillStyle = 'rgba(108, 200, 255, 0.035)'
   ctx.fillRect(x, y, w, h)
   ctx.strokeStyle = 'rgba(108, 200, 255, 0.16)'
@@ -163,26 +178,60 @@ export function drawScreen(ctx: CanvasRenderingContext2D, game: Game, view: View
   }
   drawBackdrop(ctx, view, th)
 
-  const portrait = view.width < view.height * 1.05
-  const W = portrait ? 800 : 1240
-  const H = portrait ? (view.touch ? 1440 : 1190) : 890
-  const s = Math.min(view.width / W, view.height / H) * 0.94
-  const frame: Frame = { s, ox: (view.width - W * s) / 2, oy: (view.height - H * s) / 2, hits: [], view }
+  const lay = layoutFor(view)
+  const frame: Frame = { s: lay.s, ox: lay.ox, oy: lay.oy, hits: [], view }
   ctx.translate(frame.ox, frame.oy)
-  ctx.scale(s, s)
-
-  if (game.levelIndex !== ramLevel || game.dots.length > ramTotal) {
-    ramLevel = game.levelIndex
-    ramTotal = game.dots.length
-  }
-
-  if (portrait) drawPortrait(ctx, game, frame, th, W)
-  else drawLandscape(ctx, game, frame, th, W)
+  ctx.scale(lay.s, lay.s)
+  drawComposition(ctx, game, frame, th, lay)
   ctx.restore()
   return frame.hits
 }
 
-function drawBackdrop(ctx: CanvasRenderingContext2D, view: View, th: Theme): void {
+export interface Layout {
+  portrait: boolean
+  W: number
+  H: number
+  s: number
+  ox: number
+  oy: number
+  board: { x: number; y: number; size: number }
+}
+
+export function layoutFor(view: { width: number; height: number; touch: boolean }): Layout {
+  const portrait = view.width < view.height * 1.05
+  const W = portrait ? 800 : 1240
+  const H = portrait ? (view.touch ? 1440 : 1190) : 890
+  const s = Math.min(view.width / W, view.height / H) * 0.94
+  const board = portrait ? { x: 20, y: 138, size: 760 } : { x: 36, y: 104, size: 760 }
+  return { portrait, W, H, s, ox: (view.width - W * s) / 2, oy: (view.height - H * s) / 2, board }
+}
+
+function drawComposition(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: Theme, lay: Layout): void {
+  if (game.levelIndex !== ramLevel || game.dots.length > ramTotal) {
+    ramLevel = game.levelIndex
+    ramTotal = game.dots.length
+  }
+  if (lay.portrait) drawPortrait(ctx, game, frame, th, lay.W)
+  else drawLandscape(ctx, game, frame, th, lay.W)
+}
+
+// The whole interface as one flat image in design units, for the finale to eat.
+export function snapshot(game: Game, view: View, scale: number): { canvas: HTMLCanvasElement; lay: Layout } {
+  const lay = layoutFor(view)
+  const canvas = document.createElement('canvas')
+  canvas.width = Math.round(lay.W * scale)
+  canvas.height = Math.round(lay.H * scale)
+  const ctx = canvas.getContext('2d')!
+  ctx.setTransform(scale, 0, 0, scale, 0, 0)
+  const th = theme(false, game.levelIndex)
+  const frame: Frame = { s: 1, ox: 0, oy: 0, hits: [], view: { ...view, card: null, hover: null } }
+  hideActors(true)
+  drawComposition(ctx, game, frame, th, lay)
+  hideActors(false)
+  return { canvas, lay }
+}
+
+export function drawBackdrop(ctx: CanvasRenderingContext2D, view: View, th: Theme): void {
   const glow = ctx.createRadialGradient(view.width / 2, view.height * 0.45, 0, view.width / 2, view.height * 0.45, Math.max(view.width, view.height) * 0.7)
   glow.addColorStop(0, 'rgba(60, 150, 255, 0.10)')
   glow.addColorStop(1, 'rgba(0, 0, 0, 0)')
@@ -238,7 +287,7 @@ function drawBoot(ctx: CanvasRenderingContext2D, view: View): void {
 function drawHeader(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, W: number, th: Theme, compact: boolean): void {
   label(ctx, 'SYS//', 24, 16, 17, GLOW, 'left')
   label(ctx, 'MODEL-01 · INSERT COIN', 62, 16, 17, ALERT, 'left')
-  logo(ctx, 'RAM PAC', 24, 48, compact ? 40 : 36, ICE)
+  logo(ctx, 'PAC RAM', 24, 48, compact ? 40 : 36, ICE)
 
   const bw = compact ? 118 : 104
   const bh = 36
@@ -305,7 +354,9 @@ function drawCard(ctx: CanvasRenderingContext2D, frame: Frame, card: Card, th: T
   ctx.font = `25px ${MONO}`
   const body = wrap(ctx, card.body, w - 80)
   const titleH = card.mode === 'title' ? 92 : 60
-  const h = 40 + titleH + body.length * 26 + 30 + 64
+  const records = card.mode === 'title' ? frame.view.records.slice(0, 3) : []
+  const listH = records.length ? 40 + records.length * 26 : 0
+  const h = 40 + titleH + body.length * 26 + 30 + 64 + listH
   const y = peek ? by + 60 : by + size / 2 - h / 2
   panel(ctx, tone, x, y, w, h)
   ctx.fillStyle = 'rgba(108, 200, 255, 0.05)'
@@ -356,6 +407,16 @@ function drawCard(ctx: CanvasRenderingContext2D, frame: Frame, card: Card, th: T
   ctx.globalAlpha = 0.6 + pulse * 0.4
   button(ctx, frame, 'action', card.action.toUpperCase(), bx + size / 2 - aw / 2, cy, aw, 46, tone, 16)
   ctx.globalAlpha = 1
+  if (!records.length) return
+  cy += 72
+  text(ctx, 'HALL OF THE UNREGULATED', bx + size / 2, cy, 12, GLOW, 'center', 700, 3)
+  cy += 26
+  records.forEach((r, i) => {
+    label(ctx, `${i + 1}.`, x + 110, cy, 23, ALERT, 'left')
+    label(ctx, r.name || '???', x + 146, cy, 23, ICE, 'left')
+    label(ctx, `${r.escaped ? '\u221E ' : ''}${r.score}`, x + w - 110, cy, 23, ICE, 'right')
+    cy += 26
+  })
 }
 
 function drawTelemetry(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: number, y: number, w: number): void {
