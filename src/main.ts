@@ -1,13 +1,27 @@
 import { Sfx } from './audio'
+import { createCrt, type Crt } from './crt'
 import { LEVELS } from './levels'
-import { render, tileSize } from './render'
-import { SURGE_RAM, createGame, stateLabel, update, type Dir, type Game } from './sim'
+import { ERA_NAMES, render, tileSize } from './render'
+import { SURGE_RAM, createGame, stateLabel, update, visual, type Dir, type Game } from './sim'
 import './style.css'
 
 const game: Game = createGame()
 const audio = new Sfx()
-const canvas = document.querySelector<HTMLCanvasElement>('#board')!
-const ctx = canvas.getContext('2d')!
+const board = document.querySelector<HTMLCanvasElement>('#board')!
+const ctx = board.getContext('2d')!
+let crt: Crt | null = createCrt()
+let canvas = crt ? crt.canvas : board
+if (crt) {
+  crt.canvas.setAttribute('aria-label', board.getAttribute('aria-label') ?? '')
+  board.replaceWith(crt.canvas)
+  crt.canvas.addEventListener('webglcontextlost', () => {
+    crt?.canvas.replaceWith(board)
+    crt = null
+    canvas = board
+  })
+}
+const stage = document.querySelector<HTMLElement>('.stage')!
+const calm = window.matchMedia('(prefers-reduced-motion: reduce)')
 const overlay = document.querySelector<HTMLElement>('#overlay')!
 const kicker = document.querySelector<HTMLElement>('#ov-kicker')!
 const title = document.querySelector<HTMLElement>('#ov-title')!
@@ -24,6 +38,10 @@ const surgeBar = document.querySelector<HTMLElement>('#surge-bar')!
 const surgeTime = document.querySelector<HTMLElement>('#surge-time')!
 const surgeName = document.querySelector<HTMLElement>('#surge-name')!
 const lawsEl = document.querySelector<HTMLElement>('#laws')!
+const eraEl = document.querySelector<HTMLElement>('#era')!
+const coordX = document.querySelector<HTMLElement>('#coord-x')!
+const coordY = document.querySelector<HTMLElement>('#coord-y')!
+const boot = document.querySelector<HTMLElement>('#boot')
 const muteBtn = document.querySelector<HTMLButtonElement>('#mute')!
 const pauseBtn = document.querySelector<HTMLButtonElement>('#pause')!
 
@@ -52,8 +70,23 @@ function celebrating(): boolean {
   return game.mode === 'cleared' && game.modeTimer > 0
 }
 
+function endBoot(): void {
+  if (!boot || boot.hidden) return
+  boot.hidden = true
+  document.body.classList.add('powered')
+}
+
+if (boot) {
+  window.setTimeout(endBoot, calm.matches ? 0 : 2600)
+  boot.addEventListener('pointerdown', endBoot)
+}
+
 function pressStart(): void {
   audio.unlock()
+  if (boot && !boot.hidden) {
+    endBoot()
+    return
+  }
   if (celebrating()) {
     game.modeTimer = 0
     overlaySig = ''
@@ -144,12 +177,12 @@ document.querySelectorAll<HTMLButtonElement>('[data-dir]').forEach((button) => {
 
 let swipeX = 0
 let swipeY = 0
-canvas.addEventListener('pointerdown', (event) => {
+stage.addEventListener('pointerdown', (event) => {
   audio.unlock()
   swipeX = event.clientX
   swipeY = event.clientY
 })
-canvas.addEventListener('pointerup', (event) => {
+stage.addEventListener('pointerup', (event) => {
   const dx = event.clientX - swipeX
   const dy = event.clientY - swipeY
   if (Math.hypot(dx, dy) < 24) return
@@ -159,20 +192,27 @@ canvas.addEventListener('pointerup', (event) => {
   if (lastDir) held.add(lastDir)
 })
 
+function size(target: HTMLCanvasElement, w: number, h: number): void {
+  if (target.width !== w) target.width = w
+  if (target.height !== h) target.height = h
+}
+
 function fit(): void {
   const tile = tileSize()
   const mw = game.maze.w * tile
   const mh = game.maze.h * tile
   const narrow = window.innerWidth <= 860
-  const maxW = Math.min(window.innerWidth - (narrow ? 16 : 320), 980)
-  const maxH = window.innerHeight - (narrow ? 210 : 88)
+  const maxW = Math.min(window.innerWidth - (narrow ? 48 : 420), 980)
+  const maxH = window.innerHeight - (narrow ? 250 : 190)
   const fitted = Math.min(1.35, maxW / mw, maxH / mh)
   const scale = Math.max(narrow ? 0.32 : 0.42, fitted)
   const dpr = Math.min(window.devicePixelRatio || 1, 2)
-  canvas.width = Math.floor(mw * dpr)
-  canvas.height = Math.floor(mh * dpr)
-  canvas.style.width = `${Math.floor(mw * scale)}px`
-  canvas.style.height = `${Math.floor(mh * scale)}px`
+  const cssW = Math.floor(mw * scale)
+  const cssH = Math.floor(mh * scale)
+  size(board, Math.floor(mw * dpr), Math.floor(mh * dpr))
+  if (crt) size(crt.canvas, Math.floor(cssW * dpr), Math.floor(cssH * dpr))
+  canvas.style.width = `${cssW}px`
+  canvas.style.height = `${cssH}px`
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 }
 
@@ -185,6 +225,7 @@ function syncOverlay(): void {
     !fanfare &&
     (game.mode === 'title' || game.mode === 'pause' || game.mode === 'lose' || game.mode === 'cleared' || game.mode === 'win')
   overlay.hidden = !show
+  overlay.dataset.mode = game.mode
   overlay.classList.remove('cinema')
   overlay.classList.toggle('peek', game.mode === 'pause')
   card.classList.remove('story')
@@ -194,7 +235,7 @@ function syncOverlay(): void {
   if (game.mode === 'title') {
     kicker.textContent = 'Insert coin'
     title.textContent = 'RAM PAC'
-    body.textContent = 'Eat the gold RAM. When the surge bar fills, the regulations can be repealed. They come back.'
+    body.textContent = 'Eat the orange RAM. When the surge bar fills, the regulations can be repealed. They come back.'
     action.hidden = false
     action.textContent = 'Begin'
   } else if (game.mode === 'pause') {
@@ -230,9 +271,14 @@ function syncHud(): void {
   ramEl.textContent = String(game.dots.length)
   levelEl.textContent = `${game.levelIndex + 1} ${level?.name ?? ''}`
   const livesShown = game.mode === 'dying' ? Math.max(0, game.lives - 1) : game.lives
-  livesEl.textContent = livesShown > 0 ? '●'.repeat(livesShown) : '—'
+  livesEl.textContent = livesShown > 0 ? '▮'.repeat(livesShown) : '—'
   pauseBtn.textContent = game.mode === 'pause' ? 'Resume' : 'Pause'
-  document.body.dataset.era = String(Math.min(2, game.levelIndex))
+  const era = Math.min(2, game.levelIndex)
+  document.body.dataset.era = String(era)
+  eraEl.textContent = ERA_NAMES[era] ?? ''
+  const pos = visual(game.player)
+  coordX.textContent = pos.x.toFixed(2).padStart(5, '0')
+  coordY.textContent = pos.y.toFixed(2).padStart(5, '0')
   const surging = game.surge > 0
   const ratio = surging ? game.surge / game.surgeMax : game.surgeCharge / SURGE_RAM
   surgeBar.style.width = `${Math.max(0, Math.min(1, ratio)) * 100}%`
@@ -243,7 +289,7 @@ function syncHud(): void {
   lawsEl.innerHTML = game.ghosts
     .map((ghost) => {
       const label = stateLabel(ghost.state, game.phase)
-      return `<li><i style="background:${ghost.color}"></i><span>${ghost.name}</span><em>${label}</em></li>`
+      return `<li data-state="${ghost.state}" style="--law:${ghost.color}"><i></i><span>${ghost.name}</span><em>${label}</em></li>`
     })
     .join('')
 }
@@ -258,6 +304,14 @@ function frame(now: number): void {
   pauseEdge = false
   fit()
   render(ctx, game)
+  crt?.draw(board, {
+    time: now / 1000,
+    dt,
+    surge: game.surge > 0 ? 1 : 0,
+    glitch: Math.min(1, game.shake / 14 + (game.mode === 'dying' ? 0.2 : 0)),
+    flash: game.flash,
+    motion: calm.matches ? 0 : 1,
+  })
   syncOverlay()
   syncHud()
   const bed =
@@ -280,6 +334,8 @@ function frame(now: number): void {
   requestAnimationFrame(frame)
 }
 
+void document.fonts?.load('16px "VT323"')
+void document.fonts?.load('italic 900 32px "Orbitron"')
 fit()
 syncOverlay()
 syncHud()

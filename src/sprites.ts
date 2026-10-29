@@ -100,7 +100,7 @@ function ghostSet(source: CanvasImageSource, tint: string | null): GhostSet {
   const body = paint(source, tint, 'body')
   return {
     body,
-    blue: paint(body, '#3d6bff', 'body'),
+    blue: paint(body, '#2f7bff', 'body'),
     flash: paint(body, '#f4f0e6', 'body'),
     eyes: paint(body, null, 'eyes'),
   }
@@ -117,10 +117,10 @@ export function loadSprites(): Promise<void> {
   ]).then(([closed, half, open, law, law2, lawyer]) => {
     pac.splice(0, pac.length, paint(closed, null, 'body'), paint(half, null, 'body'), paint(open, null, 'body'))
     const plain = ghostSet(law, null)
-    const cyan = ghostSet(law2, '#3ad7ff')
+    const scroll = ghostSet(law2, '#ffe14a')
     const counsel = ghostSet(lawyer, null)
-    const repeat = ghostSet(law, '#6a4dff')
-    laws.splice(0, laws.length, plain, cyan, counsel, repeat)
+    const repeat = ghostSet(law, '#ff5fd2')
+    laws.splice(0, laws.length, plain, scroll, counsel, repeat)
     ready = true
   })
 }

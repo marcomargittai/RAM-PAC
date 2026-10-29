@@ -3,38 +3,82 @@ import { CAUGHT_HOLD, CLEAR_HOLD, MILESTONE_HOLD, SEAL_HOLD, visual, type Dir, t
 import { drawFacing, lawSprite, pacFrame, type GhostLook } from './sprites'
 
 const TILE = 40
-const PIXEL = '"Press Start 2P", monospace'
+const MONO = '"VT323", "Share Tech Mono", ui-monospace, monospace'
+const DISPLAY = '"Orbitron", "Chakra Petch", sans-serif'
 
-type Px = 8 | 16 | 24 | 32 | 48 | 64
+const VOID = '#000302'
+const BONE = '#e8fff9'
+const RAM = '#ff7a1f'
+const RAM_HOT = '#ffc48a'
+const RED = '#ff2e45'
+const FRIGHT = '#2f7bff'
 
-interface Palette {
+interface Theme {
+  name: string
   bg: string
-  wall: string
-  edge: string
-  hot: string
-  pcb: string
-  trace: string
-  ceramic: string
-  bevel: string
-  shade: string
-  pin: string
-  die: string
-  dieFrame: string
-  ram: string
-  slot: string
-  slotLip: string
+  line: string
+  inner: string
+  fill: string
+  hatch: string
+  grid: string
+  accent: string
   pellet: string
-  pelletPin: string
   pelletHot: string
-  surgeBody: string
-  surgeInk: string
-  surgeHalo: string
-  player: string
-  mark: string
 }
 
-const PAGE = '#f4efe2'
-const PAGE_INK = '#1a1028'
+export const ERA_NAMES = ['P1 PHOSPHOR', 'HOLOMAP', 'SECTOR 34']
+
+const THEMES: Theme[] = [
+  {
+    name: ERA_NAMES[0]!,
+    bg: '#010a06',
+    line: '#3dffa0',
+    inner: 'rgba(61, 255, 160, 0.55)',
+    fill: 'rgba(61, 255, 160, 0.05)',
+    hatch: 'rgba(61, 255, 160, 0.09)',
+    grid: 'rgba(61, 255, 160, 0.22)',
+    accent: RED,
+    pellet: RAM,
+    pelletHot: RAM_HOT,
+  },
+  {
+    name: ERA_NAMES[1]!,
+    bg: '#01080b',
+    line: '#4ff6ff',
+    inner: 'rgba(79, 246, 255, 0.55)',
+    fill: 'rgba(79, 246, 255, 0.05)',
+    hatch: 'rgba(79, 246, 255, 0.09)',
+    grid: 'rgba(79, 246, 255, 0.22)',
+    accent: RED,
+    pellet: RAM,
+    pelletHot: RAM_HOT,
+  },
+  {
+    name: ERA_NAMES[2]!,
+    bg: '#070405',
+    line: '#e6f2f4',
+    inner: 'rgba(255, 46, 69, 0.75)',
+    fill: 'rgba(255, 46, 69, 0.05)',
+    hatch: 'rgba(255, 46, 69, 0.12)',
+    grid: 'rgba(230, 242, 244, 0.2)',
+    accent: RED,
+    pellet: RAM,
+    pelletHot: RAM_HOT,
+  },
+]
+
+const SURGE_THEME: Theme = {
+  name: 'OVERCLOCK',
+  bg: '#050100',
+  line: '#ff7a1f',
+  inner: 'rgba(255, 196, 138, 0.5)',
+  fill: 'rgba(255, 122, 31, 0.025)',
+  hatch: 'rgba(255, 122, 31, 0.06)',
+  grid: 'rgba(255, 122, 31, 0.2)',
+  accent: '#4ff6ff',
+  pellet: BONE,
+  pelletHot: '#ffffff',
+}
 
 export function tileSize(): number {
   return TILE
@@ -48,172 +92,12 @@ function clamp(value: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, value))
 }
 
-function palette(surge: boolean, level: number): Palette {
-  const era = Math.min(2, Math.max(0, level))
-  if (era === 0) {
-    if (!surge) {
-      return {
-        bg: '#14081f',
-        wall: '#4b2a86',
-        edge: '#ffb020',
-        hot: '#ffe7a3',
-        pcb: '#241044',
-        trace: '#ffd36a',
-        ceramic: '#3a1f6e',
-        bevel: '#7d52c8',
-        shade: '#120818',
-        pin: '#c9a6ff',
-        die: '#14081f',
-        dieFrame: '#ffb020',
-        ram: '#ffd36a',
-        slot: '#120818',
-        slotLip: '#ffd36a',
-        pellet: '#ffd36a',
-        pelletPin: '#c9a6ff',
-        pelletHot: '#fff1b8',
-        surgeBody: '#ffb020',
-        surgeInk: '#14081f',
-        surgeHalo: '#c9a6ff',
-        player: '#ffe7a3',
-        mark: '#c9a6ff',
-      }
-    }
-    return {
-      bg: '#14081f',
-      wall: '#2a1458',
-      edge: '#c9a6ff',
-      hot: '#ffe7a3',
-      pcb: '#3a1868',
-      trace: '#c9a6ff',
-      ceramic: '#4b2a86',
-      bevel: '#ffb020',
-      shade: '#0c0414',
-      pin: '#ffd36a',
-      die: '#ffe7a3',
-      dieFrame: '#c9a6ff',
-      ram: '#2a1458',
-      slot: '#c9a6ff',
-      slotLip: '#ffd36a',
-      pellet: '#ffe7a3',
-      pelletPin: '#c9a6ff',
-      pelletHot: '#fff6d0',
-      surgeBody: '#c9a6ff',
-      surgeInk: '#14081f',
-      surgeHalo: '#ffb020',
-      player: '#ffe7a3',
-      mark: '#ffb020',
-    }
-  }
-  if (era === 1) {
-    if (!surge) {
-      return {
-        bg: '#140014',
-        wall: '#e012a0',
-        edge: '#b6ff2e',
-        hot: '#fff15a',
-        pcb: '#3a0032',
-        trace: '#b6ff2e',
-        ceramic: '#ff3cbe',
-        bevel: '#ff7ad2',
-        shade: '#4a0040',
-        pin: '#fff15a',
-        die: '#140014',
-        dieFrame: '#3dfff3',
-        ram: '#fff15a',
-        slot: '#140014',
-        slotLip: '#b6ff2e',
-        pellet: '#fff15a',
-        pelletPin: '#3dfff3',
-        pelletHot: '#fffce0',
-        surgeBody: '#3dfff3',
-        surgeInk: '#140014',
-        surgeHalo: '#b6ff2e',
-        player: '#3dfff3',
-        mark: '#b6ff2e',
-      }
-    }
-    return {
-      bg: '#140014',
-      wall: '#2c0028',
-      edge: '#fff15a',
-      hot: '#b6ff2e',
-      pcb: '#e012a0',
-      trace: '#3dfff3',
-      ceramic: '#5a004c',
-      bevel: '#3dfff3',
-      shade: '#0c000a',
-      pin: '#b6ff2e',
-      die: '#fff15a',
-      dieFrame: '#3dfff3',
-      ram: '#140014',
-      slot: '#3dfff3',
-      slotLip: '#b6ff2e',
-      pellet: '#b6ff2e',
-      pelletPin: '#fff15a',
-      pelletHot: '#3dfff3',
-      surgeBody: '#b6ff2e',
-      surgeInk: '#140014',
-      surgeHalo: '#e012a0',
-      player: '#3dfff3',
-      mark: '#fff15a',
-    }
-  }
-  if (!surge) {
-    return {
-      bg: '#071422',
-      wall: '#16324a',
-      edge: '#8eb6ff',
-      hot: '#d5e4ff',
-      pcb: '#0d2840',
-      trace: '#8eb6ff',
-      ceramic: '#1f4d6e',
-      bevel: '#4d7eae',
-      shade: '#081420',
-      pin: '#ffe14a',
-      die: '#071422',
-      dieFrame: '#8eb6ff',
-      ram: '#ffe14a',
-      slot: '#081420',
-      slotLip: '#8eb6ff',
-      pellet: '#ffe14a',
-      pelletPin: '#f7f4ea',
-      pelletHot: '#fff4c2',
-      surgeBody: '#c9a6ff',
-      surgeInk: '#071422',
-      surgeHalo: '#8eb6ff',
-      player: '#f7f4ea',
-      mark: '#c9a6ff',
-    }
-  }
-  return {
-    bg: '#071422',
-    wall: '#10283c',
-    edge: '#c9a6ff',
-    hot: '#ffe14a',
-    pcb: '#1a4060',
-    trace: '#c9a6ff',
-    ceramic: '#16324a',
-    bevel: '#8eb6ff',
-    shade: '#061018',
-    pin: '#ffe14a',
-    die: '#f7f4ea',
-    dieFrame: '#c9a6ff',
-    ram: '#10283c',
-    slot: '#c9a6ff',
-    slotLip: '#ffe14a',
-    pellet: '#fff0a0',
-    pelletPin: '#c9a6ff',
-    pelletHot: '#ffffff',
-    surgeBody: '#ffe14a',
-    surgeInk: '#071422',
-    surgeHalo: '#c9a6ff',
-    player: '#f7f4ea',
-    mark: '#8eb6ff',
-  }
-}
-
 function eraOf(level: number): number {
   return Math.min(2, Math.max(0, level))
+}
+
+function theme(surge: boolean, level: number): Theme {
+  return surge ? SURGE_THEME : THEMES[eraOf(level)]!
 }
 
 function fill(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number): void {
@@ -226,37 +110,113 @@ function label(
   text: string,
   x: number,
   y: number,
-  size: Px,
+  size: number,
   color: string,
   align: CanvasTextAlign = 'center',
   baseline: CanvasTextBaseline = 'middle',
+  font: string = MONO,
 ): void {
   ctx.fillStyle = color
-  ctx.font = `${size}px ${PIXEL}`
+  ctx.font = `${size}px ${font}`
   ctx.textAlign = align
   ctx.textBaseline = baseline
   ctx.fillText(text, snap(x), snap(y))
 }
 
-function phosphorColor(color: string): string {
+function headline(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number, color: string): void {
+  ctx.fillStyle = color
+  ctx.font = `italic 900 ${size}px ${DISPLAY}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(text, snap(x), snap(y))
+}
+
+function hatch(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number, gap = 6): void {
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(x, y, w, h)
+  ctx.clip()
+  ctx.strokeStyle = color
+  ctx.lineWidth = gap / 2.4
+  ctx.beginPath()
+  for (let i = -h; i < w + h; i += gap) {
+    ctx.moveTo(x + i, y + h)
+    ctx.lineTo(x + i + h, y)
+  }
+  ctx.stroke()
+  ctx.restore()
+}
+
+function brackets(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number, len = 10, t = 2): void {
+  fill(ctx, color, x, y, len, t)
+  fill(ctx, color, x, y, t, len)
+  fill(ctx, color, x + w - len, y, len, t)
+  fill(ctx, color, x + w - t, y, t, len)
+  fill(ctx, color, x, y + h - t, len, t)
+  fill(ctx, color, x, y + h - len, t, len)
+  fill(ctx, color, x + w - len, y + h - t, len, t)
+  fill(ctx, color, x + w - t, y + h - len, t, len)
+}
+
+function panel(ctx: CanvasRenderingContext2D, color: string, x: number, y: number, w: number, h: number): void {
+  ctx.fillStyle = 'rgba(0, 3, 2, 0.9)'
+  ctx.fillRect(snap(x), snap(y), snap(w), snap(h))
+  ctx.strokeStyle = color
+  ctx.lineWidth = 1
+  ctx.strokeRect(snap(x) + 0.5, snap(y) + 0.5, snap(w) - 1, snap(h) - 1)
+  brackets(ctx, color, x - 5, y - 5, w + 10, h + 10, 12, 2)
+}
+
+function tag(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number, bg: string, ink: string, bar = RED): void {
+  ctx.font = `${size}px ${MONO}`
+  const w = Math.ceil(ctx.measureText(text).width) + size
+  const h = Math.round(size * 1.05)
+  const left = snap(x - w / 2)
+  const top = snap(y - h / 2)
+  fill(ctx, bg, left, top, w, h)
+  fill(ctx, bar, left - 4, top, 4, h)
+  label(ctx, text, x, y + 1, size, ink)
+}
+
+function warning(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string): void {
+  ctx.save()
+  ctx.strokeStyle = color
+  ctx.lineWidth = Math.max(2, size / 9)
+  ctx.lineJoin = 'round'
+  ctx.beginPath()
+  ctx.moveTo(x, y - size / 2)
+  ctx.lineTo(x + size / 2, y + size / 2.4)
+  ctx.lineTo(x - size / 2, y + size / 2.4)
+  ctx.closePath()
+  ctx.stroke()
+  ctx.fillStyle = color
+  ctx.fillRect(snap(x - 1.5), snap(y - size / 6), 3, snap(size / 3.2))
+  ctx.fillRect(snap(x - 1.5), snap(y + size / 4.2), 3, 3)
+  ctx.restore()
+}
+
+function phosphorColor(color: string, th: Theme): string {
   switch (color) {
     case '#ff4d6a':
     case '#e23d5c':
     case '#9d1228':
-      return '#ff2e93'
+      return RED
     case '#f4f1e4':
     case '#f4efe2':
     case '#f7f1e4':
     case '#7dffe1':
-      return '#f4f0e6'
+      return BONE
     case '#d9c7a2':
+    case '#ffb000':
+      return th.pellet
     case '#e3b341':
     case '#dffc6a':
-      return '#ffb000'
-    case '#7c5cff':
-      return '#5c3d8a'
+    case '#ffe7a3':
+      return th.pelletHot
+    case '#3ad7ff':
     case '#1f9d8a':
-      return '#ff2e93'
+    case '#7c5cff':
+      return th.line
     default:
       return color
   }
@@ -287,19 +247,149 @@ function penBox(maze: Game['maze']): { x: number; y: number; w: number; h: numbe
   return { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 }
 }
 
+let layer: HTMLCanvasElement | null = null
+let layerKey = ''
+
+function mazeLayer(ctx: CanvasRenderingContext2D, game: Game, th: Theme, width: number, height: number): HTMLCanvasElement {
+  const scale = ctx.getTransform().a || 1
+  const fonts = document.fonts?.status ?? 'loaded'
+  const key = `${th.name}:${game.levelIndex}:${game.maze.rows.join('')}:${scale}:${fonts}`
+  if (layer && layerKey === key) return layer
+  layer = layer ?? document.createElement('canvas')
+  layer.width = Math.floor(width * scale)
+  layer.height = Math.floor(height * scale)
+  const lc = layer.getContext('2d')!
+  lc.setTransform(scale, 0, 0, scale, 0, 0)
+  lc.imageSmoothingEnabled = false
+  paintMaze(lc, game, th, width, height)
+  layerKey = key
+  return layer
+}
+
+function paintMaze(ctx: CanvasRenderingContext2D, game: Game, th: Theme, width: number, height: number): void {
+  const { maze } = game
+  const tile = TILE
+  fill(ctx, th.bg, 0, 0, width, height)
+
+  for (let y = 0; y <= maze.h; y++) {
+    for (let x = 0; x <= maze.w; x++) {
+      fill(ctx, th.grid, x * tile - 1, y * tile - 1, 2, 2)
+    }
+  }
+  ctx.globalAlpha = 0.35
+  for (let y = 0; y < maze.h; y++) {
+    for (let x = 0; x < maze.w; x++) {
+      if (wallAt(maze, x, y)) continue
+      fill(ctx, th.grid, x * tile + tile / 2, y * tile + tile / 2 - 3, 1, 1)
+    }
+  }
+  ctx.globalAlpha = 1
+
+  ctx.save()
+  ctx.beginPath()
+  for (let y = 0; y < maze.h; y++) {
+    for (let x = 0; x < maze.w; x++) {
+      if (wallAt(maze, x, y)) ctx.rect(x * tile, y * tile, tile, tile)
+    }
+  }
+  ctx.fillStyle = th.fill
+  ctx.fill()
+  ctx.clip()
+  hatch(ctx, th.hatch, 0, 0, width, height, 7)
+  ctx.restore()
+
+  const d = 7
+  ctx.save()
+  ctx.shadowColor = th.line
+  ctx.shadowBlur = 10
+  for (let y = 0; y < maze.h; y++) {
+    for (let x = 0; x < maze.w; x++) {
+      if (!wallAt(maze, x, y)) continue
+      const x0 = x * tile
+      const y0 = y * tile
+      const T = !wallAt(maze, x, y - 1)
+      const B = !wallAt(maze, x, y + 1)
+      const L = !wallAt(maze, x - 1, y)
+      const R = !wallAt(maze, x + 1, y)
+      if (T) fill(ctx, th.line, x0, y0, tile, 2)
+      if (B) fill(ctx, th.line, x0, y0 + tile - 2, tile, 2)
+      if (L) fill(ctx, th.line, x0, y0, 2, tile)
+      if (R) fill(ctx, th.line, x0 + tile - 2, y0, 2, tile)
+
+      const left = L ? x0 + d : x0 - (wallAt(maze, x - 1, y - 1) ? d : 0)
+      const right = R ? x0 + tile - d : x0 + tile + (wallAt(maze, x + 1, y - 1) ? d : 0)
+      if (T) fill(ctx, th.inner, left, y0 + d, right - left, 1)
+      const leftB = L ? x0 + d : x0 - (wallAt(maze, x - 1, y + 1) ? d : 0)
+      const rightB = R ? x0 + tile - d : x0 + tile + (wallAt(maze, x + 1, y + 1) ? d : 0)
+      if (B) fill(ctx, th.inner, leftB, y0 + tile - d - 1, rightB - leftB, 1)
+      const top = T ? y0 + d : y0 - (wallAt(maze, x - 1, y - 1) ? d : 0)
+      const bottom = B ? y0 + tile - d : y0 + tile + (wallAt(maze, x - 1, y + 1) ? d : 0)
+      if (L) fill(ctx, th.inner, x0 + d, top, 1, bottom - top)
+      const topR = T ? y0 + d : y0 - (wallAt(maze, x + 1, y - 1) ? d : 0)
+      const bottomR = B ? y0 + tile - d : y0 + tile + (wallAt(maze, x + 1, y + 1) ? d : 0)
+      if (R) fill(ctx, th.inner, x0 + tile - d - 1, topR, 1, bottomR - topR)
+    }
+  }
+  ctx.restore()
+
+  paintHold(ctx, maze, th)
+}
+
+function paintHold(ctx: CanvasRenderingContext2D, maze: Game['maze'], th: Theme): void {
+  const pen = penBox(maze)
+  if (!pen) return
+  const tile = TILE
+  const x = pen.x * tile + 4
+  const y = pen.y * tile + 4
+  const w = pen.w * tile - 8
+  const h = pen.h * tile - 8
+  fill(ctx, 'rgba(255, 46, 69, 0.03)', x, y, w, h)
+  hatch(ctx, 'rgba(255, 46, 69, 0.13)', x, y, w, h, 9)
+  ctx.save()
+  ctx.shadowColor = th.line
+  ctx.shadowBlur = 8
+  const door = maze.door
+  const gapL = door.x * tile + 4
+  const gapR = (door.x + 1) * tile - 4
+  ctx.strokeStyle = th.line
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(gapL, y + 1)
+  ctx.lineTo(x + 1, y + 1)
+  ctx.lineTo(x + 1, y + h - 1)
+  ctx.lineTo(x + w - 1, y + h - 1)
+  ctx.lineTo(x + w - 1, y + 1)
+  ctx.lineTo(gapR, y + 1)
+  ctx.stroke()
+  ctx.restore()
+  brackets(ctx, th.line, x - 4, y - 4, w + 8, h + 8, 8, 2)
+  fill(ctx, th.line, gapL - 2, y - 6, 2, 12)
+  fill(ctx, th.line, gapR, y - 6, 2, 12)
+
+  ctx.font = `17px ${MONO}`
+  const text = 'REG.HOLD'
+  const tw = Math.ceil(ctx.measureText(text).width) + 10
+  const tx = x + w / 2 - tw / 2 + 2
+  const ty = y + h - 21
+  fill(ctx, 'rgba(0, 3, 2, 0.9)', tx - 4, ty, tw + 4, 16)
+  fill(ctx, RED, tx - 4, ty, 3, 16)
+  label(ctx, text, tx + tw / 2, ty + 8.5, 17, BONE)
+  label(ctx, '04', x + 6, y + 11, 15, RED, 'left')
+}
+
 export function render(ctx: CanvasRenderingContext2D, game: Game): void {
   ctx.imageSmoothingEnabled = false
   ctx.globalAlpha = 1
   const tile = TILE
   const width = game.maze.w * tile
   const height = game.maze.h * tile
-  const pal = palette(game.surge > 0, game.levelIndex)
+  const th = theme(game.surge > 0, game.levelIndex)
   if (game.mode === 'lose') {
-    drawLose(ctx, game, width, height, pal)
+    drawLose(ctx, game, width, height, th)
     return
   }
 
-  fill(ctx, pal.bg, 0, 0, width, height)
+  fill(ctx, VOID, 0, 0, width, height)
 
   ctx.save()
   if (game.shake > 0.4) {
@@ -307,141 +397,66 @@ export function render(ctx: CanvasRenderingContext2D, game: Game): void {
     ctx.translate(snap((Math.random() - 0.5) * mag), snap((Math.random() - 0.5) * mag))
   }
 
-  drawMaze(ctx, game, tile, pal)
-  drawPellets(ctx, game, tile, pal)
-  drawMinis(ctx, game, tile)
-  for (const ghost of game.ghosts) drawGhost(ctx, game, ghost, tile)
-  drawPlayer(ctx, game, tile)
-  drawFx(ctx, game, tile)
-  drawEraPlate(ctx, game, width)
+  drawBoard(ctx, game, th, width, height)
+  drawFx(ctx, game, tile, th)
 
   if (game.flash > 0.02) {
-    ctx.fillStyle = `rgba(214, 255, 194, ${game.flash * 0.28})`
+    ctx.fillStyle = `rgba(232, 255, 249, ${game.flash * 0.22})`
     ctx.fillRect(0, 0, width, height)
   }
   ctx.restore()
 
   if (game.mode === 'dying') drawDeathStamp(ctx, game, width, height)
-  if (game.mode === 'cleared' && game.modeTimer > 0) drawClearFanfare(ctx, game, width, height)
-  drawBanner(ctx, game, width, height)
-  drawMilestone(ctx, game, width, height, pal)
+  if (game.mode === 'cleared' && game.modeTimer > 0) drawClearFanfare(ctx, game, width, height, th)
+  drawBanner(ctx, game, width, height, th)
+  drawMilestone(ctx, game, width, height)
 }
 
-function drawMaze(ctx: CanvasRenderingContext2D, game: Game, tile: number, pal: Palette): void {
-  const { maze } = game
-  for (let y = 0; y < maze.h; y++) {
-    for (let x = 0; x < maze.w; x++) {
-      if (!wallAt(maze, x, y)) continue
-      const x0 = x * tile
-      const y0 = y * tile
-      fill(ctx, pal.wall, x0, y0, tile, tile)
-      if (!wallAt(maze, x, y - 1)) {
-        fill(ctx, pal.edge, x0, y0, tile, 2)
-        fill(ctx, pal.hot, x0, y0, tile, 1)
-      }
-      if (!wallAt(maze, x, y + 1)) {
-        fill(ctx, pal.edge, x0, y0 + tile - 2, tile, 2)
-        fill(ctx, pal.hot, x0, y0 + tile - 1, tile, 1)
-      }
-      if (!wallAt(maze, x - 1, y)) {
-        fill(ctx, pal.edge, x0, y0, 2, tile)
-        fill(ctx, pal.hot, x0, y0, 1, tile)
-      }
-      if (!wallAt(maze, x + 1, y)) {
-        fill(ctx, pal.edge, x0 + tile - 2, y0, 2, tile)
-        fill(ctx, pal.hot, x0 + tile - 1, y0, 1, tile)
-      }
-    }
-  }
-  drawRamPackage(ctx, maze, tile, pal)
+function drawBoard(ctx: CanvasRenderingContext2D, game: Game, th: Theme, width: number, height: number): void {
+  const tile = TILE
+  ctx.drawImage(mazeLayer(ctx, game, th, width, height), 0, 0, width, height)
+  drawDoor(ctx, game, th)
+  drawPellets(ctx, game, tile, th)
+  drawMinis(ctx, game, tile)
+  for (const ghost of game.ghosts) drawGhost(ctx, game, ghost, tile)
+  drawPlayer(ctx, game, tile, th)
 }
 
-function drawRamPackage(ctx: CanvasRenderingContext2D, maze: Game['maze'], tile: number, pal: Palette): void {
-  const pen = penBox(maze)
+function drawDoor(ctx: CanvasRenderingContext2D, game: Game, th: Theme): void {
+  const pen = penBox(game.maze)
   if (!pen) return
-  const pinH = 5
-  const bodyX = pen.x * tile
-  const bodyY = pen.y * tile
-  const bodyW = pen.w * tile
-  const bodyH = pen.h * tile
-  const pcbPad = 3
-  const pcbX = bodyX + pcbPad
-  const pcbY = bodyY + pcbPad
-  const pcbW = bodyW - pcbPad * 2
-  const pcbH = bodyH - pcbPad * 2
-
-  fill(ctx, pal.pcb, pcbX, pcbY, pcbW, pcbH)
-  fill(ctx, pal.trace, pcbX + 2, pcbY + 2, pcbW - 4, 1)
-  fill(ctx, pal.trace, pcbX + 2, pcbY + pcbH - 3, pcbW - 4, 1)
-  fill(ctx, pal.trace, pcbX + 2, pcbY + 2, 1, pcbH - 4)
-  fill(ctx, pal.trace, pcbX + pcbW - 3, pcbY + 2, 1, pcbH - 4)
-  fill(ctx, pal.pin, pcbX + 3, pcbY + 4, 2, 2)
-  fill(ctx, pal.pin, pcbX + pcbW - 6, pcbY + 4, 2, 2)
-  fill(ctx, pal.pin, pcbX + 3, pcbY + pcbH - 7, 2, 2)
-  fill(ctx, pal.pin, pcbX + pcbW - 6, pcbY + pcbH - 7, 2, 2)
-
-  fill(ctx, pal.ceramic, bodyX, bodyY, bodyW, bodyH)
-  fill(ctx, pal.bevel, bodyX, bodyY, bodyW, 2)
-  fill(ctx, pal.bevel, bodyX, bodyY, 2, bodyH)
-  fill(ctx, pal.shade, bodyX, bodyY + bodyH - 2, bodyW, 2)
-  fill(ctx, pal.shade, bodyX + bodyW - 2, bodyY, 2, bodyH)
-  fill(ctx, pal.hot, bodyX + 2, bodyY, bodyW - 4, 1)
-
-  const door = maze.door
-  const slotW = tile - 10
-  const slotX = door.x * tile + 5
-  const slotTop = bodyY
-  const slotBottom = (door.y + 1) * tile
-  const pitch = 4
-  const pinW = 2
-  const count = Math.max(4, Math.floor((bodyW - 8) / pitch))
-  const used = count * pitch - (pitch - pinW)
-  const pinStart = bodyX + Math.floor((bodyW - used) / 2)
-  const pinRows = [bodyY + 2, bodyY + bodyH - pinH - 2]
-  for (const pinY of pinRows) {
-    const topRow = pinY < bodyY
-    for (let i = 0; i < count; i++) {
-      const px = pinStart + i * pitch
-      if (topRow && px + pinW > slotX - 2 && px < slotX + slotW + 2) continue
-      fill(ctx, pal.pin, px, pinY, pinW, pinH)
-    }
+  const door = game.maze.door
+  const y = pen.y * TILE + 5
+  const x0 = door.x * TILE + 4
+  const w = TILE - 8
+  const on = Math.floor(game.time * 6) % 2 === 0
+  const ink = game.surge > 0 ? th.accent : RED
+  for (let i = 0; i < w; i += 6) {
+    const lit = (i / 6 + (on ? 0 : 1)) % 2 === 0
+    fill(ctx, lit ? ink : 'rgba(255, 46, 69, 0.25)', x0 + i, y - 1, 4, 2)
   }
-
-  const dieW = Math.min(bodyW - 16, 88)
-  const dieH = 16
-  const dieX = bodyX + Math.floor((bodyW - dieW) / 2)
-  const dieY = bodyY + bodyH - dieH - 6
-  fill(ctx, pal.dieFrame, dieX, dieY, dieW, dieH)
-  fill(ctx, pal.die, dieX + 1, dieY + 1, dieW - 2, dieH - 2)
-  fill(ctx, pal.pin, dieX + 3, dieY + 4, 2, 2)
-  fill(ctx, pal.pin, dieX + dieW - 5, dieY + 4, 2, 2)
-  label(ctx, 'RAM', dieX + dieW / 2, dieY + dieH / 2 + 1, 8, pal.ram)
-
-  fill(ctx, pal.slot, slotX, slotTop, slotW, slotBottom - slotTop)
-  fill(ctx, pal.slotLip, slotX - 2, slotTop - 2, 2, slotBottom - slotTop + 2)
-  fill(ctx, pal.slotLip, slotX + slotW, slotTop - 2, 2, slotBottom - slotTop + 2)
-  fill(ctx, pal.slotLip, slotX, slotBottom - 2, slotW, 2)
 }
 
-function drawPellets(ctx: CanvasRenderingContext2D, game: Game, tile: number, pal: Palette): void {
+function drawPellets(ctx: CanvasRenderingContext2D, game: Game, tile: number, th: Theme): void {
   for (const dot of game.dots) {
     const x = snap(dot.x * tile + tile / 2)
     const y = snap(dot.y * tile + tile / 2)
+    const twinkle = 0.78 + 0.22 * Math.sin(game.time * 3.2 + dot.x * 1.7 + dot.y * 2.3)
+    ctx.globalAlpha = 0.22 * twinkle
+    fill(ctx, th.pellet, x - 6, y - 5, 12, 10)
+    ctx.globalAlpha = twinkle
+    fill(ctx, th.pellet, x - 4, y - 3, 8, 6)
+    fill(ctx, th.pelletHot, x - 4, y - 3, 8, 1)
+    fill(ctx, th.pelletHot, x - 4, y - 3, 1, 3)
+    fill(ctx, th.bg, x - 1, y - 1, 2, 2)
+    fill(ctx, th.pellet, x - 3, y - 5, 1, 1)
+    fill(ctx, th.pellet, x + 2, y - 5, 1, 1)
+    fill(ctx, th.pellet, x - 3, y + 4, 1, 1)
+    fill(ctx, th.pellet, x + 2, y + 4, 1, 1)
+    ctx.globalAlpha = 1
     const callout =
       game.mode === 'play' && game.intro > 0 && game.callouts.some((chip) => chip.x === dot.x && chip.y === dot.y)
-    ctx.save()
-    ctx.globalAlpha = 0.45
-    fill(ctx, pal.pelletHot, x - 5, y - 5, 10, 8)
-    ctx.restore()
-    fill(ctx, pal.pelletPin, x - 3, y - 5, 2, 2)
-    fill(ctx, pal.pelletPin, x + 1, y - 5, 2, 2)
-    fill(ctx, pal.pellet, x - 4, y - 3, 8, 4)
-    fill(ctx, pal.pelletHot, x - 4, y - 3, 8, 1)
-    if (callout) {
-      const ink = game.surge > 0 ? '#000000' : '#f4f0e6'
-      label(ctx, 'RAM', x + 1, y - 9, 8, '#000000')
-      label(ctx, 'RAM', x, y - 10, 8, ink)
-    }
+    if (callout) tag(ctx, 'RAM', x + 2, y - 17, 18, BONE, VOID, th.pellet)
   }
 }
 
@@ -455,11 +470,18 @@ function drawPacAt(ctx: CanvasRenderingContext2D, x: number, y: number, size: nu
   drawFacing(ctx, frame, x, y, size, dir, 'right')
 }
 
-function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, tile: number): void {
+function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, tile: number, th: Theme): void {
   const pos = visual(game.player)
   const moving = game.mode === 'play' && game.player.speed > 0
   const open = moving ? game.time * 12 : 0
-  drawPacAt(ctx, pos.x * tile + tile / 2, pos.y * tile + tile / 2, actorSize(game.levelIndex), game.player.dir, open)
+  const size = actorSize(game.levelIndex)
+  const x = pos.x * tile + tile / 2
+  const y = pos.y * tile + tile / 2
+  const lock = size / 2 + 6 + Math.round(Math.sin(game.time * 5) * 1.5)
+  ctx.globalAlpha = 0.55
+  brackets(ctx, game.surge > 0 ? th.line : BONE, x - lock, y - lock, lock * 2, lock * 2, 5, 1)
+  ctx.globalAlpha = 1
+  drawPacAt(ctx, x, y, size, game.player.dir, open)
 }
 
 function drawMinis(ctx: CanvasRenderingContext2D, game: Game, tile: number): void {
@@ -469,17 +491,6 @@ function drawMinis(ctx: CanvasRenderingContext2D, game: Game, tile: number): voi
     const pos = visual(mini)
     const open = moving ? game.time * 7 + mini.id * 0.9 : 0.4
     drawPacAt(ctx, pos.x * tile + tile / 2, pos.y * tile + tile / 2, size, mini.dir, open)
-  }
-}
-
-function drawEraPlate(ctx: CanvasRenderingContext2D, game: Game, width: number): void {
-  const era = eraOf(game.levelIndex)
-  const names = ['DUSK', '8-BIT', 'NOW']
-  const ink = era === 0 ? '#ffb020' : era === 1 ? '#b6ff2e' : '#8eb6ff'
-  const dim = era === 0 ? '#3a2068' : era === 1 ? '#5a1848' : '#16324a'
-  label(ctx, `GEN ${era + 1} ${names[era]}`, 8, 14, 8, ink, 'left', 'middle')
-  for (let i = 0; i < 3; i++) {
-    fill(ctx, i <= era ? ink : dim, width - 36 + i * 10, 8, 8, 8)
   }
 }
 
@@ -499,42 +510,50 @@ function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile
   if (ghost.state === 'eaten') y += Math.sin(game.time * 10 + ghost.law)
   else if (ghost.state === 'frightened') x += Math.sin(game.time * 18 + ghost.law) * 2
   else if (ghost.state !== 'housed') y += Math.sin(game.time * 8 + ghost.law * 2)
-  const art = lawSprite(ghost.law, ghostLook(game, ghost))
+  const look = ghostLook(game, ghost)
+  const art = lawSprite(ghost.law, look)
   if (art) drawFacing(ctx, art, x, y, size, ghost.dir, 'up')
-  label(ctx, ghost.tag, x, y - size / 2 - 8, 8, ghost.color)
+  if (ghost.state === 'eaten') {
+    label(ctx, ghost.tag, x, y - size / 2 - 8, 17, 'rgba(232, 255, 249, 0.45)')
+    return
+  }
+  const ink = look === 'blue' ? FRIGHT : look === 'flash' ? BONE : ghost.color
+  ctx.font = `17px ${MONO}`
+  const w = Math.ceil(ctx.measureText(ghost.tag).width) + 8
+  const top = y - size / 2 - 17
+  fill(ctx, 'rgba(0, 3, 2, 0.85)', x - w / 2, top, w, 15)
+  fill(ctx, ink, x - w / 2, top, 2, 15)
+  fill(ctx, ink, x - w / 2, top + 14, w, 1)
+  label(ctx, ghost.tag, x + 1, top + 8, 17, ink)
 }
 
-function drawClearFanfare(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number): void {
+function drawClearFanfare(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, th: Theme): void {
   const t = CLEAR_HOLD - game.modeTimer
   const flash = clamp(1 - t / 0.22, 0, 1)
-  if (flash > 0) fill(ctx, `rgba(255, 224, 138, ${flash * 0.72})`, 0, 0, width, height)
+  if (flash > 0) fill(ctx, `rgba(232, 255, 249, ${flash * 0.6})`, 0, 0, width, height)
 
   const pos = visual(game.player)
   const cx = pos.x * TILE + TILE / 2
   const cy = pos.y * TILE + TILE / 2
   const rings: Array<[number, string]> = [
-    [0.05, '#ffb000'],
-    [0.2, '#3ad7ff'],
-    [0.38, '#ff2e93'],
+    [0.05, RAM],
+    [0.2, th.line],
+    [0.38, BONE],
   ]
   for (const [delay, color] of rings) {
     const u = clamp((t - delay) / 0.9, 0, 1)
     if (u <= 0) continue
-    const r = 10 + u * 78
-    const alpha = 1 - u
-    ctx.globalAlpha = alpha
-    fill(ctx, color, cx - r, cy - r, r * 2, 3)
-    fill(ctx, color, cx - r, cy + r - 3, r * 2, 3)
-    fill(ctx, color, cx - r, cy - r, 3, r * 2)
-    fill(ctx, color, cx + r - 3, cy - r, 3, r * 2)
+    const r = 10 + u * 90
+    ctx.globalAlpha = 1 - u
+    brackets(ctx, color, cx - r, cy - r, r * 2, r * 2, r * 0.5, 3)
   }
   ctx.globalAlpha = 1
 
-  const bits = ['#ffb000', '#3ad7ff', '#ff2e93', '#f4f0e6']
-  for (let i = 0; i < 28; i++) {
-    const x = ((i * 47 + t * (36 + (i % 5) * 14)) % (width + 20)) - 10
-    const y = ((i * 29 + t * (48 + (i % 7) * 12)) % (height + 30)) - 16
-    fill(ctx, bits[i % bits.length]!, x, y, i % 3 === 0 ? 5 : 3, i % 3 === 0 ? 5 : 3)
+  for (let i = 0; i < 34; i++) {
+    const x = ((i * 47) % (width + 20)) - 10
+    const y = ((i * 29 + t * (90 + (i % 7) * 30)) % (height + 30)) - 16
+    const bit = (i + Math.floor(t * 12)) % 3 === 0 ? '1' : '0'
+    label(ctx, bit, x, y, 18, i % 3 === 0 ? RAM : th.line)
   }
 
   const slam = clamp(t / 0.28, 0, 1)
@@ -542,25 +561,19 @@ function drawClearFanfare(ctx: CanvasRenderingContext2D, game: Game, width: numb
   ctx.save()
   ctx.translate(snap(width / 2), snap(height * 0.4))
   ctx.scale(scale, scale)
-  fill(ctx, '#ffb000', -118, -28, 236, 56)
-  fill(ctx, '#100818', -112, -22, 224, 44)
-  label(ctx, 'CLEAR', 0, 2, 32, '#ffb000')
+  panel(ctx, th.line, -150, -38, 300, 76)
+  label(ctx, 'SECTOR STATUS', -138, -26, 13, th.line, 'left')
+  label(ctx, '100%', 138, -26, 13, RAM, 'right')
+  headline(ctx, 'CLEAR', 0, 8, 40, BONE)
   ctx.restore()
 
   if (t > 0.32) {
     const name = LEVELS[game.levelIndex]?.name ?? ''
-    fill(ctx, '#100818', width / 2 - 140, height * 0.4 + 36, 280, 28)
-    label(ctx, name.toUpperCase(), width / 2, height * 0.4 + 50, 16, '#f4f0e6')
+    tag(ctx, name.toUpperCase(), width / 2, height * 0.4 + 62, 22, BONE, VOID)
   }
 }
 
-function drawMilestone(
-  ctx: CanvasRenderingContext2D,
-  game: Game,
-  width: number,
-  height: number,
-  pal: Palette,
-): void {
+function drawMilestone(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number): void {
   if (game.milestone <= 0) return
   const t = MILESTONE_HOLD - game.milestone
   const slam = clamp(t / 0.22, 0, 1)
@@ -568,21 +581,26 @@ function drawMilestone(
   ctx.save()
   ctx.translate(snap(width / 2), snap(height * 0.42))
   ctx.scale(scale, scale)
-  fill(ctx, pal.surgeHalo, -140, -40, 280, 80)
-  fill(ctx, pal.surgeBody, -132, -34, 264, 68)
-  fill(ctx, pal.bg, -124, -26, 248, 52)
-  label(ctx, 'SURGE', 0, -4, 32, pal.surgeBody)
-  label(ctx, 'REPEAL THEM', 0, 22, 8, pal.hot)
+  panel(ctx, RAM, -170, -50, 340, 100)
+  label(ctx, 'CORE TEMP <<< 999.9 >>>', -158, -36, 13, RAM, 'left')
+  label(ctx, 'OVERCLOCK', 158, -36, 13, BONE, 'right')
+  headline(ctx, 'SURGE', 0, 0, 46, RAM)
+  hatch(ctx, RAM, -158, 28, 96, 10, 5)
+  hatch(ctx, RAM, 62, 28, 96, 10, 5)
+  label(ctx, 'REPEAL THEM', 0, 33, 18, BONE)
   ctx.restore()
 }
 
-function drawBanner(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number): void {
+function drawBanner(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, th: Theme): void {
   if (game.bannerTimer <= 0 || !game.banner) return
   const y = snap(Math.min(12, height * 0.04))
-  fill(ctx, '#000000', 0, y, width, 32)
-  fill(ctx, '#ff2e93', 0, y, width, 2)
-  fill(ctx, '#ff2e93', 0, y + 30, width, 2)
-  label(ctx, game.banner, width / 2, y + 17, 8, '#ff2e93')
+  const ink = game.surge > 0 ? RAM : th.accent
+  fill(ctx, 'rgba(0, 3, 2, 0.92)', 0, y, width, 34)
+  fill(ctx, ink, 0, y, width, 1)
+  fill(ctx, ink, 0, y + 33, width, 1)
+  hatch(ctx, ink, 8, y + 9, 70, 16, 5)
+  hatch(ctx, ink, width - 78, y + 9, 70, 16, 5)
+  label(ctx, `>> ${game.banner} <<`, width / 2, y + 18, 22, ink)
 }
 
 function drawDeathStamp(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number): void {
@@ -598,9 +616,10 @@ function drawDeathStamp(ctx: CanvasRenderingContext2D, game: Game, width: number
   ctx.save()
   ctx.translate(snap(width / 2), snap(height / 2))
   ctx.scale(scale, scale)
-  fill(ctx, '#ff2e93', -112, -24, 224, 48)
-  fill(ctx, '#000000', -108, -20, 216, 40)
-  label(ctx, 'CAUGHT', 0, 2, 32, '#ff2e93')
+  panel(ctx, RED, -150, -42, 300, 84)
+  warning(ctx, -104, -2, 42, RED)
+  headline(ctx, 'CAUGHT', 30, -6, 34, RED)
+  label(ctx, 'SIGNAL LOST // LIFE -1', 30, 24, 15, 'rgba(255, 46, 69, 0.8)')
   ctx.restore()
 }
 
@@ -608,79 +627,78 @@ function drawSeal(ctx: CanvasRenderingContext2D, x: number, y: number, scale: nu
   ctx.save()
   ctx.translate(snap(x), snap(y))
   ctx.scale(scale, scale)
-  fill(ctx, '#ff2e93', -54, -18, 108, 36)
-  fill(ctx, '#000000', -50, -14, 100, 28)
-  fill(ctx, '#5c3d8a', -48, -12, 96, 24)
-  fill(ctx, '#100818', -46, -10, 92, 20)
-  label(ctx, 'REGULATED', 0, 1, 8, '#f4f0e6')
+  panel(ctx, RED, -62, -16, 124, 32)
+  label(ctx, 'REGULATED', 0, 1, 22, RED)
   ctx.restore()
 }
 
-function drawFx(ctx: CanvasRenderingContext2D, game: Game, tile: number): void {
-  const surge = game.surge > 0
+function drawFx(ctx: CanvasRenderingContext2D, game: Game, tile: number, th: Theme): void {
   for (const particle of game.particles) {
     ctx.globalAlpha = Math.max(0, particle.life / particle.max)
     const x = snap(particle.x * tile + tile / 2)
     const y = snap(particle.y * tile + tile / 2)
     const size = Math.max(1, snap(particle.size * tile))
-    fill(ctx, surge ? '#000000' : phosphorColor(particle.color), x, y, size, size)
+    fill(ctx, phosphorColor(particle.color, th), x, y, size, size)
   }
   ctx.globalAlpha = 1
   for (const note of game.popups) {
     ctx.globalAlpha = Math.max(0, note.life)
     const x = note.x * tile + tile / 2
     const y = note.y * tile
-    label(ctx, note.text, x + 1, y + 1, 8, surge ? '#f4f0e6' : '#000000')
-    label(ctx, note.text, x, y, 8, surge ? '#000000' : phosphorColor(note.color))
+    label(ctx, note.text, x, y, 20, phosphorColor(note.color, th))
   }
   ctx.globalAlpha = 1
   if (game.mode !== 'ready') return
   const def = LEVELS[game.levelIndex]
   const caught = game.entry === 'caught'
   const width = game.maze.w * tile
-  const band = caught ? 78 : 100
+  const boxW = 460
+  const boxH = caught ? 104 : 140
+  const left = snap(width / 2 - boxW / 2)
   const top = snap(game.maze.h * tile * 0.3)
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.88)'
-  ctx.fillRect(0, top, width, band)
-  fill(ctx, '#ff2e93', 0, top, width, 2)
-  fill(ctx, '#ff2e93', 0, top + band - 2, width, 2)
   if (caught) {
-    const left = game.lives === 1 ? '1 LIFE LEFT' : `${game.lives} LIVES LEFT`
-    label(ctx, 'STILL RUNNING', width * 0.5, top + 26, 16, '#ffb000')
-    label(ctx, left, width * 0.5, top + 54, 16, '#f4f0e6')
+    panel(ctx, RAM, left, top, boxW, boxH)
+    label(ctx, 'ALERT STATUS:', left + 12, top + 15, 17, RAM, 'left')
+    label(ctx, 'REBOOTING', left + boxW - 12, top + 15, 17, RAM, 'right')
+    const lives = game.lives === 1 ? '1 LIFE LEFT' : `${game.lives} LIVES LEFT`
+    headline(ctx, 'STILL RUNNING', width / 2, top + 52, 26, BONE)
+    label(ctx, lives, width / 2, top + 84, 26, RAM)
     return
   }
-  label(ctx, `LEVEL ${game.levelIndex + 1}`, width * 0.5, top + 20, 8, '#5c3d8a')
-  label(ctx, def?.name ?? '', width * 0.5, top + 46, 16, '#f4f0e6')
-  label(ctx, def?.blurb ?? '', width * 0.5, top + 76, 8, '#ff2e93')
+  panel(ctx, th.line, left, top, boxW, boxH)
+  label(ctx, `ALERT STATUS: ${game.levelIndex + 1}-${LEVELS.length}`, left + 12, top + 15, 17, th.line, 'left')
+  label(ctx, th.name, left + boxW - 12, top + 15, 17, th.line, 'right')
+  label(ctx, `WELCOME TO LEVEL ${game.levelIndex + 1}`, width / 2, top + 42, 22, BONE)
+  fill(ctx, th.line, left + 40, top + 56, boxW - 80, 1)
+  headline(ctx, (def?.name ?? '').toUpperCase(), width / 2, top + 82, 28, th.line)
+  fill(ctx, th.line, left + 40, top + 104, boxW - 80, 1)
+  label(ctx, def?.blurb ?? '', width / 2, top + 122, 21, RAM)
 }
 
-function drawLose(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, pal: Palette): void {
+function drawLose(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, th: Theme): void {
   const tile = TILE
-  fill(ctx, pal.bg, 0, 0, width, height)
-  drawMaze(ctx, game, tile, pal)
-  drawPellets(ctx, game, tile, pal)
-  drawMinis(ctx, game, tile)
-  for (const ghost of game.ghosts) drawGhost(ctx, game, ghost, tile)
-  drawPlayer(ctx, game, tile)
+  fill(ctx, VOID, 0, 0, width, height)
+  drawBoard(ctx, game, th, width, height)
+  ctx.fillStyle = 'rgba(30, 0, 4, 0.55)'
+  ctx.fillRect(0, 0, width, height)
   const pos = visual(game.player)
   const px = snap(pos.x * tile + tile / 2)
   const py = snap(pos.y * tile + tile / 2)
   const law = game.ghosts.find((ghost) => ghost.name === game.caughtName)
-  const ink = law?.color ?? '#ff2e93'
+  const ink = law?.color ?? RED
   const caught = lawSprite(law?.law ?? 0, 'body')
-  if (caught) drawFacing(ctx, caught, px, py, actorSize(game.levelIndex) * 3.2, 'down', 'up')
-  label(ctx, law?.tag ?? 'LAW', px, py - 62, 8, ink)
+  const big = actorSize(game.levelIndex) * 3.2
+  if (caught) drawFacing(ctx, caught, px, py, big, 'down', 'up')
+  brackets(ctx, RED, px - big / 2 - 10, py - big / 2 - 10, big + 20, big + 20, 16, 2)
+  tag(ctx, law?.tag ?? 'LAW', px, py - big / 2 - 26, 18, ink, VOID)
 
-  const plateW = 308
-  const plateH = game.caughtName ? 68 : 40
-  const plateY = py < height * 0.42 ? height - plateH - 18 : 16
+  const plateW = 360
+  const plateH = game.caughtName ? 92 : 64
+  const plateY = py < height * 0.42 ? height - plateH - 22 : 22
   const plateX = snap(width / 2 - plateW / 2)
-  fill(ctx, PAGE, plateX, plateY, plateW, plateH)
-  fill(ctx, ink, plateX, plateY, plateW, 5)
-  fill(ctx, ink, plateX, plateY, 5, plateH)
-  fill(ctx, PAGE_INK, plateX, plateY + plateH - 2, plateW, 2)
-  fill(ctx, PAGE_INK, plateX + plateW - 2, plateY, 2, plateH)
-  label(ctx, 'A LAW CAUGHT YOU', width / 2, plateY + 24, 16, PAGE_INK)
-  if (game.caughtName) label(ctx, game.caughtName.toUpperCase(), width / 2, plateY + 48, 16, ink)
+  panel(ctx, RED, plateX, plateY, plateW, plateH)
+  warning(ctx, plateX + 40, plateY + 34, 40, RED)
+  headline(ctx, 'ERROR', plateX + 196, plateY + 28, 30, RED)
+  label(ctx, 'A LAW CAUGHT YOU', plateX + 196, plateY + 56, 18, BONE)
+  if (game.caughtName) label(ctx, game.caughtName.toUpperCase(), plateX + 196, plateY + 78, 18, ink)
 }

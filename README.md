@@ -2,6 +2,8 @@
 
 You are the model. The dots are RAM and the walking figures are government AI regulations. Eat enough RAM to fill the surge bar, and for five seconds those regulations can be repealed. They come back. Clear every board.
 
+The board is drawn to a 2D canvas, then pushed through a WebGL CRT pass (`src/crt.ts`): phosphor trails, bloom, curvature, aperture grille and glitch on hits. Without WebGL the plain canvas shows. Reduced motion turns off the trails, roll and glitch.
+
 The unused story copy lives in `archive/story.ts`. The game does not import it.
 
 ## Run
