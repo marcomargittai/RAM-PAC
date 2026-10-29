@@ -1032,6 +1032,13 @@ function frame(now: number): void {
 }
 
 countVisit()
+// iOS only counts touchend, click and keys as gestures that may start audio,
+// not the touchstart behind a swipe, so every one of them tries to wake it.
+for (const type of ['touchend', 'click', 'keydown'] as const) window.addEventListener(type, () => audio.unlock(), { capture: true, passive: true })
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') audio.unlock()
+})
+window.addEventListener('pageshow', () => audio.unlock())
 window.addEventListener('pointerdown', () => audio.preloadVoices([...VOICES, ...CHAT_VOICES]), { once: true })
 window.addEventListener('keydown', () => audio.preloadVoices([...VOICES, ...CHAT_VOICES]), { once: true })
 void document.fonts?.load('16px "VT323"')

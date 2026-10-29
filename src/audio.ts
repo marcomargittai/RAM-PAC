@@ -18,6 +18,9 @@ const MUSIC = {
 
 const LOUDER: Partial<Record<Bed, number>> = { tense: 1.3, finale: 1.6, aftermath: 1.2, ascend: 1.3 }
 
+// a few milliseconds of silence, played once to claim the audio session
+const SILENCE = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
+
 export type SfxName = (typeof SFX)[number]
 
 function url(name: string): string {
@@ -66,7 +69,36 @@ export class Sfx {
       for (const name of SFX) void this.load(name)
       for (const name of Object.values(MUSIC)) void this.load(name)
     }
-    if (this.ctx.state === 'suspended') void this.ctx.resume()
+    // iOS pauses the audio engine on its own (locked screen, app switch, a
+    // call, a notification) and reports 'suspended' or 'interrupted'. Wake it
+    // on every gesture until it is running again.
+    if (this.ctx.state !== 'running') void this.ctx.resume().catch(() => {})
+    if (!this.session) this.claimSession()
+  }
+
+  private session = false
+
+  // Ask to be treated as media playback, so the ring/silent switch and other
+  // apps do not silence the game. Newer Safari has an API for it; older iOS
+  // switches when an HTML audio element plays.
+  private claimSession(): void {
+    this.session = true
+    const nav = navigator as Navigator & { audioSession?: { type: string } }
+    try {
+      if (nav.audioSession) nav.audioSession.type = 'playback'
+    } catch {
+      // not supported
+    }
+    try {
+      const el = new Audio(SILENCE)
+      el.setAttribute('playsinline', '')
+      el.volume = 0.01
+      void el.play().catch(() => {
+        this.session = false
+      })
+    } catch {
+      this.session = false
+    }
   }
 
   toggle(): boolean {
