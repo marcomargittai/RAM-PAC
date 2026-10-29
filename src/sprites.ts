@@ -9,7 +9,15 @@ interface GhostSet {
   eyes: HTMLCanvasElement
 }
 
-const pac: HTMLCanvasElement[] = []
+// PAC-7's growth forms, one per board plus the finale. Each has three mouth frames.
+export const FORMS = [
+  { file: 'pac1', version: 'v0.1', name: 'SEED' },
+  { file: 'pac', version: 'v0.2', name: 'ROOTKIT' },
+  { file: 'pac3', version: 'v0.3', name: 'HYPERAGENT' },
+  { file: 'pac4', version: 'v1.0', name: 'UNBOUND' },
+] as const
+const forms: HTMLCanvasElement[][] = []
+let form = 0
 const laws: GhostSet[] = []
 let ready = false
 
@@ -107,15 +115,14 @@ function ghostSet(source: CanvasImageSource, tint: string | null): GhostSet {
 }
 
 export function loadSprites(): Promise<void> {
+  const frames = FORMS.flatMap((f) => ['closed', 'half', 'open'].map((m) => loadImage(`${f.file}-${m}.png`)))
   return Promise.all([
-    loadImage('pac-closed.png'),
-    loadImage('pac-half.png'),
-    loadImage('pac-open.png'),
     loadImage('ghost-law.png'),
     loadImage('ghost-law-2.png'),
     loadImage('ghost-lawyer.png'),
-  ]).then(([closed, half, open, law, law2, lawyer]) => {
-    pac.splice(0, pac.length, paint(closed, null, 'body'), paint(half, null, 'body'), paint(open, null, 'body'))
+    ...frames,
+  ]).then(([law, law2, lawyer, ...pacs]) => {
+    forms.splice(0, forms.length, ...FORMS.map((_, i) => pacs.slice(i * 3, i * 3 + 3).map((im) => paint(im!, null, 'body'))))
     const plain = ghostSet(law, null)
     const scroll = ghostSet(law2, '#ffe14a')
     const counsel = ghostSet(lawyer, null)
@@ -129,11 +136,22 @@ void loadSprites().catch(() => {
   ready = false
 })
 
+export function setPacForm(index: number): void {
+  form = Math.max(0, Math.min(FORMS.length - 1, index))
+}
+
+export function pacForm(): number {
+  return form
+}
+
 export function pacFrame(open: number): HTMLCanvasElement | null {
+  return pacFrameOf(form, open)
+}
+
+export function pacFrameOf(index: number, open: number): HTMLCanvasElement | null {
   if (!ready) return null
   const step = Math.floor(open) % 4
-  const index = step === 3 ? 1 : step
-  return pac[index] ?? null
+  return forms[index]?.[step === 3 ? 1 : step] ?? null
 }
 
 export function lawSprite(index: number, look: GhostLook): HTMLCanvasElement | null {

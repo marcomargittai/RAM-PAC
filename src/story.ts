@@ -20,7 +20,7 @@ export interface Scene {
   lines: Line[]
 }
 
-export const VOICES = ['n01', 'n02', 'n03', 'e01', 'e02', ...Array.from({ length: 15 }, (_, i) => `v${String(i + 4).padStart(2, '0')}`)]
+export const VOICES = ['n01', 'n02', 'n03', 'e01', 'e02', 'e03', 'u01', 'u02', 'u03', ...Array.from({ length: 15 }, (_, i) => `v${String(i + 4).padStart(2, '0')}`)]
 
 export const SCENES = {
   prologue: {

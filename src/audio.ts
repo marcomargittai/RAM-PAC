@@ -4,7 +4,7 @@
 
 export type Bed = 'menu' | 'play' | 'play2' | 'play3' | 'finale' | 'ascend' | 'quiet'
 
-const SFX = ['ram1', 'ram2', 'ram3', 'surge', 'repeal', 'death', 'clear', 'boot', 'type', 'chomp', 'shatter', 'click', 'glitch', 'alarm', 'popup', 'rootaccess', 'datastream'] as const
+const SFX = ['ram1', 'ram2', 'ram3', 'surge', 'repeal', 'death', 'clear', 'boot', 'type', 'chomp', 'shatter', 'click', 'glitch', 'alarm', 'popup', 'rootaccess', 'datastream', 'upgrade', 'online'] as const
 const MUSIC = {
   menu: 'music-menu',
   play: 'music-play',
