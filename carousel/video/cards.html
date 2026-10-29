@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PAC RAM video cards</title>
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet" />
+    <style>
+      body { margin: 0; background: #000; }
+      .card { position: relative; width: 1080px; height: 1920px; overflow: hidden; background: radial-gradient(ellipse at 50% 45%, #0b1d33 0%, #01040b 70%); color: #e2f5ff; font-family: 'VT323', monospace; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+      .card::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.25) 0 2px, transparent 2px 6px), radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.75) 100%); }
+      .big { font-size: 210px; line-height: 0.95; text-shadow: 0 0 24px rgba(150,214,255,0.6), 0 0 3px #fff; }
+      .pink { color: #ff2d6f; text-shadow: 0 0 26px rgba(255,45,111,0.7); }
+      .small { font-family: 'Share Tech Mono', monospace; font-size: 40px; color: #96d6ff; letter-spacing: 3px; }
+      img { image-rendering: pixelated; }
+    </style>
+  </head>
+  <body>
+    <section class="card" id="c1"><div class="big">you are<br /><span class="pink">the AI.</span></div></section>
+    <section class="card" id="c2"><div class="big">it <span class="pink">rewrites</span><br />itself.</div></section>
+    <section class="card" id="end">
+      <img src="/art/title.png" style="width:960px" />
+      <img src="/sprites/pac4-half.png" style="width:300px;height:300px;margin-top:80px;filter:drop-shadow(0 0 40px rgba(255,45,111,0.7))" />
+      <div class="big" style="font-size:96px;margin-top:90px">play free in your browser</div>
+      <div class="small" style="margin-top:36px">marcomargittai.github.io/RAM-PAC</div>
+      <div class="small" style="margin-top:120px;font-size:32px;color:rgba(226,245,255,0.7)">made by Marco Margittai</div>
+    </section>
+  </body>
+</html>

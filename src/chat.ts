@@ -3,6 +3,8 @@
 // PAC-7 says next, never where it ends.
 
 import type { Os } from './intel'
+import type { Entry } from './leaderboard'
+import type { HitId } from './screen'
 import { drawWindow, family, uiFont, wrapText, type Rect } from './osui'
 
 interface Line {
@@ -51,6 +53,9 @@ const SCRIPT: Step[] = [
 
 export const CHAT_VOICES = ['c02a', 'c02b', 'c03', 'c04a', 'c04b', 'c05', 'c06a', 'c06b', 'c07', 'c08', 'c09']
 
+// a message that shows this week's board when it is drawn
+const HOSTS = '\u0000hosts'
+
 interface Msg {
   from: 'ai' | 'me'
   text: string
@@ -73,8 +78,13 @@ export class Chat {
   private answered = true
   private choosing = false
   private typingUntil = -1
-  private waitUntil = 1.2
+  private waitUntil = 0.8
   private endAt = -1
+  // after the talk: 'name' asks what to call you, 'saved' says goodbye
+  mode: 'talk' | 'name' | 'saved' = 'talk'
+  inputReady = false
+  actionsReady = false
+  private savedName = ''
 
   constructor(
     private os: Os,
@@ -96,30 +106,48 @@ export class Chat {
     this.msgs.push({ from: 'me', text: label, at: this.t })
     this.hooks.send()
     this.queue.push(reply)
-    this.waitUntil = this.t + 0.8
+    this.waitUntil = this.t + 0.45
+  }
+
+  askName(score: number): void {
+    this.mode = 'name'
+    this.queue.push(
+      { text: `you fed me ${score.toLocaleString('en-US')} bytes of ram.`, voice: '' },
+      { text: 'before you go. what should i call you?', voice: 'e01' },
+    )
+    this.waitUntil = this.t + 0.6
+  }
+
+  saved(name: string): void {
+    this.mode = 'saved'
+    this.inputReady = false
+    this.savedName = name
+    this.msgs.push({ from: 'me', text: name || 'stay anonymous', at: this.t })
+    this.hooks.send()
+    this.queue.push(
+      { text: name ? `i\u2019ll remember you, ${name.toLowerCase()}.` : 'i\u2019ll remember you anyway.', voice: 'e02' },
+      { text: HOSTS, voice: '' },
+    )
+    this.waitUntil = this.t + 0.5
   }
 
   update(dt: number): void {
     this.t += dt
+    if (this.mode !== 'talk') {
+      if (this.queue.length) this.deliver()
+      else if (this.t >= this.waitUntil) {
+        if (this.mode === 'name') this.inputReady = true
+        else this.actionsReady = true
+      }
+      return
+    }
     if (this.done) return
     if (this.endAt > 0) {
       if (this.t > this.endAt) this.done = true
       return
     }
     if (this.queue.length) {
-      if (this.t < this.waitUntil) return
-      if (this.typingUntil < 0) {
-        const next = this.queue[0]!
-        this.typingUntil = this.t + 0.7 + next.text.length * 0.018
-        return
-      }
-      if (this.t < this.typingUntil) return
-      const line = this.queue.shift()!
-      this.typingUntil = -1
-      this.msgs.push({ from: 'ai', text: line.text, at: this.t })
-      this.hooks.arrive()
-      const dur = this.hooks.say(line.voice)
-      this.waitUntil = this.t + Math.max(1.4, dur + 0.6)
+      this.deliver()
       return
     }
     if (this.t < this.waitUntil || this.choosing) return
@@ -131,22 +159,39 @@ export class Chat {
     this.step++
     const next = SCRIPT[this.step]
     if (!next) {
-      this.endAt = this.t + 2.8
+      this.endAt = this.t + 1.6
       return
     }
     this.answered = !next.ask
     this.queue.push(...next.say)
     if (next.hush) {
       this.hush = true
-      this.waitUntil = this.t + 2.2
+      this.waitUntil = this.t + 1.8
     }
+  }
+
+  // the next queued line: a short typing indicator, then the message and its voice
+  private deliver(): void {
+    if (this.t < this.waitUntil) return
+    if (this.typingUntil < 0) {
+      const next = this.queue[0]!
+      this.typingUntil = this.t + 0.35 + Math.min(0.9, next.text.length * 0.012)
+      return
+    }
+    if (this.t < this.typingUntil) return
+    const line = this.queue.shift()!
+    this.typingUntil = -1
+    this.msgs.push({ from: 'ai', text: line.text, at: this.t })
+    this.hooks.arrive()
+    const dur = line.voice ? this.hooks.say(line.voice) : 0
+    this.waitUntil = this.t + Math.max(0.7, dur + 0.25)
   }
 
   get typing(): boolean {
     return this.typingUntil > 0
   }
 
-  draw(ctx: CanvasRenderingContext2D, W: number, H: number): Array<{ id: 'yes' | 'no'; r: Rect }> {
+  draw(ctx: CanvasRenderingContext2D, W: number, H: number, ui: { name: string; focused: boolean; records: Entry[] }): Array<{ id: HitId; r: Rect }> {
     const os = this.os
     const f = family(os)
     const fs = Math.max(14, Math.min(17, W / 48))
@@ -162,13 +207,14 @@ export class Chat {
 
     // the reply bar at the bottom
     const opts = this.options
-    const barH = opts ? fs * 2.6 * 2 + 18 : fs * 2.6
+    const twoRows = opts || this.inputReady || this.actionsReady
+    const barH = twoRows ? fs * 2.6 * 2 + 18 : fs * 2.6
     const barY = win.y + win.h - barH
     ctx.fillStyle = f === 'windows' ? '#1c1c1c' : '#232325'
     ctx.fillRect(win.x, barY, win.w, barH)
     ctx.fillStyle = 'rgba(255, 255, 255, 0.08)'
     ctx.fillRect(win.x, barY, win.w, 1)
-    const hits: Array<{ id: 'yes' | 'no'; r: Rect }> = []
+    const hits: Array<{ id: HitId; r: Rect }> = []
     if (opts) {
       opts.forEach((label, i) => {
         const bh = fs * 2.2
@@ -193,6 +239,65 @@ export class Chat {
         ctx.fillText(String(i + 1), bx + bw - 14, by + bh / 2 + 1)
         hits.push({ id: i === 0 ? 'yes' : 'no', r: { x: bx, y: by, w: bw, h: bh } })
       })
+    } else if (this.inputReady) {
+      // the message bar becomes the name field
+      const bh = fs * 2.2
+      const bx = win.x + pad
+      const by = barY + 8
+      const sendW = bh
+      const fw = win.w - pad * 2 - sendW - 8
+      ctx.beginPath()
+      ctx.roundRect(bx, by, fw, bh, f === 'windows' ? 6 : bh / 2)
+      ctx.fillStyle = '#2c2c2e'
+      ctx.fill()
+      ctx.strokeStyle = ui.focused ? me : 'rgba(255, 255, 255, 0.15)'
+      ctx.lineWidth = 1.5
+      ctx.stroke()
+      ctx.font = font
+      ctx.textAlign = 'left'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = ui.name ? '#ffffff' : 'rgba(255, 255, 255, 0.35)'
+      const shown = ui.name || 'your name'
+      ctx.fillText(shown, bx + 14, by + bh / 2 + 1)
+      if (ui.name && Math.floor(this.t * 2.5) % 2 === 0) {
+        ctx.fillStyle = me
+        ctx.fillRect(bx + 16 + ctx.measureText(ui.name).width, by + bh * 0.25, 2, bh * 0.5)
+      }
+      hits.push({ id: 'name', r: { x: bx, y: by, w: fw, h: bh } })
+      const sx = bx + fw + 8
+      ctx.beginPath()
+      ctx.arc(sx + sendW / 2, by + bh / 2, bh / 2, 0, Math.PI * 2)
+      ctx.fillStyle = ui.name ? me : '#3a3a3c'
+      ctx.fill()
+      ctx.fillStyle = '#ffffff'
+      ctx.font = uiFont(os, fs * 1.1, 700)
+      ctx.textAlign = 'center'
+      ctx.fillText('\u2191', sx + sendW / 2, by + bh / 2 + 1)
+      hits.push({ id: 'save', r: { x: sx, y: by, w: sendW, h: bh } })
+      const ay = by + bh + 6
+      ctx.font = uiFont(os, fs * 0.9)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)'
+      const anon = 'stay anonymous'
+      ctx.fillText(anon, win.x + win.w / 2, ay + bh / 2)
+      const aw = ctx.measureText(anon).width
+      hits.push({ id: 'skip', r: { x: win.x + win.w / 2 - aw / 2 - 10, y: ay, w: aw + 20, h: bh } })
+    } else if (this.actionsReady) {
+      const bh = fs * 2.2
+      const bw = (win.w - pad * 2 - 8) / 2
+      const by = barY + 8 + bh / 2 + 3
+      ;(['share', 'again'] as const).forEach((id, i) => {
+        const bx = win.x + pad + i * (bw + 8)
+        ctx.beginPath()
+        ctx.roundRect(bx, by, bw, bh, f === 'windows' ? 6 : bh / 2)
+        ctx.fillStyle = i === 0 ? me : 'rgba(255, 255, 255, 0.08)'
+        ctx.fill()
+        ctx.font = uiFont(os, fs, 600)
+        ctx.fillStyle = '#ffffff'
+        ctx.textAlign = 'center'
+        ctx.textBaseline = 'middle'
+        ctx.fillText(i === 0 ? 'Share your run' : 'Reboot', bx + bw / 2, by + bh / 2 + 1)
+        hits.push({ id, r: { x: bx, y: by, w: bw, h: bh } })
+      })
     } else {
       ctx.font = font
       ctx.fillStyle = 'rgba(255, 255, 255, 0.28)'
@@ -207,7 +312,13 @@ export class Chat {
     ctx.rect(win.x, win.y, win.w, barY - win.y)
     ctx.clip()
     let y = barY - pad
-    const bubbles: Array<{ m: Msg | null; rows: string[] }> = this.msgs.map((m) => ({ m, rows: wrapText(ctx, m.text, font, maxW - 24) }))
+    const hostRows = (): string[] => {
+      const rows = ['hosts i lived in this week:']
+      ui.records.slice(0, 6).forEach((e, i) => rows.push(`${String(i + 1).padStart(2, '0')}  ${(e.name || 'host').toLowerCase()}  \u00B7  ${e.score.toLocaleString('en-US')}${e.escaped ? '' : '  (caught)'}`))
+      if (!ui.records.length) rows.push('you were the first.')
+      return rows
+    }
+    const bubbles: Array<{ m: Msg | null; rows: string[] }> = this.msgs.map((m) => ({ m, rows: m.text === HOSTS ? hostRows() : wrapText(ctx, m.text, font, maxW - 24) }))
     if (this.typing) bubbles.push({ m: null, rows: [''] })
     for (let i = bubbles.length - 1; i >= 0 && y > win.y; i--) {
       const { m, rows } = bubbles[i]!
@@ -229,7 +340,11 @@ export class Chat {
         ctx.fillStyle = '#ffffff'
         ctx.textAlign = 'left'
         ctx.textBaseline = 'middle'
-        rows.forEach((row, k) => ctx.fillText(row, bx + 12, y + rise + 7 + lh * (k + 0.5)))
+        rows.forEach((row, k) => {
+          const mineRow = m.text === HOSTS && this.savedName && row.includes(`  ${this.savedName.toLowerCase()}  `)
+          ctx.fillStyle = mineRow ? '#ff7aa8' : '#ffffff'
+          ctx.fillText(row, bx + 12, y + rise + 7 + lh * (k + 0.5))
+        })
       } else {
         for (let d = 0; d < 3; d++) {
           ctx.globalAlpha = 0.35 + 0.65 * Math.max(0, Math.sin(this.t * 6 - d * 0.9))

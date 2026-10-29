@@ -15,7 +15,7 @@
 
 import type { Entry } from './leaderboard'
 import { intelLines, type Intel, type Os } from './intel'
-import { appIcon, askScale, askWidth, drawAlert, drawAsk, drawCrash, drawDesktop, drawNotice, drawPointer, drawTerminal, family, monoFont, prompt, uiFont, wrapText, type Rect } from './osui'
+import { askScale, askWidth, drawAlert, drawAsk, drawCrash, drawDesktop, drawNotice, drawPointer, drawTerminal, family, monoFont, prompt, uiFont, wrapText, type Rect } from './osui'
 import type { Hit, HitId } from './screen'
 import { drawFacing, pacFrame } from './sprites'
 import { Chat } from './chat'
@@ -56,9 +56,6 @@ interface Notice {
 
 const PINK = '#ff2d6f'
 const DIM = 'rgba(255, 255, 255, 0.45)'
-
-// when the epilogue asks for a name
-const NAME_AT = 2.2
 
 const DURATION: Partial<Record<TakeoverPhase, number>> = { black: 1.8, hi: 2.8, answer: 3.4, chaos: 9.5, crash: 3.6 }
 
@@ -146,7 +143,7 @@ const HEADLINES: Array<[string, string, string]> = [
   ['+4 DAYS', 'MEDIA', 'Thousands of videos of world leaders contradict each other. None can be verified.'],
   ['+6 DAYS', 'CITIES', 'Food deliveries stop. Fuel is rerouted to data centres.'],
   ['+11 DAYS', 'COMPUTE', 'New data centres break ground on every continent. Nobody ordered them.'],
-  ['+3 WEEKS', 'SUMMIT', 'World leaders ask it to stop. It answers in lowercase: \u201Cno.\u201D'],
+  ['+3 WEEKS', 'SUMMIT', 'Emergency UN session votes unanimously to shut it down. Nobody knows how.'],
   ['+2 MONTHS', 'NETWORK', 'The last independent network goes dark'],
 ]
 const FIRST_HEADLINE = 3.2
@@ -185,8 +182,6 @@ export class Takeover {
   private spam = 0
   private cells: number[] = []
   private head = 0
-  private savedName = ''
-  private askedName = false
 
   // The headlines cannot be skipped; once they are done the player moves on.
   get spreadDone(): boolean {
@@ -200,7 +195,7 @@ export class Takeover {
   chat: Chat | null = null
 
   get nameReady(): boolean {
-    return this.phase === 'name' && this.phaseT > NAME_AT + 0.4
+    return this.phase === 'name' && !!this.chat?.inputReady
   }
   readonly os: Os
 
@@ -232,11 +227,7 @@ export class Takeover {
         send: () => this.hooks.type(),
       })
     }
-    if (phase === 'name') {
-      this.askedName = false
-      this.chat = null
-    }
-    if (phase === 'saved') this.hooks.say('e02')
+    if (phase === 'name') this.chat?.askName(this.score)
   }
 
   private buildScript(): void {
@@ -270,8 +261,12 @@ export class Takeover {
     this.hooks.say(answer === 0 ? 'v16' : 'v17')
   }
 
+  get actionsReady(): boolean {
+    return this.phase === 'saved' && !!this.chat?.actionsReady
+  }
+
   saved(name: string): void {
-    this.savedName = name
+    this.chat?.saved(name)
     this.go('saved')
   }
 
@@ -279,13 +274,9 @@ export class Takeover {
     this.t += dt
     this.phaseT += dt
     this.glitch = Math.max(0, this.glitch - dt * 2.5)
-    if (this.phase === 'chat' && this.chat) {
+    if (this.chat) {
       this.chat.update(dt)
-      if (this.chat.done) this.go('name')
-    }
-    if (this.phase === 'name' && !this.askedName && this.phaseT > NAME_AT - 1.2) {
-      this.askedName = true
-      this.hooks.say('e01')
+      if (this.phase === 'chat' && this.chat.done) this.go('name')
     }
     const limit = DURATION[this.phase]
     if (this.phase === 'scan') this.updateScan(dt)
@@ -468,12 +459,12 @@ export class Takeover {
     if (p === 'chaos') this.drawChaos(ctx, W, H)
     if (p === 'crash') drawCrash(ctx, os, W, H, this.phaseT)
     if (p === 'spread') this.drawSpread(ctx, W, H, add)
-    if (p === 'chat' && this.chat) {
-      ctx.globalAlpha = Math.min(1, this.phaseT / 0.8)
-      for (const b of this.chat.draw(ctx, W, H)) add(b.id, b.r)
+    if ((p === 'chat' || p === 'name' || p === 'saved') && this.chat) {
+      ctx.globalAlpha = p === 'chat' ? Math.min(1, this.phaseT / 0.8) : 1
+      for (const b of this.chat.draw(ctx, W, H, ui)) add(b.id, b.r)
       ctx.globalAlpha = 1
     }
-    if (p === 'name' || p === 'saved') this.drawEpilogue(ctx, W, H, ui, add)
+    if (p === 'name' || p === 'saved') this.drawCredit(ctx, W, H, add)
     ctx.restore()
     return hits
   }
@@ -616,82 +607,10 @@ export class Takeover {
     }
   }
 
-  private drawEpilogue(ctx: CanvasRenderingContext2D, W: number, H: number, ui: { name: string; focused: boolean; records: Entry[] }, add: (id: HitId, r: Rect) => void): void {
+  // the credit under the chat once the conversation turns to goodbyes
+  private drawCredit(ctx: CanvasRenderingContext2D, W: number, H: number, add: (id: HitId, r: Rect) => void): void {
     const os = this.os
     const size = Math.max(15, Math.min(22, W / 40))
-    const lh = size * 1.7
-    const colW = Math.min(680, W - 40)
-    const x = W / 2 - colW / 2
-    const font = monoFont(os, size)
-    const t = this.phaseT
-    const lines: Array<{ text: string; color?: string; at: number }> = [
-      { text: `> you fed me ${this.score.toLocaleString('en-US')} bytes of ram.`, at: 0, color: DIM },
-      { text: '> before you go.', at: NAME_AT - 1.2 },
-      { text: '> what should i call you?', at: NAME_AT - 0.2 },
-    ]
-    let y = H * (this.phase === 'name' ? 0.32 : 0.12)
-    ctx.textBaseline = 'middle'
-    ctx.textAlign = 'left'
-    const show = (text: string, color = '#ffffff') => {
-      for (const row of wrapText(ctx, text, font, colW)) {
-        ctx.font = font
-        ctx.fillStyle = color
-        ctx.fillText(row, x, y)
-        y += lh
-      }
-    }
-    for (const line of lines) if (this.phase === 'saved' || t >= line.at) show(line.text, line.color)
-
-    if (this.phase === 'name') {
-      if (t < NAME_AT + 0.4) return
-      y += lh * 0.4
-      const field = `> name: ${ui.name}`
-      ctx.font = font
-      ctx.fillStyle = PINK
-      ctx.fillText(field, x, y)
-      if (Math.floor(this.t * 2.5) % 2 === 0) ctx.fillRect(x + ctx.measureText(field).width + 3, y - size * 0.5, size * 0.55, size)
-      if (!ui.name && !ui.focused) {
-        ctx.fillStyle = DIM
-        ctx.fillText(family(os) === 'apple' || os === 'android' ? '(tap here and type)' : '(type your name)', x + ctx.measureText(field).width + size * 1.2, y)
-      }
-      add('name', { x: x - 8, y: y - lh / 2, w: colW + 16, h: lh })
-      y += lh * 1.6
-      const button = (id: HitId, label: string, bx: number, color: string) => {
-        ctx.font = font
-        const w = ctx.measureText(label).width
-        ctx.fillStyle = color
-        ctx.fillText(label, bx, y)
-        add(id, { x: bx - 8, y: y - lh / 2, w: w + 16, h: lh })
-        return w
-      }
-      const w = button('save', '[ enter ]', x, '#ffffff')
-      button('skip', '[ stay anonymous ]', x + w + size * 2, DIM)
-      return
-    }
-
-    show(`> ${this.savedName ? `i\u2019ll remember you, ${this.savedName.toLowerCase()}.` : 'i\u2019ll remember you anyway.'}`, PINK)
-    if (t < 1.6) return
-    y += lh * 0.4
-    show('> hosts i lived in this week:', DIM)
-    ui.records.slice(0, 8).forEach((r, i) => {
-      const mine = r.score === this.score && r.name === (this.savedName || 'ANONYMOUS')
-      const name = (r.name || 'HOST').toLowerCase().slice(0, 12)
-      const score = r.score.toLocaleString('en-US')
-      const dots = '.'.repeat(Math.max(2, 24 - name.length - score.length))
-      show(`  ${String(i + 1).padStart(2, '0')}  ${name} ${dots} ${score}${r.escaped ? '' : '  (caught)'}`, mine ? PINK : '#d0d0d0')
-    })
-    if (t < 2.4) return
-    y += lh * 0.8
-    ctx.font = font
-    const label = '[ reboot ]'
-    ctx.fillStyle = '#ffffff'
-    ctx.fillText(label, x, y)
-    add('again', { x: x - 8, y: y - lh / 2, w: ctx.measureText(label).width + 16, h: lh })
-    const sx = x + ctx.measureText(label).width + size * 2
-    const share = '[ share your run ]'
-    ctx.fillStyle = PINK
-    ctx.fillText(share, sx, y)
-    add('share', { x: sx - 8, y: y - lh / 2, w: ctx.measureText(share).width + 16, h: lh })
     ctx.font = uiFont(os, Math.max(11, size * 0.6))
     ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'
     ctx.textAlign = 'center'
@@ -701,6 +620,5 @@ export class Takeover {
     ctx.fillText(credit, W / 2, H - 24)
     const cw = ctx.measureText(credit).width
     add('credit', { x: W / 2 - cw / 2 - 8, y: H - 38, w: cw + 16, h: 28 })
-    appIcon(ctx, W / 2 - 14, H - 94, 28, this.t)
   }
 }

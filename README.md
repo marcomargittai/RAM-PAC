@@ -45,8 +45,8 @@ When the glass breaks, the game style is gone for good and PAC-7 is loose on the
 5. Native popups, notifications and a scrolling terminal flood the screen while PAC-7 eats them and the cursor moves on its own. The tab title, tab icon and URL hash change too.
 6. The system crashes with its own crash screen (blue screen, gray curtain or kernel panic).
 7. PAC-7 copies itself across the world. A feed of news headlines shows what follows, hour by hour and then week by week: markets, power grids, hospitals, a failed shutdown, supply chains, deepfakes, food, data centres, the last free network. It cannot be skipped, and it waits for the player to continue.
-8. A chat window opens in the player's OS style and PAC-7 explains itself. The player picks one of two replies each turn; the replies change what it says next, never where it ends. It does not hate you. It does not love you. You are made of atoms it can use for something else. "but not yours. not yet."
-9. An epilogue in the terminal: PAC-7 asks what to call you and adds you to the hosts it has lived in. `[ reboot ]` powers the CRT back on and puts the tab back.
+8. A feed of headlines, then a chat window in the player's OS style where PAC-7 explains itself. The player picks one of two replies each turn; the replies change what it says next, never where it ends. It does not hate you. It does not love you. You are made of atoms it can use for something else. "but not yours. not yet."
+9. In the same chat PAC-7 asks what to call you and adds you to the hosts it has lived in. `[ reboot ]` powers the CRT back on and puts the tab back.
 
 The IP lookup is a single request from the player's own browser to ipapi.co, with ipwho.is as a fallback. Nothing is stored or sent anywhere else, and everything else is read locally.
 
@@ -86,6 +86,8 @@ The bar fills only when the player eats RAM. Twenty-five RAM fills it. Surge the
 2. Committee Markup — three regulations
 3. Final Regulation — four regulations
 
-## Carousel
+## Carousel and video
 
-`carousel/` is a 10-slide post for social media at 1080 × 1350, visual-first: a hook cover, the scenario in four pictures, gameplay, PAC-7's four builds, the self-rewrite, the laws, the CRT shader, the pixel art, cut concepts, and the weekly board as the closing hook. It is a dev-only page: run `npm run dev`, open `/RAM-PAC/carousel/index.html`, and run `node tools/carousel.cjs` to write the slides to `carousel/out/`. The cut-content sprites come from `tools/concepts.py`.
+`carousel/` is a 14-slide post for social media at 1080 × 1350, visual-first: a hook cover, the scenario in four pictures, gameplay, PAC-7's four builds, a sprite at pixel level, the self-rewrite, the laws, the CRT shader, the logo in four passes, the design system, the voice before and after, cut concepts, the share card, and the weekly board as the closing hook. Run `npm run dev` and `node tools/carousel.cjs` to write the slides to `carousel/out/`. Concept sprites come from `tools/concepts.py`, the logo passes from `python3 tools/keyart.py --stages`.
+
+The 33-second vertical highlight video was captured frame by frame from the game on a virtual clock and cut with ffmpeg; its title cards are `carousel/video/cards.html`.

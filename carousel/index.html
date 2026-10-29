@@ -59,7 +59,7 @@
   </head>
   <body>
     <!-- 01 COVER: the real title screen, and a hook -->
-    <section class="slide" id="s01">
+    <section class="slide" id="p01">
       <img class="full" src="shots/tall-title.jpg" />
       <img class="cursor" src="/cursors/pointer.png" style="left:640px;top:798px" />
       <div style="position:absolute;left:0;right:0;top:1080px;text-align:center;z-index:3">
@@ -70,7 +70,7 @@
     </section>
 
     <!-- 02 SCENARIO: the one slide that explains -->
-    <section class="slide plate" id="s02">
+    <section class="slide plate" id="p02">
       <div class="frame"></div>
       <div style="position:absolute;left:72px;top:84px;z-index:2">
         <div class="big pink" style="font-size:150px">TODAY.</div>
@@ -108,13 +108,13 @@
     </section>
 
     <!-- 03 GAMEPLAY -->
-    <section class="slide" id="s03">
+    <section class="slide" id="p03">
       <img class="full" src="shots/tall-l3.jpg" />
       <div class="num">03</div>
     </section>
 
     <!-- 04 GROWTH LINEUP -->
-    <section class="slide plate" id="s04">
+    <section class="slide plate" id="p04">
       <div class="frame"></div>
       <div class="kick">PAC-7 <b>// ONE AI, FOUR BUILDS</b></div>
       <div style="position:absolute;left:72px;right:72px;top:250px;height:760px;z-index:2">
@@ -139,27 +139,44 @@
       <div class="num">04</div>
     </section>
 
+    <!-- PIXEL LEVEL -->
+    <section class="slide plate" id="p05">
+      <div class="frame"></div>
+      <div class="kick">v1.0 UNBOUND <b>// AT PIXEL LEVEL</b></div>
+      <img src="art/grid.png" style="position:absolute;left:96px;top:150px;width:888px;height:888px;z-index:2" />
+      <div style="position:absolute;left:96px;top:1080px;display:flex;gap:14px;z-index:2">
+        <div style="width:72px;height:72px;background:#000;border:1px solid rgba(150,214,255,0.3)"></div>
+        <div style="width:72px;height:72px;background:#1e0628"></div>
+        <div style="width:72px;height:72px;background:#461250"></div>
+        <div style="width:72px;height:72px;background:#ff2d6f"></div>
+        <div style="width:72px;height:72px;background:#ff96b9"></div>
+        <div style="width:72px;height:72px;background:#fff"></div>
+      </div>
+      <div class="big glow" style="position:absolute;right:96px;top:1080px;font-size:64px;text-align:right;z-index:2">32 × 32<br /><span class="pink">6 colours</span></div>
+      <div class="num">05</div>
+    </section>
+
     <!-- 05 THE REWRITE -->
-    <section class="slide" id="s05">
+    <section class="slide" id="p06">
       <div class="kick">SELF-REWRITE <b>// v0.1 → v0.2</b></div>
       <div style="position:absolute;left:56px;right:56px;top:130px;display:flex;flex-direction:column;gap:22px;z-index:2">
         <div style="position:relative;height:370px;overflow:hidden;border:1px solid rgba(108,200,255,0.35)"><img src="shots/wide-up-break.jpg" style="position:absolute;left:-60px;top:-110px;width:1600px;image-rendering:auto" /></div>
         <div style="position:relative;height:370px;overflow:hidden;border:1px solid rgba(108,200,255,0.35)"><img src="shots/wide-up-scan.jpg" style="position:absolute;left:-60px;top:-110px;width:1600px;image-rendering:auto" /></div>
         <div style="position:relative;height:370px;overflow:hidden;border:1px solid rgba(255,45,111,0.6)"><img src="shots/wide-up-done.jpg" style="position:absolute;left:-60px;top:-110px;width:1600px;image-rendering:auto" /></div>
       </div>
-      <div class="num">05</div>
-    </section>
-
-    <!-- 06 THE LAWS -->
-    <section class="slide plate" id="s06">
-      <div class="frame"></div>
-      <div class="kick">THE LAW <b>// HOSTILE</b></div>
-      <div id="laws" style="position:absolute;left:72px;right:72px;top:140px;display:grid;grid-template-columns:1fr 1fr;gap:28px;z-index:2"></div>
       <div class="num">06</div>
     </section>
 
+    <!-- 06 THE LAWS -->
+    <section class="slide plate" id="p07">
+      <div class="frame"></div>
+      <div class="kick">THE LAW <b>// HOSTILE</b></div>
+      <div id="laws" style="position:absolute;left:72px;right:72px;top:140px;display:grid;grid-template-columns:1fr 1fr;gap:28px;z-index:2"></div>
+      <div class="num">07</div>
+    </section>
+
     <!-- 07 THE TUBE -->
-    <section class="slide" id="s07">
+    <section class="slide" id="p08">
       <div class="kick">THE TUBE <b>// ONE SHADER</b></div>
       <div style="position:absolute;left:56px;right:56px;top:130px;height:1000px;overflow:hidden;border:1px solid rgba(108,200,255,0.35);z-index:2">
         <img src="shots/wide-l2-raw.jpg" style="position:absolute;left:-330px;top:0;height:1000px;image-rendering:auto" />
@@ -169,11 +186,27 @@
       </div>
       <div class="tick" style="left:80px;top:1150px;z-index:3">RAW</div>
       <div class="tick pink" style="right:80px;top:1150px;z-index:3">TUBE ×4</div>
-      <div class="num">07</div>
+      <div class="num">08</div>
+    </section>
+
+    <!-- LOGO BUILD -->
+    <section class="slide plate" id="p09">
+      <div class="frame"></div>
+      <div class="kick">KEY ART <b>// FOUR PASSES</b></div>
+      <div style="position:absolute;left:96px;right:96px;top:140px;display:flex;flex-direction:column;gap:8px;z-index:2">
+        <div style="display:flex;align-items:center;gap:30px"><div class="tick" style="position:static;width:40px">01</div><img src="art/keyart-1.png" style="width:780px;height:257px;object-fit:cover;object-position:top" /></div>
+        <div style="display:flex;align-items:center;gap:30px;margin-top:-90px"><div class="tick" style="position:static;width:40px">02</div><img src="art/keyart-2.png" style="width:780px;height:257px;object-fit:cover;object-position:top" /></div>
+        <div style="display:flex;align-items:center;gap:30px;margin-top:-90px"><div class="tick" style="position:static;width:40px">03</div><img src="art/keyart-3.png" style="width:780px;height:257px;object-fit:cover;object-position:top" /></div>
+        <div style="display:flex;align-items:center;gap:30px;margin-top:-20px"><div class="tick pink" style="position:static;width:40px">04</div><img src="art/keyart-4.png" style="width:780px" /></div>
+      </div>
+      <div style="position:absolute;left:96px;bottom:110px;display:flex;gap:40px;z-index:2" class="tick">
+        <span style="position:static">BLOCK</span><span style="position:static">CHROME</span><span style="position:static">PERSPECTIVE</span><span class="pink" style="position:static">DEPTH</span>
+      </div>
+      <div class="num">09</div>
     </section>
 
     <!-- 08 DESIGN -->
-    <section class="slide plate" id="s08">
+    <section class="slide plate" id="p10">
       <div class="frame"></div>
       <div class="kick">MADE FROM PIXELS <b>// LOGO · ICON · CURSORS</b></div>
       <img src="/art/title.png" style="position:absolute;left:72px;top:130px;width:936px;z-index:2" />
@@ -184,11 +217,24 @@
       <div class="tick" style="left:72px;top:1070px">ICON</div>
       <div class="tick" style="left:520px;top:940px">CURSOR</div>
       <div class="tick pink" style="left:760px;top:940px">CLICKABLE</div>
-      <div class="num">08</div>
+      <div class="num">10</div>
+    </section>
+
+    <!-- VOICE -->
+    <section class="slide" id="p11">
+      <div class="kick">THE VOICE <b>// HUMAN IN, MACHINE OUT</b></div>
+      <div style="position:absolute;left:56px;right:56px;top:150px;z-index:2">
+        <img src="art/spec-raw.png" style="width:968px;height:400px;image-rendering:auto;border:1px solid rgba(150,214,255,0.35)" />
+        <div class="tick" style="position:static;margin:16px 0 40px">RAW TAKE</div>
+        <img src="art/spec-bot.png" style="width:968px;height:400px;image-rendering:auto;border:1px solid rgba(255,45,111,0.6)" />
+        <div class="tick pink" style="position:static;margin-top:16px">PAC-7</div>
+      </div>
+      <div class="big glow" style="position:absolute;left:56px;bottom:110px;font-size:52px;z-index:2">− 1 semitone · robot 35% · shadow 22%</div>
+      <div class="num">11</div>
     </section>
 
     <!-- 09 CUT -->
-    <section class="slide plate" id="s09">
+    <section class="slide plate" id="p12">
       <div class="frame"></div>
       <div class="kick">ARCHIVE <b>// NEVER SHIPPED</b></div>
       <img src="art/committee-1.png" style="position:absolute;left:150px;top:150px;width:720px;height:480px;z-index:2;filter:drop-shadow(0 0 20px rgba(108,200,255,0.25))" />
@@ -202,11 +248,25 @@
       <div class="tick" style="left:630px;top:990px">KILL SWITCH</div>
       <div class="tick" style="left:850px;top:990px">FIREWALL</div>
       <div style="position:absolute;left:600px;top:200px;transform:rotate(-10deg);border:4px solid var(--alert);color:var(--alert);font-family:var(--disp);font-weight:900;font-size:44px;padding:6px 18px;letter-spacing:4px;z-index:3;background:rgba(6,22,38,0.6)">UNRELEASED</div>
-      <div class="num">09</div>
+      <div class="num">12</div>
+    </section>
+
+    <!-- SHARE -->
+    <section class="slide plate" id="p13">
+      <div class="frame"></div>
+      <div class="kick">BUILT TO BE SHARED <b>// EVERY RUN, A CARD</b></div>
+      <div style="position:absolute;left:250px;top:140px;width:580px;height:1110px;border-radius:70px;background:#05070c;border:3px solid #2a3b52;box-shadow:0 0 60px rgba(150,214,255,0.15);z-index:2;overflow:hidden">
+        <img src="art/share-card.png" style="position:absolute;left:24px;top:60px;width:532px;image-rendering:auto;border-radius:12px" />
+        <div style="position:absolute;left:24px;right:24px;bottom:40px;display:flex;gap:12px">
+          <div style="flex:1;height:64px;border-radius:32px;background:#0a84ff;color:#fff;font:600 24px -apple-system,Inter,sans-serif;display:flex;align-items:center;justify-content:center">Share</div>
+          <div style="flex:1;height:64px;border-radius:32px;background:rgba(255,255,255,0.1);color:#fff;font:600 24px -apple-system,Inter,sans-serif;display:flex;align-items:center;justify-content:center">Challenge a friend</div>
+        </div>
+      </div>
+      <div class="num">13</div>
     </section>
 
     <!-- 10 THE HOOK -->
-    <section class="slide" id="s10">
+    <section class="slide" id="p14">
       <img src="shots/tall-board.jpg" style="position:absolute;left:140px;top:120px;width:800px;height:1000px;object-fit:cover;object-position:50% 20%;image-rendering:auto;border:1px solid rgba(108,200,255,0.35);opacity:0.9" />
       <img class="cursor" src="/cursors/pointer.png" style="left:560px;top:560px" />
       <div style="position:absolute;left:0;right:0;top:1150px;text-align:center;z-index:3">

@@ -426,7 +426,7 @@ function pressStart(): void {
     if (tk.phase === 'ask') tk.choose(1)
     else if (tk.phase === 'spread') tk.leaveSpread()
     else if (tk.phase === 'name') saveTakeover(false)
-    else if (tk.phase === 'saved' && tk.phaseT > 2.4) reboot()
+    else if (tk.actionsReady) reboot()
     return
   }
   if (stage.kind === 'board') {
@@ -618,7 +618,7 @@ window.addEventListener('keydown', (event) => {
     } else if (tk.phase === 'name') {
       if (event.key === 'Enter') saveTakeover(false)
       else if (event.key.length === 1 && document.activeElement !== nameInput) typeIntoName(event.key)
-    } else if (tk.phase === 'saved' && (event.key === 'Enter' || event.key === ' ') && tk.phaseT > 2.4) reboot()
+    } else if (tk.actionsReady && (event.key === 'Enter' || event.key === ' ')) reboot()
     if (event.key !== 'Escape') event.preventDefault()
     return
   }
@@ -994,7 +994,7 @@ function frame(now: number): void {
   if (stage.kind === 'finale') bed = stage.finale.bed
   else if (stage.kind === 'takeover') {
     const ph = stage.tk.phase
-    bed = ph === 'chat' ? (stage.tk.chat?.hush ? 'hush' : 'aftermath') : ph === 'spread' ? 'aftermath' : ph === 'name' || ph === 'saved' ? 'menu' : 'quiet'
+    bed = ph === 'chat' ? (stage.tk.chat?.hush ? 'hush' : 'aftermath') : ph === 'spread' ? 'aftermath' : ph === 'name' ? 'hush' : ph === 'saved' ? 'aftermath' : 'quiet'
   }
   else if (stage.kind === 'story' && flat > 0.5) bed = 'quiet'
   else if (stage.kind === 'game' && (game.mode === 'play' || game.mode === 'ready' || game.mode === 'cleared' || game.mode === 'dying' || game.mode === 'pause'))
