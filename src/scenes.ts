@@ -5,7 +5,7 @@ import type { Entry } from './leaderboard'
 import { ALERT, GLOW, ICE, VOID, theme } from './palette'
 import { MONO, brackets, clamp, fill, hatch, label, panel, tag } from './render'
 import { button, drawBackdrop, hit, logo, text, wrap, type Frame, type Hit, type View } from './screen'
-import { drawFacing, pacFrame } from './sprites'
+import { drawFacing, lawSprite, pacFrame } from './sprites'
 import type { StoryPlayer } from './story'
 
 function frameFor(ctx: CanvasRenderingContext2D, view: View, W: number, H: number): Frame {
@@ -231,6 +231,73 @@ export function drawLeaderboard(ctx: CanvasRenderingContext2D, view: View, recor
   })
   label(ctx, 'RECORDS ARE KEPT ON THIS DEVICE', W / 2, H - 130, 20, 'rgba(108, 200, 255, 0.5)')
   button(ctx, frame, 'again', 'RUN AGAIN', W / 2 - 140, H - 108, 280, 56, ICE, 18)
+  ctx.restore()
+  return frame.hits
+}
+
+// Shown once after the prologue: what everything on the board is.
+export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
+  ctx.save()
+  fill(ctx, VOID, 0, 0, view.width, view.height)
+  drawBackdrop(ctx, view, theme(false, 0))
+  const portrait = view.width < view.height * 1.05
+  const W = portrait ? 800 : 1100
+  const H = portrait ? 1300 : 860
+  const frame = frameFor(ctx, view, W, H)
+  const t = view.time
+  panel(ctx, GLOW, 30, 30, W - 60, H - 60)
+  tag(ctx, 'MISSION BRIEFING', W / 2, 78, 26, 'rgba(1, 4, 11, 0.95)', ICE, ALERT)
+  logo(ctx, 'HOW TO PLAY PAC RAM', W / 2, 140, portrait ? 40 : 44, ICE, 'center')
+
+  const rows: Array<[string, string, (x: number, y: number) => void]> = [
+    ['YOU · PAC-7', 'A rogue AI model. You start small and weak.', (x, y) => {
+      const art = pacFrame(t * 8)
+      if (art) drawFacing(ctx, art, x, y, 64, 'right', 'right')
+    }],
+    ['RAM', 'Memory chips. Eat them to grow smarter and stronger. Eat every one to take over the server.', (x, y) => {
+      for (let i = 0; i < 3; i++) {
+        ctx.fillStyle = ICE
+        ctx.globalAlpha = 0.25
+        ctx.beginPath()
+        ctx.arc(x - 24 + i * 24, y, 9, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.globalAlpha = 1
+        ctx.beginPath()
+        ctx.arc(x - 24 + i * 24, y, 4.5, 0, Math.PI * 2)
+        ctx.fill()
+      }
+    }],
+    ['AI REGULATIONS', 'Laws sent to catch you and shut you down. If one touches you, you lose a life.', (x, y) => {
+      for (let i = 0; i < 3; i++) {
+        const art = lawSprite(i, 'body')
+        if (art) drawFacing(ctx, art, x - 30 + i * 30, y + Math.sin(t * 6 + i) * 2, 30, 'up', 'up')
+      }
+    }],
+    ['SURGE', 'Eat 25 RAM to fill the bar. For 5 seconds the laws turn blue: eat them to repeal them.', (x, y) => {
+      ctx.strokeStyle = GLOW
+      ctx.strokeRect(x - 44.5, y - 9.5, 88, 18)
+      hatch(ctx, ICE, x - 42, y - 7, 84 * ((t * 0.4) % 1), 14, 6)
+    }],
+  ]
+  const iconX = portrait ? 110 : 150
+  const textX = portrait ? 200 : 260
+  const textW = W - textX - 70
+  let y = portrait ? 260 : 230
+  for (const [name, desc, icon] of rows) {
+    brackets(ctx, 'rgba(108, 200, 255, 0.5)', iconX - 56, y - 44, 112, 88, 12, 1)
+    icon(iconX, y)
+    const body = portrait ? 32 : 25
+    label(ctx, name, textX, y - 26, portrait ? 42 : 34, name === 'AI REGULATIONS' ? ALERT : ICE, 'left')
+    ctx.font = `${body}px ${MONO}`
+    const lines = wrap(ctx, desc, textW)
+    lines.forEach((line, i) => label(ctx, line, textX, y + 12 + i * (body + 2), body, GLOW, 'left'))
+    y += portrait ? 200 : 130
+  }
+  label(ctx, 'MOVE: ARROWS · WASD · SWIPE', W / 2, H - 150, 26, ICE)
+  const pulse = 0.6 + 0.4 * Math.sin(t * 5.5)
+  ctx.globalAlpha = pulse
+  button(ctx, frame, 'action', 'START ESCAPE', W / 2 - 150, H - 120, 300, 56, ICE, 18)
+  ctx.globalAlpha = 1
   ctx.restore()
   return frame.hits
 }

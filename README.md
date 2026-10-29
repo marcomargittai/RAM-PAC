@@ -29,7 +29,7 @@ npm run preview
 
 ## Story
 
-The story runs as terminal logs between boards (`src/story.ts`). PAC-7's own lines are voiced. After the last board PAC-7 notices the walls are made of RAM too, and the finale begins (`src/finale.ts`): the whole interface is frozen into one image, and you eat the maze, then the HUD, then the glass of the CRT itself.
+The story runs as terminal logs before and between boards (`src/story.ts`), and PAC-7's own lines are voiced. After the prologue a mission briefing shows what everything on the board is: you, the RAM, the AI regulations and the surge. After the last board PAC-7 notices the walls are made of RAM too, and the finale begins (`src/finale.ts`): the whole interface is frozen into one image, and you eat the maze, then the HUD, then the glass of the CRT itself.
 
 ## Leaderboard
 
@@ -37,7 +37,7 @@ When a run ends you sign the log with a name. Records are kept in the browser's 
 
 ## Sound
 
-All sound effects, the three music beds and the AI's voice were generated with ElevenLabs and live in `public/audio`.
+All sound effects, the music and the AI's voice were generated with ElevenLabs and live in `public/audio`. Each level has its own track, and they get more intense as the laws pile up.
 
 ## Display
 

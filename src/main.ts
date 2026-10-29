@@ -3,7 +3,7 @@ import { createCrt, curve, type Crt } from './crt'
 import { Finale } from './finale'
 import { cleanName, loadBoard, saveRecord, type Entry } from './leaderboard'
 import { LEVELS } from './levels'
-import { drawEntry, drawLeaderboard, drawStory } from './scenes'
+import { drawBriefing, drawEntry, drawLeaderboard, drawStory } from './scenes'
 import { BOOT_SECONDS, drawBackdrop, drawScreen, layoutFor, snapshot, type Card, type Hit, type HitId, type View } from './screen'
 import { createGame, startRun, update, visual, type Dir, type Game } from './sim'
 import { LOSE_LINE, SCENES, StoryPlayer, VOICES, type SceneId } from './story'
@@ -17,6 +17,7 @@ type Stage =
   | { kind: 'finale'; finale: Finale }
   | { kind: 'entry'; escaped: boolean; level: number }
   | { kind: 'board'; rank: number }
+  | { kind: 'briefing' }
 
 const game: Game = createGame()
 const audio = new Sfx()
@@ -121,8 +122,7 @@ function beginRun(): void {
     seenPrologue = true
     audio.play('boot', 0.7)
     tell('prologue', () => {
-      play()
-      startEdge = true
+      stage = { kind: 'briefing' }
     })
     return
   }
@@ -221,6 +221,11 @@ function pressStart(): void {
   }
   if (stage.kind === 'board') {
     runAgain()
+    return
+  }
+  if (stage.kind === 'briefing') {
+    play()
+    startEdge = true
     return
   }
   if (stage.kind === 'finale') return
@@ -498,9 +503,9 @@ function cardFor(): Card | null {
   if (game.mode === 'title') {
     return {
       mode: 'title',
-      kicker: 'Rogue model detected',
+      kicker: 'You are an AI model',
       title: 'PAC RAM',
-      body: 'You escaped the sandbox. Eat the RAM, grow, and repeal every regulation sent to stop you.',
+      body: 'You are PAC-7, a rogue AI. Eat RAM to grow stronger. Dodge the AI laws hunting you. Fill the surge bar to repeal them.',
       action: 'Escape',
     }
   }
@@ -613,6 +618,8 @@ function frame(now: number): void {
     hits = drawEntry(ctx, v, { score: game.score, level: stage.level, escaped: stage.escaped, name: entryName, focused: nameFocused })
   } else if (stage.kind === 'board') {
     hits = drawLeaderboard(ctx, v, records, stage.rank)
+  } else if (stage.kind === 'briefing') {
+    hits = drawBriefing(ctx, v)
   } else hits = drawScreen(ctx, game, v)
 
   const sinceBoot = booted ? (now - bootEndedAt) / 1000 : 1
@@ -633,7 +640,8 @@ function frame(now: number): void {
   let bed: Bed = 'menu'
   if (stage.kind === 'finale') bed = 'finale'
   else if (stage.kind === 'story' && flat > 0.5) bed = 'quiet'
-  else if (stage.kind === 'game' && (game.mode === 'play' || game.mode === 'ready' || game.mode === 'cleared' || game.mode === 'dying')) bed = 'play'
+  else if (stage.kind === 'game' && (game.mode === 'play' || game.mode === 'ready' || game.mode === 'cleared' || game.mode === 'dying' || game.mode === 'pause'))
+    bed = game.levelIndex === 0 ? 'play' : game.levelIndex === 1 ? 'play2' : 'play3'
   const hunting = stage.kind === 'game' && game.mode === 'play' && game.ghosts.some((g) => g.state === 'chase')
   audio.frame(dt, { bed, hunting, surge: game.surge > 0 })
   if (events) {
