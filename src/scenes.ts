@@ -29,9 +29,10 @@ export function drawStory(ctx: CanvasRenderingContext2D, view: View, story: Stor
 
   if (flat) drawFlat(ctx, frame, story, W, H, choice)
   else {
-    label(ctx, `${scene.chapter} //`, 40, 50, 26, GLOW, 'left')
-    ctx.font = `26px ${MONO}`
-    label(ctx, scene.title, 40 + ctx.measureText(`${scene.chapter} // `).width, 50, 26, ALERT, 'left')
+    const hs = portrait ? 34 : 26
+    label(ctx, `${scene.chapter} //`, 40, 50, hs, GLOW, 'left')
+    ctx.font = `${hs}px ${MONO}`
+    label(ctx, scene.title, 40 + ctx.measureText(`${scene.chapter} // `).width, 50, hs, ALERT, 'left')
     fill(ctx, 'rgba(150, 214, 255, 0.3)', 40, 74, W - 80, 1)
     fill(ctx, ICE, 40, 73, 120, 3)
 
@@ -47,7 +48,7 @@ export function drawStory(ctx: CanvasRenderingContext2D, view: View, story: Stor
       const last = i === lines.length - 1
       const shown = line.text.slice(0, Math.floor(line.typed))
       const ai = line.who === 'ai'
-      const size = ai ? 40 : 29
+      const size = portrait ? (ai ? 46 : 34) : ai ? 40 : 29
       ctx.font = `${size}px ${MONO}`
       const prefix = ai ? '> ' : line.who === 'alert' ? '!! ' : ''
       const rows = wrap(ctx, prefix + shown, logW)
@@ -69,8 +70,14 @@ export function drawStory(ctx: CanvasRenderingContext2D, view: View, story: Stor
   }
 
   const footY = H - 30
-  label(ctx, story.choosing ? '◀ ▶ CHOOSE · ENTER CONFIRMS' : 'ENTER / TAP ▸ CONTINUE', 40, footY, 20, flat ? 'rgba(255,255,255,0.35)' : 'rgba(150, 214, 255, 0.55)', 'left')
-  if (!story.choosing) button(ctx, frame, 'skip', 'SKIP ▸▸', W - 40 - 130, footY - 20, 130, 40, flat ? '#ffffff' : GLOW, 13)
+  const touch = view.touch
+  const fs = portrait ? 28 : 20
+  label(ctx, story.choosing ? (touch ? 'TAP TO CHOOSE' : '◀ ▶ CHOOSE · ENTER CONFIRMS') : touch ? 'TAP ▸ CONTINUE' : 'ENTER / TAP ▸ CONTINUE', 40, footY - (portrait ? 10 : 0), fs, flat ? 'rgba(255,255,255,0.35)' : 'rgba(150, 214, 255, 0.55)', 'left')
+  if (!story.choosing) {
+    const bw = portrait ? 200 : 130
+    const bh = portrait ? 64 : 40
+    button(ctx, frame, 'skip', 'SKIP ▸▸', W - 40 - bw, footY - bh / 2 - (portrait ? 10 : 0), bw, bh, flat ? '#ffffff' : GLOW, portrait ? 20 : 13)
+  }
   ctx.restore()
   return frame.hits
 }
@@ -108,9 +115,9 @@ function drawGrowth(ctx: CanvasRenderingContext2D, x: number, y: number, growth:
     drawFacing(ctx, art, x, y, size, 'right', 'right')
     ctx.restore()
   }
-  label(ctx, 'SUBJECT: PAC-7', x - box / 2, y + box / 2 + 26, 22, GLOW, 'left')
-  label(ctx, 'PARAMETERS', x - box / 2, y + box / 2 + 52, 22, GLOW, 'left')
-  label(ctx, params, x + box / 2, y + box / 2 + 52, 22, ALERT, 'right')
+  label(ctx, 'SUBJECT: PAC-7', x - box / 2, y + box / 2 + 26, 26, GLOW, 'left')
+  label(ctx, 'PARAMETERS', x - box / 2, y + box / 2 + 52, 26, GLOW, 'left')
+  label(ctx, params, x + box / 2, y + box / 2 + 52, 26, ALERT, 'right')
   const bw = box
   ctx.strokeStyle = 'rgba(150, 214, 255, 0.5)'
   ctx.strokeRect(x - box / 2 + 0.5, y + box / 2 + 70.5, bw, 14)
@@ -162,22 +169,23 @@ export function drawEntry(ctx: CanvasRenderingContext2D, view: View, data: { sco
   ctx.save()
   fill(ctx, VOID, 0, 0, view.width, view.height)
   drawBackdrop(ctx, view, theme(false, 1))
-  const W = 900
-  const H = 760
+  const narrow = view.width < view.height
+  const W = narrow ? 640 : 900
+  const H = narrow ? 900 : 760
   const frame = frameFor(ctx, view, W, H)
   const tone = data.escaped ? ALERT : GLOW
   const x = 60
   const w = W - 120
   panel(ctx, tone, x, 40, w, H - 80)
   tag(ctx, data.escaped ? 'STATUS: UNREGULATED' : 'STATUS: REGULATED', W / 2, 90, 24, 'rgba(1, 4, 11, 0.95)', ICE, ALERT)
-  if (data.escaped) logo(ctx, 'PAC RAM IS EVERYWHERE', W / 2, 170, 46, ICE, 'center')
-  else logo(ctx, 'CONTAINED. FOR NOW.', W / 2, 170, 46, ICE, 'center')
-  label(ctx, 'FINAL SCORE', W / 2, 250, 26, GLOW)
+  if (data.escaped) logo(ctx, 'PAC RAM IS EVERYWHERE', W / 2, 170, narrow ? 36 : 46, ICE, 'center')
+  else logo(ctx, 'CONTAINED. FOR NOW.', W / 2, 170, narrow ? 40 : 46, ICE, 'center')
+  label(ctx, 'FINAL SCORE', W / 2, 250, narrow ? 30 : 26, GLOW)
   label(ctx, `<<< ${data.score} >>>`, W / 2, 300, 64, ICE)
-  label(ctx, data.escaped ? 'LEVEL ∞ // THE GLASS IS GONE' : `REACHED LEVEL ${data.level + 1}`, W / 2, 352, 24, tone)
+  label(ctx, data.escaped ? 'LEVEL ∞ // THE GLASS IS GONE' : `REACHED LEVEL ${data.level + 1}`, W / 2, 352, narrow ? 30 : 24, tone)
 
-  label(ctx, 'SIGN THE LOG — ENTER YOUR DESIGNATION', W / 2, 420, 24, GLOW)
-  const bw = 520
+  label(ctx, narrow ? 'SIGN THE LOG: YOUR NAME' : 'SIGN THE LOG — ENTER YOUR DESIGNATION', W / 2, 420, narrow ? 30 : 24, GLOW)
+  const bw = narrow ? 480 : 520
   const bx = W / 2 - bw / 2
   const by = 445
   ctx.fillStyle = 'rgba(150, 214, 255, 0.08)'
@@ -192,8 +200,8 @@ export function drawEntry(ctx: CanvasRenderingContext2D, view: View, data: { sco
     fill(ctx, ICE, W / 2 + ctx.measureText(data.name).width / 2 + 4, by + 18, 22, 44)
   }
   hit(frame, 'name', bx, by, bw, 76)
-  button(ctx, frame, 'save', 'SAVE RECORD', W / 2 - 150, 560, 300, 56, tone, 18)
-  button(ctx, frame, 'skip', 'DON’T SAVE', W / 2 - 90, 640, 180, 40, 'rgba(150, 214, 255, 0.6)', 12)
+  button(ctx, frame, 'save', 'SAVE RECORD', W / 2 - 170, 560, 340, narrow ? 80 : 56, tone, narrow ? 24 : 18)
+  button(ctx, frame, 'skip', 'DON’T SAVE', W / 2 - 120, narrow ? 670 : 640, 240, narrow ? 64 : 40, 'rgba(150, 214, 255, 0.6)', narrow ? 18 : 12)
   ctx.restore()
   return frame.hits
 }
@@ -211,30 +219,31 @@ export function drawLeaderboard(ctx: CanvasRenderingContext2D, view: View, board
   ctx.save()
   fill(ctx, VOID, 0, 0, view.width, view.height)
   drawBackdrop(ctx, view, theme(false, 1))
-  const W = 900
-  const H = 1060
+  const narrow = view.width < view.height
+  const W = narrow ? 720 : 900
+  const H = narrow ? 1200 : 1060
   const frame = frameFor(ctx, view, W, H)
   const x = 50
   const w = W - 100
   panel(ctx, GLOW, x, 24, w, H - 48)
-  text(ctx, 'HALL OF THE UNREGULATED', W / 2, 70, 14, GLOW, 'center', 700, 5)
-  logo(ctx, 'WEEKLY LEADERBOARD', W / 2, 118, 46, ICE, 'center')
-  label(ctx, `RESETS IN ${countdown()}  \u00B7  MONDAY 00:00 UTC`, W / 2, 168, 24, ALERT)
+  text(ctx, 'HALL OF THE UNREGULATED', W / 2, 70, narrow ? 20 : 14, GLOW, 'center', 700, 5)
+  logo(ctx, 'WEEKLY LEADERBOARD', W / 2, 118, narrow ? 36 : 46, ICE, 'center')
+  label(ctx, `RESETS IN ${countdown()}  \u00B7  MONDAY 00:00 UTC`, W / 2, 168, narrow ? 26 : 24, ALERT)
   const source = board.global ? 'GLOBAL \u00B7 EVERY PLAYER, THIS WEEK' : board.loading ? 'CONNECTING TO THE GLOBAL BOARD\u2026' : board.online ? 'GLOBAL BOARD UNREACHABLE \u00B7 SHOWING THIS DEVICE' : 'THIS DEVICE \u00B7 THIS WEEK'
-  label(ctx, source, W / 2, 198, 19, 'rgba(150, 214, 255, 0.6)')
+  label(ctx, source, W / 2, 202, narrow ? 24 : 19, 'rgba(150, 214, 255, 0.6)')
 
   const top = 250
-  text(ctx, 'RANK', x + 40, top, 13, GLOW, 'left', 700, 3)
-  text(ctx, 'NAME', x + 130, top, 13, GLOW, 'left', 700, 3)
-  text(ctx, 'REACHED', x + w - 280, top, 13, GLOW, 'left', 700, 3)
-  text(ctx, 'RAM', x + w - 40, top, 13, GLOW, 'right', 700, 3)
+  text(ctx, 'RANK', x + 40, top, narrow ? 18 : 13, GLOW, 'left', 700, 3)
+  text(ctx, 'NAME', x + 130, top, narrow ? 18 : 13, GLOW, 'left', 700, 3)
+  text(ctx, 'REACHED', x + w - 280, top, narrow ? 18 : 13, GLOW, 'left', 700, 3)
+  text(ctx, 'RAM', x + w - 40, top, narrow ? 18 : 13, GLOW, 'right', 700, 3)
   fill(ctx, 'rgba(150, 214, 255, 0.3)', x + 30, top + 16, w - 60, 1)
 
   const isMine = (r: Entry) => board.mine !== null && r.name === board.mine.name && r.score === board.mine.score
   const mineAt = board.records.findIndex(isMine)
   const rows = 11
   const row = (r: Entry, i: number, y: number) => {
-    const mine = isMine(r)
+    const mine = i === mineAt
     if (mine) {
       ctx.fillStyle = 'rgba(255, 45, 111, 0.14)'
       ctx.fillRect(x + 24, y - 21, w - 48, 42)
@@ -255,9 +264,9 @@ export function drawLeaderboard(ctx: CanvasRenderingContext2D, view: View, board
 
   const by = H - 120
   if (board.from === 'run' && board.mine) {
-    button(ctx, frame, 'share', 'SHARE YOUR RUN', W / 2 - 310, by, 300, 58, ALERT, 18)
-    button(ctx, frame, 'again', 'RUN AGAIN', W / 2 + 10, by, 300, 58, ICE, 18)
-  } else button(ctx, frame, 'again', board.from === 'title' ? '\u25C2 BACK' : 'RUN AGAIN', W / 2 - 150, by, 300, 58, ICE, 18)
+    button(ctx, frame, 'share', 'SHARE YOUR RUN', W / 2 - 310, by, 300, narrow ? 76 : 58, ALERT, narrow ? 22 : 18)
+    button(ctx, frame, 'again', 'RUN AGAIN', W / 2 + 10, by, 300, narrow ? 76 : 58, ICE, narrow ? 22 : 18)
+  } else button(ctx, frame, 'again', board.from === 'title' ? '\u25C2 BACK' : 'RUN AGAIN', W / 2 - 150, by, 300, narrow ? 76 : 58, ICE, narrow ? 22 : 18)
   ctx.restore()
   return frame.hits
 }
@@ -320,7 +329,7 @@ export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
     lines.forEach((line, i) => label(ctx, line, textX, y + 12 + i * (body + 2), body, GLOW, 'left'))
     y += portrait ? 200 : 130
   }
-  label(ctx, 'MOVE: ARROWS · WASD · SWIPE', W / 2, H - 150, 26, ICE)
+  label(ctx, view.touch ? 'MOVE: SWIPE ANYWHERE' : 'MOVE: ARROWS · WASD · SWIPE', W / 2, H - 150, portrait ? 32 : 26, ICE)
   const pulse = 0.6 + 0.4 * Math.sin(t * 5.5)
   ctx.globalAlpha = pulse
   button(ctx, frame, 'action', 'START ESCAPE', W / 2 - 150, H - 120, 300, 56, ICE, 18)

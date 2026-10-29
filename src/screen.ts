@@ -1,9 +1,9 @@
 // The whole display: header, board, HUD panel, cards, touch pad and boot
 // screen, all drawn into one canvas so the CRT pass covers every pixel.
 
-import { LEVELS } from './levels'
+import { LAWS, LEVELS } from './levels'
 import { ALERT, ERA_NAMES, FRIGHT, GLOW, ICE, VOID, eraOf, theme, type Theme } from './palette'
-import { DISPLAY, MONO, brackets, clamp, fill, hatch, hideActors, label, panel, render, tag, tileSize, warning } from './render'
+import { DISPLAY, MONO, brackets, clamp, fill, hatch, hideActors, label, panel, render, setTextBoost, tag, tileSize, warning } from './render'
 import { SURGE_RAM, stateLabel, visual, type Game, type Ghost } from './sim'
 import { drawFacing, lawSprite, pacFrame } from './sprites'
 import type { Entry } from './leaderboard'
@@ -50,6 +50,8 @@ export interface View {
   height: number
   touch: boolean
   muted: boolean
+  // show the swipe hint over the board (phones, until the first swipe)
+  hint?: boolean
   full: boolean
   hover: HitId | null
   held: ReadonlySet<HitId>
@@ -195,8 +197,11 @@ export function drawScreen(ctx: CanvasRenderingContext2D, game: Game, view: View
   return frame.hits
 }
 
+const PHONE_H = 1190
+
 export interface Layout {
   portrait: boolean
+  phone: boolean
   W: number
   H: number
   s: number
@@ -207,11 +212,13 @@ export interface Layout {
 
 export function layoutFor(view: { width: number; height: number; touch: boolean }): Layout {
   const portrait = view.width < view.height * 1.05
+  // a phone held upright gets its own layout: big board, a short readable HUD
+  const phone = portrait && view.touch
   const W = portrait ? 800 : 1240
-  const H = portrait ? (view.touch ? 1440 : 1190) : 890
-  const s = Math.min(view.width / W, view.height / H) * 0.94
-  const board = portrait ? { x: 20, y: 138, size: 760 } : { x: 36, y: 104, size: 760 }
-  return { portrait, W, H, s, ox: (view.width - W * s) / 2, oy: (view.height - H * s) / 2, board }
+  const H = phone ? PHONE_H : portrait ? 1190 : 890
+  const s = Math.min(view.width / W, view.height / H) * (phone ? 0.98 : 0.94)
+  const board = phone ? { x: 20, y: 124, size: 760 } : portrait ? { x: 20, y: 138, size: 760 } : { x: 36, y: 104, size: 760 }
+  return { portrait, phone, W, H, s, ox: (view.width - W * s) / 2, oy: (view.height - H * s) / 2, board }
 }
 
 function drawComposition(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: Theme, lay: Layout): void {
@@ -219,7 +226,8 @@ function drawComposition(ctx: CanvasRenderingContext2D, game: Game, frame: Frame
     ramLevel = game.levelIndex
     ramTotal = game.dots.length
   }
-  if (lay.portrait) drawPortrait(ctx, game, frame, th, lay.W)
+  if (lay.phone) drawPhone(ctx, game, frame, th, lay)
+  else if (lay.portrait) drawPortrait(ctx, game, frame, th, lay.W)
   else drawLandscape(ctx, game, frame, th, lay.W)
 }
 
@@ -352,11 +360,11 @@ function drawField(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: 
   if (frame.view.card) drawCard(ctx, frame, frame.view.card, th, x, y, size)
 }
 
-function drawCard(ctx: CanvasRenderingContext2D, frame: Frame, card: Card, th: Theme, bx: number, by: number, size: number): void {
+function drawCard(ctx: CanvasRenderingContext2D, frame: Frame, card: Card, th: Theme, bx: number, by: number, size: number, backdrop = true): void {
   const peek = card.mode === 'pause'
   const tone = card.mode === 'lose' ? ALERT : card.mode === 'pause' ? GLOW : th.line
   ctx.fillStyle = peek ? 'rgba(1, 4, 11, 0.55)' : 'rgba(1, 4, 11, 0.8)'
-  ctx.fillRect(bx, by, size, size)
+  if (backdrop) ctx.fillRect(bx, by, size, size)
 
   const w = 540
   const x = bx + size / 2 - w / 2
@@ -366,7 +374,7 @@ function drawCard(ctx: CanvasRenderingContext2D, frame: Frame, card: Card, th: T
   const records = card.mode === 'title' ? frame.view.records.slice(0, 3) : []
   const listH = records.length ? 40 + records.length * 26 : 0
   const h = 40 + titleH + body.length * 26 + 30 + 64 + listH
-  const y = peek ? by + 60 : by + size / 2 - h / 2
+  const y = peek && backdrop ? by + 60 : by + size / 2 - h / 2
   panel(ctx, tone, x, y, w, h)
   ctx.fillStyle = 'rgba(150, 214, 255, 0.05)'
   ctx.fillRect(x + 1, y + 1, w - 2, h - 2)
@@ -595,6 +603,146 @@ function drawLandscape(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, 
   drawSkip(ctx, frame, 36, 872)
 }
 
+// Cards on a phone are drawn larger, around the board's centre. The frame is
+// adjusted to match so taps land on the scaled buttons.
+function drawPhoneCard(ctx: CanvasRenderingContext2D, frame: Frame, card: Card, th: Theme, bx: number, by: number, size: number): void {
+  const peek = card.mode === 'pause'
+  ctx.fillStyle = peek ? 'rgba(1, 4, 11, 0.55)' : 'rgba(1, 4, 11, 0.82)'
+  ctx.fillRect(bx, by, size, size)
+  const k = 1.32
+  const cx = bx + size / 2
+  const cy = by + size / 2
+  const scaled: Frame = { ...frame, s: frame.s * k, ox: frame.ox + frame.s * cx * (1 - k), oy: frame.oy + frame.s * cy * (1 - k) }
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.scale(k, k)
+  ctx.translate(-cx, -cy)
+  drawCard(ctx, scaled, card, th, bx, by, size, false)
+  ctx.restore()
+}
+
+// A finger sliding across the board: you steer by swiping, anywhere.
+function drawSwipeHint(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, time: number): void {
+  const w = 600
+  const h = 230
+  const left = x + size / 2 - w / 2
+  const top = y + size - h - 60
+  ctx.fillStyle = 'rgba(1, 4, 11, 0.86)'
+  ctx.fillRect(left, top, w, h)
+  ctx.strokeStyle = 'rgba(150, 214, 255, 0.5)'
+  ctx.lineWidth = 2
+  ctx.strokeRect(left + 1, top + 1, w - 2, h - 2)
+  fill(ctx, ALERT, left, top, 6, h)
+  const u = (time * 0.9) % 1
+  const ease = u < 0.7 ? u / 0.7 : 1
+  const fx = left + 150 + ease * (w - 300)
+  const fy = top + 70
+  const fade = u < 0.7 ? 1 : 1 - (u - 0.7) / 0.3
+  ctx.globalAlpha = 0.35 * fade
+  ctx.strokeStyle = ICE
+  ctx.lineWidth = 6
+  ctx.beginPath()
+  ctx.moveTo(left + 150, fy)
+  ctx.lineTo(fx, fy)
+  ctx.stroke()
+  ctx.globalAlpha = fade
+  ctx.fillStyle = ICE
+  ctx.beginPath()
+  ctx.arc(fx, fy, 22, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.globalAlpha = 0.4 * fade
+  ctx.beginPath()
+  ctx.arc(fx, fy, 34 + 8 * Math.sin(time * 8), 0, Math.PI * 2)
+  ctx.lineWidth = 3
+  ctx.stroke()
+  ctx.globalAlpha = 1
+  label(ctx, 'SWIPE TO STEER', x + size / 2, top + 140, 50, ICE)
+  label(ctx, 'anywhere on the screen', x + size / 2, top + 190, 32, GLOW)
+}
+
+function iconButton(ctx: CanvasRenderingContext2D, frame: Frame, id: HitId, glyph: string, x: number, y: number, tone: string): void {
+  button(ctx, frame, id, glyph, x, y, 84, 72, tone, 30)
+}
+
+function drawPhone(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: Theme, lay: Layout): void {
+  const W = lay.W
+  const b = lay.board
+  const view = frame.view
+
+  // header: the name, the board you are on, pause and sound
+  logo(ctx, 'PAC RAM', 22, 50, 46, ICE)
+  const level = LEVELS[game.levelIndex]
+  label(ctx, `BOARD ${game.levelIndex + 1} · ${(level?.name ?? '').toUpperCase()}`, 24, 96, 28, GLOW, 'left')
+  iconButton(ctx, frame, 'mute', view.muted ? '✕' : '♪', W - 20 - 84, 14, th.line)
+  iconButton(ctx, frame, 'pause', game.mode === 'pause' ? '▶' : 'II', W - 20 - 84 * 2 - 12, 14, th.line)
+  if (!view.full && document.fullscreenEnabled) iconButton(ctx, frame, 'full', '⤢', W - 20 - 84 * 3 - 24, 14, ALERT)
+
+  // the board
+  const size = game.maze.w * tileSize()
+  brackets(ctx, th.line, b.x - 8, b.y - 8, size + 16, size + 16, 22, 2)
+  ctx.save()
+  ctx.translate(b.x, b.y)
+  ctx.beginPath()
+  ctx.rect(0, 0, size, size)
+  ctx.clip()
+  setTextBoost(1.4)
+  render(ctx, game)
+  setTextBoost(1)
+  ctx.restore()
+  if (view.hint && !view.card && (game.mode === 'ready' || game.mode === 'play')) drawSwipeHint(ctx, b.x, b.y, size, view.time)
+  if (view.card) drawPhoneCard(ctx, frame, view.card, th, b.x, b.y, size)
+
+  // score and lives
+  const y0 = b.y + size + 30
+  const livesShown = game.mode === 'dying' ? Math.max(0, game.lives - 1) : game.lives
+  label(ctx, 'SCORE', 24, y0 + 14, 26, GLOW, 'left')
+  label(ctx, game.score.toLocaleString('en-US'), 24, y0 + 62, 64, ICE, 'left')
+  label(ctx, 'LIVES', W - 24, y0 + 14, 26, GLOW, 'right')
+  for (let l = 0; l < livesShown; l++) fill(ctx, ICE, W - 24 - 22 - l * 34, y0 + 42, 18, 36)
+
+  // the surge bar
+  const sy = y0 + 112
+  const surging = game.surge > 0
+  const blink = !surging || Math.floor(view.time * 4.4) % 2 === 0
+  if (blink) label(ctx, surging ? 'SURGE! REPEAL THEM' : 'EAT RAM TO SURGE', 24, sy, 30, surging ? ALERT : th.line, 'left')
+  label(ctx, surging ? `${game.surge.toFixed(1)}s` : `${game.surgeCharge}/${SURGE_RAM}`, W - 24, sy, 30, ICE, 'right')
+  const tx = 24
+  const ty = sy + 24
+  const tw = W - 48
+  const th2 = 30
+  ctx.strokeStyle = surging ? ALERT : th.line
+  ctx.globalAlpha = 0.6
+  ctx.lineWidth = 2
+  ctx.strokeRect(tx + 0.5, ty + 0.5, tw, th2)
+  ctx.globalAlpha = 1
+  const ratio = clamp(surging ? game.surge / game.surgeMax : game.surgeCharge / SURGE_RAM, 0, 1)
+  if (ratio > 0) {
+    if (surging) fill(ctx, ALERT, tx + 4, ty + 4, (tw - 7) * ratio, th2 - 7)
+    else hatch(ctx, ICE, tx + 4, ty + 4, (tw - 7) * ratio, th2 - 7, 7)
+  }
+
+  // the laws, one chip each
+  const ly = ty + th2 + 24
+  const n = game.ghosts.length
+  const gap = 12
+  const cw = (W - 48 - gap * (n - 1)) / n
+  game.ghosts.forEach((ghost, i) => {
+    const cx = 24 + i * (cw + gap)
+    const tone = lawTone(ghost)
+    ctx.globalAlpha = ghost.state === 'eaten' ? 0.4 : 1
+    fill(ctx, 'rgba(1, 4, 11, 0.6)', cx, ly, cw, 74)
+    ctx.strokeStyle = `${ghost.color}66`
+    ctx.lineWidth = 1.5
+    ctx.strokeRect(cx + 0.5, ly + 0.5, cw - 1, 73)
+    fill(ctx, tone, cx, ly, 5, 74)
+    label(ctx, LAWS[ghost.law]?.tag ?? 'LAW', cx + 18, ly + 24, 30, tone, 'left')
+    const flash = ghost.state !== 'frightened' || Math.floor(view.time * 5) % 2 === 0
+    if (flash) label(ctx, stateLabel(ghost.state, game.phase), cx + 18, ly + 54, n > 3 ? 18 : 22, ICE, 'left')
+    ctx.globalAlpha = 1
+  })
+  drawSkip(ctx, frame, 24, ly + 90)
+}
+
 function drawPortrait(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: Theme, W: number): void {
   drawHeader(ctx, game, frame, W, th, true)
   drawField(ctx, game, frame, th, 20, 138)
@@ -603,16 +751,5 @@ function drawPortrait(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, t
   drawTelemetry(ctx, game, th, 20, y, cw)
   drawSurge(ctx, game, th, 20, y + 170, cw, frame.view.time)
   drawLaws(ctx, game, th, 32 + cw, y, cw, 254, frame.view.time)
-  if (frame.view.touch) {
-    const bw = 124
-    const bh = 104
-    const gap = 12
-    const cx = W / 2
-    const top = 1196
-    button(ctx, frame, 'up', '▲', cx - bw / 2, top, bw, bh, th.line, 26)
-    button(ctx, frame, 'left', '◀', cx - bw * 1.5 - gap, top + bh + gap, bw, bh, th.line, 26)
-    button(ctx, frame, 'down', '▼', cx - bw / 2, top + bh + gap, bw, bh, th.line, 26)
-    button(ctx, frame, 'right', '▶', cx + bw / 2 + gap, top + bh + gap, bw, bh, th.line, 26)
-    drawSkip(ctx, frame, 20, 1410)
-  } else drawSkip(ctx, frame, 20, 1180)
+  drawSkip(ctx, frame, 20, 1180)
 }

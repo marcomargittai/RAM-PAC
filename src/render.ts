@@ -10,6 +10,13 @@ export const DISPLAY = '"Orbitron", "Chakra Petch", sans-serif'
 let actorsHidden = false
 
 // The finale freezes the board without the actors; PAC-7 is drawn on its own.
+// Text drawn inside the board is enlarged on phones, where the board is small.
+let boost = 1
+
+export function setTextBoost(k: number): void {
+  boost = k
+}
+
 export function hideActors(hidden: boolean): void {
   actorsHidden = hidden
 }
@@ -578,7 +585,7 @@ function drawFx(ctx: CanvasRenderingContext2D, game: Game, tile: number, th: The
     ctx.globalAlpha = Math.max(0, note.life)
     const x = note.x * tile + tile / 2
     const y = note.y * tile
-    label(ctx, note.text, x, y, 20, phosphorColor(note.color, th))
+    label(ctx, note.text, x, y, 20 * boost, phosphorColor(note.color, th))
   }
   ctx.globalAlpha = 1
   if (game.mode !== 'ready') return
@@ -589,6 +596,15 @@ function drawFx(ctx: CanvasRenderingContext2D, game: Game, tile: number, th: The
   const boxH = caught ? 104 : 140
   const left = snap(width / 2 - boxW / 2)
   const top = snap(game.maze.h * tile * 0.3)
+  ctx.save()
+  ctx.translate(width / 2, top + boxH / 2)
+  ctx.scale(boost, boost)
+  ctx.translate(-width / 2, -(top + boxH / 2))
+  drawIntro(ctx, game, th, def, caught, width, left, top, boxW, boxH)
+  ctx.restore()
+}
+
+function drawIntro(ctx: CanvasRenderingContext2D, game: Game, th: Theme, def: (typeof LEVELS)[number] | undefined, caught: boolean, width: number, left: number, top: number, boxW: number, boxH: number): void {
   if (caught) {
     panel(ctx, GLOW, left, top, boxW, boxH)
     label(ctx, 'ALERT STATUS:', left + 12, top + 15, 17, GLOW, 'left')

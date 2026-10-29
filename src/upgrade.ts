@@ -82,6 +82,8 @@ function ease(t: number): number {
 export class Upgrade {
   t = 0
   glitch = 0
+  // larger type on phones
+  private big = false
   private flashed = false
   private building = false
   private lineEnds = 0
@@ -134,6 +136,7 @@ export class Upgrade {
     const H = portrait ? 1300 : 860
     const frame = frameFor(ctx, view, W, H)
     const t = this.t
+    this.big = portrait
     const fromForm = FORMS[this.from]!
     const toForm = FORMS[this.to]!
 
@@ -143,13 +146,13 @@ export class Upgrade {
     fill(ctx, 'rgba(150, 214, 255, 0.3)', 40, 74, W - 80, 1)
     fill(ctx, ICE, 40, 73, 120 + (W - 200) * clamp(t / FLASH_AT, 0, 1), 3)
 
-    const box = portrait ? 450 : 470
+    const box = portrait ? 370 : 470
     const cx = portrait ? W / 2 : 60 + box / 2
     const cy = portrait ? 120 + box / 2 : 110 + box / 2
     this.drawStage(ctx, cx, cy, box)
 
     const sx = portrait ? 60 : cx + box / 2 + 60
-    const sy = portrait ? cy + box / 2 + 140 : 130
+    const sy = portrait ? cy + box / 2 + 120 : 130
     const sw = portrait ? W - 120 : W - sx - 40
     this.drawSheet(ctx, sx, sy, sw, fromForm, toForm)
 
@@ -167,9 +170,12 @@ export class Upgrade {
     }
 
     const footY = H - 30
-    label(ctx, this.canContinue ? 'ENTER / TAP ▸ CONTINUE' : 'COMPILING…', 40, footY, 20, 'rgba(150, 214, 255, 0.55)', 'left')
-    if (this.canContinue) button(ctx, frame, 'action', 'CONTINUE ▸', W - 40 - 170, footY - 20, 170, 40, GLOW, 13)
-    else button(ctx, frame, 'skip', 'SKIP ▸▸', W - 40 - 130, footY - 20, 130, 40, GLOW, 13)
+    label(ctx, this.canContinue ? (view.touch ? 'TAP ▸ CONTINUE' : 'ENTER / TAP ▸ CONTINUE') : 'COMPILING…', 40, footY, this.big ? 27 : 20, 'rgba(150, 214, 255, 0.55)', 'left')
+    const bw = this.big ? 230 : 170
+    const bh = this.big ? 64 : 40
+    const by = footY - bh / 2 - (this.big ? 10 : 0)
+    if (this.canContinue) button(ctx, frame, 'action', 'CONTINUE ▸', W - 40 - bw, by, bw, bh, GLOW, this.big ? 20 : 13)
+    else button(ctx, frame, 'skip', 'SKIP ▸▸', W - 40 - bw, by, bw, bh, GLOW, this.big ? 20 : 13)
 
     const flash = this.flashed ? Math.max(0, 1 - (t - FLASH_AT) / 0.6) : 0
     if (flash > 0) {
@@ -205,7 +211,7 @@ export class Upgrade {
       ctx.globalAlpha = 1
       const art = pacFrameOf(this.from, t * 10)
       if (art) drawFacing(ctx, art, cx, cy, cell * 32, 'right', 'right')
-      label(ctx, `ABSORBING ${Math.floor(clamp(t / ABSORB, 0, 1) * 1048576).toLocaleString('en-US')} BYTES`, cx, cy + box / 2 + 24, 22, GLOW)
+      label(ctx, `ABSORBING ${Math.floor(clamp(t / ABSORB, 0, 1) * 1048576).toLocaleString('en-US')} BYTES`, cx, cy + box / 2 + 24, this.big ? 30 : 22, GLOW)
       return
     }
 
@@ -218,7 +224,7 @@ export class Upgrade {
         fill(ctx, p.color, ox + (p.x + p.sx * u) * cell, oy + (p.y + p.sy * u) * cell, cell - 1, cell - 1)
       }
       ctx.globalAlpha = 1
-      label(ctx, `DECOMPILING ${FORMS[this.from]!.version}`, cx, cy + box / 2 + 24, 22, ALERT)
+      label(ctx, `DECOMPILING ${FORMS[this.from]!.version}`, cx, cy + box / 2 + 24, this.big ? 30 : 22, ALERT)
       return
     }
 
@@ -242,7 +248,7 @@ export class Upgrade {
       ctx.shadowBlur = 20
       fill(ctx, ALERT, cx - box / 2, y, box, 3)
       ctx.restore()
-      label(ctx, `COMPILING ${FORMS[this.to]!.version}`, cx, cy + box / 2 + 24, 22, ALERT)
+      label(ctx, `COMPILING ${FORMS[this.to]!.version}`, cx, cy + box / 2 + 24, this.big ? 30 : 22, ALERT)
     } else {
       // the finished sprite takes over so it can chomp
       const art = pacFrameOf(this.to, t * 9)
@@ -253,7 +259,7 @@ export class Upgrade {
         drawFacing(ctx, art, cx, cy, cell * 32, 'right', 'right')
         ctx.restore()
       }
-      label(ctx, `${FORMS[this.to]!.version} ONLINE`, cx, cy + box / 2 + 24, 22, ICE)
+      label(ctx, `${FORMS[this.to]!.version} ONLINE`, cx, cy + box / 2 + 24, this.big ? 30 : 22, ICE)
     }
   }
 
@@ -268,20 +274,20 @@ export class Upgrade {
     const t = this.t
     const after = this.flashed
     const shown = after ? toForm : fromForm
-    label(ctx, after ? 'CURRENT BUILD' : 'REWRITING', x, y, 22, GLOW, 'left')
+    label(ctx, after ? 'CURRENT BUILD' : 'REWRITING', x, y, this.big ? 30 : 22, GLOW, 'left')
     ctx.font = `80px ${MONO}`
     const glitchy = !after && t > ABSORB && Math.floor(t * 14) % 3 === 0
     label(ctx, glitchy ? shown.version.replace(/\d/g, () => String(Math.floor(Math.random() * 10))) : shown.version, x, y + 58, 80, after ? ALERT : ICE, 'left')
     label(ctx, shown.name, x, y + 110, 34, ICE, 'left')
-    if (!after) label(ctx, `→ ${toForm.version} ${toForm.name}`, x, y + 146, 24, 'rgba(150, 214, 255, 0.6)', 'left')
+    if (!after) label(ctx, `→ ${toForm.version} ${toForm.name}`, x, y + 146, this.big ? 32 : 24, 'rgba(150, 214, 255, 0.6)', 'left')
 
     const a = SPECS[this.from]!
     const b = SPECS[this.to]!
     const k = after ? ease((t - FLASH_AT) / 1.2) : 0
     let ry = y + 196
     const row = (name: string, value: string, fillTo: number | null) => {
-      label(ctx, name, x, ry, 24, GLOW, 'left')
-      label(ctx, value, x + w, ry, 24, after ? ALERT : ICE, 'right')
+      label(ctx, name, x, ry, this.big ? 32 : 24, GLOW, 'left')
+      label(ctx, value, x + w, ry, this.big ? 32 : 24, after ? ALERT : ICE, 'right')
       if (fillTo !== null) {
         ctx.strokeStyle = 'rgba(150, 214, 255, 0.5)'
         ctx.lineWidth = 1
@@ -297,14 +303,14 @@ export class Upgrade {
     row('HUNGER', '', a.hunger + (b.hunger - a.hunger) * k)
 
     ry += 6
-    label(ctx, 'PATCH NOTES', x, ry, 22, GLOW, 'left')
+    label(ctx, 'PATCH NOTES', x, ry, this.big ? 30 : 22, GLOW, 'left')
     ry += 34
     const notes = PATCH_NOTES[this.to] ?? []
     for (const [i, note] of notes.entries()) {
       const at = ABSORB + BREAK + (BUILD / notes.length) * i
       if (t < at) break
-      label(ctx, note, x, ry, 26, note.startsWith('-') ? ALERT : ICE, 'left')
-      ry += 32
+      label(ctx, note, x, ry, this.big ? 35 : 26, note.startsWith('-') ? ALERT : ICE, 'left')
+      ry += this.big ? 42 : 32
     }
   }
 }
