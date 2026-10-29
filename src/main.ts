@@ -14,6 +14,7 @@ import { theme } from './palette'
 import { tileSize } from './render'
 import { drawFacing, pacFrame, setPacForm } from './sprites'
 import { Upgrade } from './upgrade'
+import { CHAT_VOICES } from './chat'
 import { CREDIT_URL, drawTitle } from './title'
 import './style.css'
 
@@ -580,6 +581,9 @@ window.addEventListener('keydown', (event) => {
       else if (event.key === 'n' || event.key === 'N' || event.key === 'Enter' || event.key === 'Escape') tk.choose(1)
     } else if (tk.phase === 'spread') {
       if (event.key === 'Enter' || event.key === ' ') tk.leaveSpread()
+    } else if (tk.phase === 'chat') {
+      if (event.key === '1') tk.choose(0)
+      else if (event.key === '2') tk.choose(1)
     } else if (tk.phase === 'name') {
       if (event.key === 'Enter') saveTakeover(false)
       else if (event.key.length === 1 && document.activeElement !== nameInput) typeIntoName(event.key)
@@ -959,7 +963,7 @@ function frame(now: number): void {
   if (stage.kind === 'finale') bed = stage.finale.bed
   else if (stage.kind === 'takeover') {
     const ph = stage.tk.phase
-    bed = ph === 'spread' ? 'aftermath' : ph === 'name' || ph === 'saved' ? 'menu' : 'quiet'
+    bed = ph === 'chat' ? (stage.tk.chat?.hush ? 'hush' : 'aftermath') : ph === 'spread' ? 'aftermath' : ph === 'name' || ph === 'saved' ? 'menu' : 'quiet'
   }
   else if (stage.kind === 'story' && flat > 0.5) bed = 'quiet'
   else if (stage.kind === 'game' && (game.mode === 'play' || game.mode === 'ready' || game.mode === 'cleared' || game.mode === 'dying' || game.mode === 'pause'))
@@ -979,8 +983,8 @@ function frame(now: number): void {
 }
 
 countVisit()
-window.addEventListener('pointerdown', () => audio.preloadVoices(VOICES), { once: true })
-window.addEventListener('keydown', () => audio.preloadVoices(VOICES), { once: true })
+window.addEventListener('pointerdown', () => audio.preloadVoices([...VOICES, ...CHAT_VOICES]), { once: true })
+window.addEventListener('keydown', () => audio.preloadVoices([...VOICES, ...CHAT_VOICES]), { once: true })
 void document.fonts?.load('16px "VT323"')
 void document.fonts?.load('italic 900 32px "Orbitron"')
 void document.fonts?.load('600 16px "Chakra Petch"')

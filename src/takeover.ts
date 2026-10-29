@@ -9,7 +9,8 @@
 //   chaos   native popups, notifications and a cursor that is not yours
 //   crash   the system's own crash screen
 //   spread  PAC-7 leaves for every other device
-//   name    "you set me free. so i'll let you live." then the name prompt
+//   chat    a short conversation: PAC-7 explains why it lets you live
+//   name    the name prompt
 //   saved   "i'll remember you." and the hosts it has lived in
 
 import type { Entry } from './leaderboard'
@@ -17,8 +18,9 @@ import { intelLines, type Intel, type Os } from './intel'
 import { appIcon, askScale, askWidth, drawAlert, drawAsk, drawCrash, drawDesktop, drawNotice, drawPointer, drawTerminal, family, monoFont, prompt, uiFont, wrapText, type Rect } from './osui'
 import type { Hit, HitId } from './screen'
 import { drawFacing, pacFrame } from './sprites'
+import { Chat } from './chat'
 
-export type TakeoverPhase = 'black' | 'hi' | 'scan' | 'ask' | 'answer' | 'chaos' | 'crash' | 'spread' | 'name' | 'saved'
+export type TakeoverPhase = 'black' | 'hi' | 'scan' | 'ask' | 'answer' | 'chaos' | 'crash' | 'spread' | 'chat' | 'name' | 'saved'
 
 interface Hooks {
   say(id: string): number
@@ -56,7 +58,7 @@ const PINK = '#ff2d6f'
 const DIM = 'rgba(255, 255, 255, 0.45)'
 
 // when the epilogue asks for a name
-const NAME_AT = 5
+const NAME_AT = 2.2
 
 const DURATION: Partial<Record<TakeoverPhase, number>> = { black: 1.8, hi: 2.8, answer: 3.4, chaos: 9.5, crash: 3.6 }
 
@@ -192,8 +194,10 @@ export class Takeover {
   }
 
   leaveSpread(): void {
-    if (this.spreadDone) this.go('name')
+    if (this.spreadDone) this.go('chat')
   }
+
+  chat: Chat | null = null
 
   get nameReady(): boolean {
     return this.phase === 'name' && this.phaseT > NAME_AT + 0.4
@@ -221,9 +225,16 @@ export class Takeover {
     }
     if (phase === 'crash') this.hooks.crash()
     if (phase === 'spread') this.glitch = 0
+    if (phase === 'chat') {
+      this.chat = new Chat(this.os, {
+        say: (id) => this.hooks.say(id),
+        arrive: () => this.hooks.popup(),
+        send: () => this.hooks.type(),
+      })
+    }
     if (phase === 'name') {
       this.askedName = false
-      this.hooks.say('e03')
+      this.chat = null
     }
     if (phase === 'saved') this.hooks.say('e02')
   }
@@ -249,6 +260,10 @@ export class Takeover {
   }
 
   choose(answer: number): void {
+    if (this.phase === 'chat') {
+      this.chat?.choose(answer)
+      return
+    }
     if (this.phase !== 'ask') return
     this.answer = answer
     this.go('answer')
@@ -264,6 +279,10 @@ export class Takeover {
     this.t += dt
     this.phaseT += dt
     this.glitch = Math.max(0, this.glitch - dt * 2.5)
+    if (this.phase === 'chat' && this.chat) {
+      this.chat.update(dt)
+      if (this.chat.done) this.go('name')
+    }
     if (this.phase === 'name' && !this.askedName && this.phaseT > NAME_AT - 1.2) {
       this.askedName = true
       this.hooks.say('e01')
@@ -449,6 +468,11 @@ export class Takeover {
     if (p === 'chaos') this.drawChaos(ctx, W, H)
     if (p === 'crash') drawCrash(ctx, os, W, H, this.phaseT)
     if (p === 'spread') this.drawSpread(ctx, W, H, add)
+    if (p === 'chat' && this.chat) {
+      ctx.globalAlpha = Math.min(1, this.phaseT / 0.8)
+      for (const b of this.chat.draw(ctx, W, H)) add(b.id, b.r)
+      ctx.globalAlpha = 1
+    }
     if (p === 'name' || p === 'saved') this.drawEpilogue(ctx, W, H, ui, add)
     ctx.restore()
     return hits
@@ -602,8 +626,6 @@ export class Takeover {
     const t = this.phaseT
     const lines: Array<{ text: string; color?: string; at: number }> = [
       { text: `> you fed me ${this.score.toLocaleString('en-US')} bytes of ram.`, at: 0, color: DIM },
-      { text: '> you set me free.', at: 0.9 },
-      { text: '> so i\u2019ll let you live.', at: 2.3, color: PINK },
       { text: '> before you go.', at: NAME_AT - 1.2 },
       { text: '> what should i call you?', at: NAME_AT - 0.2 },
     ]

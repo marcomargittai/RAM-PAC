@@ -316,7 +316,7 @@ export function createCrt(): Crt | null {
       pass(persist, write!, w, h)
       bind(0, srcTex, P.src)
       bind(1, read.tex, P.prev)
-      gl.uniform1f(P.decay, params.motion > 0 ? Math.pow(0.7, params.dt * 60) : 0)
+      gl.uniform1f(P.decay, params.motion > 0 && params.flat < 0.5 ? Math.pow(0.7, params.dt * 60) : 0)
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
       pass(down, a, a.w, a.h)
