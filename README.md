@@ -24,7 +24,7 @@ npm run preview
 
 ## Controls
 
-- Arrow keys or WASD to turn. On a phone, swipe anywhere on the screen, or use the on-screen pad
+- Arrow keys or WASD to turn. On a phone, swipe anywhere on the screen; a hint shows how until the first swipe
 - Enter, Space or a tap starts, continues the story and confirms
 - Esc or SKIP skips a story scene. P pauses, M mutes, F toggles fullscreen
 - The title screen and the header have a fullscreen button. iPhones cannot go fullscreen from a web page, so there it explains Add to Home Screen instead

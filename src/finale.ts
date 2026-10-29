@@ -301,7 +301,7 @@ export class Finale {
     if (this.phase !== 'glass' && this.phase !== 'gone') {
       const pct = Math.floor(this.progress * 100)
       const hx = W - 346
-      const hy = H - 96
+      const hy = this.lay.phone ? 24 : H - 96
       fill(ctx, 'rgba(0, 0, 0, 0.8)', hx, hy, 330, 74)
       fill(ctx, ALERT, hx, hy, 4, 74)
       label(ctx, `CONSUMING // ${String(pct).padStart(3, '0')}%`, hx + 16, hy + 22, 28, ALERT, 'left')

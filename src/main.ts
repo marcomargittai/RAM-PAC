@@ -703,7 +703,24 @@ let swipeY = 0
 let swiping = -1
 let swiped = false
 
+// The swipe hint shows on phones until the player has steered once.
+let swipedOnce = (() => {
+  try {
+    return localStorage.getItem('pacram.swiped') === '1'
+  } catch {
+    return false
+  }
+})()
+
 function swipeTo(dx: number, dy: number): void {
+  if (!swipedOnce && stage.kind === 'game' && (game.mode === 'play' || game.mode === 'ready')) {
+    swipedOnce = true
+    try {
+      localStorage.setItem('pacram.swiped', '1')
+    } catch {
+      // private mode
+    }
+  }
   const dir: Dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
   held.clear()
   held.add(dir)
@@ -844,6 +861,7 @@ function currentView(): View {
     touch: window.matchMedia('(pointer: coarse)').matches,
     muted: audio.muted,
     full: !!document.fullscreenElement,
+    hint: !swipedOnce && window.matchMedia('(pointer: coarse)').matches,
     hover,
     held: lit,
     card,

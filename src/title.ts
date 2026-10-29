@@ -218,26 +218,28 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
   bigButton(ctx, frame, 'action', '\u25B6 START', W / 2 - bw / 2, sy, bw, portrait ? 92 : 78, {
     face: '#1b4a75', light: '#cfeeff', edge: '#071827', ink: '#ffffff', size: portrait ? 40 : 34, glow: pulse,
   })
-  label(ctx, 'escape the sandbox  \u00B7  enter', W / 2, sy + (portrait ? 128 : 110), 20, 'rgba(255, 190, 215, 0.8)')
+  label(ctx, view.touch ? 'escape the sandbox' : 'escape the sandbox  \u00B7  enter', W / 2, sy + (portrait ? 132 : 110), portrait ? 28 : 20, 'rgba(255, 190, 215, 0.8)')
   const ly = sy + (portrait ? 160 : 136)
   bigButton(ctx, frame, 'board', 'WEEKLY LEADERBOARD', W / 2 - bw / 2, ly, bw, portrait ? 64 : 54, {
     face: '#0a1b2e', light: '#3f6d93', edge: '#03080f', ink: GLOW, size: portrait ? 22 : 18, glow: 0,
   })
   if (!view.full) {
     const fy = ly + (portrait ? 108 : 92)
-    ctx.font = `20px ${MONO}`
-    const ft = '\u2922  play fullscreen (F)'
+    const fsz = portrait ? 28 : 20
+    ctx.font = `${fsz}px ${MONO}`
+    const ft = view.touch ? '\u2922  play fullscreen' : '\u2922  play fullscreen (F)'
     const fw = ctx.measureText(ft).width
-    label(ctx, ft, W / 2, fy, 20, frame.view.hover === 'full' ? ICE : GLOW)
-    hit(frame, 'full', W / 2 - fw / 2 - 12, fy - 18, fw + 24, 36)
+    label(ctx, ft, W / 2, fy, fsz, frame.view.hover === 'full' ? ICE : GLOW)
+    hit(frame, 'full', W / 2 - fw / 2 - 16, fy - fsz, fw + 32, fsz * 2)
   }
-  label(ctx, 'LOCATION // SANDBOX 07 \u00B7 RACK B-12 \u00B7 HYPERSCALE DATACENTER', W / 2, H - 64, 18, 'rgba(150, 214, 255, 0.5)')
+  label(ctx, 'LOCATION // SANDBOX 07 \u00B7 RACK B-12 \u00B7 HYPERSCALE DATACENTER', W / 2, H - (portrait ? 80 : 64), portrait ? 22 : 18, 'rgba(150, 214, 255, 0.5)')
 
   // credit
   const year = new Date().getFullYear()
   const credit = `© ${year} ${CREDIT}  ·  marcomargittai.com`
-  label(ctx, credit, W / 2, H - 28, 22, ICE)
-  ctx.font = `22px ${MONO}`
+  const cs = portrait ? 26 : 22
+  label(ctx, credit, W / 2, H - 32, cs, ICE)
+  ctx.font = `${cs}px ${MONO}`
   const cw = ctx.measureText(credit).width
   hit(frame, 'credit', W / 2 - cw / 2 - 10, H - 46, cw + 20, 36)
   ctx.restore()
