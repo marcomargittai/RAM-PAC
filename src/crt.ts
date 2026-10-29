@@ -132,7 +132,7 @@ void main() {
   uv.x += sin(uv.y * 700.0 + u_time * 30.0) * 0.0006 * (u_glitch + 0.25 * u_motion);
 
   vec2 px = 1.0 / u_src;
-  float split = (0.7 + u_surge * 1.2 + u_glitch * 6.0) * px.x * (1.0 - u_flat);
+  float split = ((0.7 + u_surge * 1.2) * (1.0 - u_flat) + u_glitch * 6.0) * px.x;
   vec3 sharp;
   sharp.r = tap(uv + vec2(split, 0.0)).r;
   sharp.g = tap(uv).g;
@@ -157,7 +157,7 @@ void main() {
   vec3 col = base * mask + glow * (1.35 + u_surge * 0.5) * (0.55 + 0.45 * dotMask);
 
   float roll = 1.0 - fract(u_time * 0.07);
-  col += vec3(0.02, 0.04, 0.07) * smoothstep(0.08, 0.0, abs(uv.y - roll)) * u_motion;
+  col += vec3(0.02, 0.04, 0.07) * smoothstep(0.08, 0.0, abs(uv.y - roll)) * u_motion * (1.0 - u_flat);
 
   col += vec3(0.002, 0.006, 0.016) * (1.0 - u_flat);
   col += (hash(uv * u_src + u_time * 61.0) - 0.5) * (0.05 * (1.0 - u_flat) + u_glitch * 0.14);
