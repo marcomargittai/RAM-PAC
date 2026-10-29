@@ -12,19 +12,24 @@ create table if not exists public.scores (
 );
 
 create index if not exists scores_week on public.scores (created_at desc, score desc);
+create index if not exists scores_name_recent on public.scores (name, created_at desc);
 
 alter table public.scores enable row level security;
 
 drop policy if exists "read scores" on public.scores;
-create policy "read scores" on public.scores for select to anon using (true);
+create policy "read scores" on public.scores for select to anon, authenticated using (true);
 
 drop policy if exists "add a score" on public.scores;
-create policy "add a score" on public.scores for insert to anon with check (true);
+create policy "add a score" on public.scores for insert to anon, authenticated
+  with check (char_length(name) between 1 and 12 and score between 1 and 100000);
 
--- At most 5 scores per minute from the whole internet per name, to slow spam.
-create or replace function public.scores_rate_limit() returns trigger language plpgsql as $$
+-- At most 5 scores a minute under the same name, to slow spam.
+create or replace function public.scores_rate_limit() returns trigger
+language plpgsql
+set search_path = ''
+as $$
 begin
-  if (select count(*) from public.scores where name = new.name and created_at > now() - interval '1 minute') >= 5 then
+  if (select count(*) from public.scores s where s.name = new.name and s.created_at > now() - interval '1 minute') >= 5 then
     raise exception 'slow down';
   end if;
   new.created_at := now();

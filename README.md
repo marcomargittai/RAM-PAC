@@ -54,13 +54,7 @@ The IP lookup is a single request from the player's own browser to ipapi.co, wit
 
 Boards are weekly and reset every Monday at 00:00 UTC, with a live countdown on the leaderboard page (open it from the title screen). When a run ends you sign the log with a name; after a win PAC-7 asks for it in the epilogue. Names go through a small filter for slurs and swearing.
 
-Every score is kept in the browser's localStorage (`src/leaderboard.ts`). The global board runs on a free Supabase project (`src/online.ts`) and turns on once its URL and public key are filled in:
-
-1. Create a free project at supabase.com (no card needed).
-2. In the SQL editor, run `supabase/setup.sql`. It creates the table and rules: anyone can read and add scores, nobody can change or delete them, names and scores are checked, and the same name is limited to 5 scores a minute.
-3. Copy the Project URL and the anon public key from Project settings > API into `SUPABASE_URL` and `SUPABASE_ANON_KEY` in `src/online.ts`.
-
-Until then, and whenever the network fails, the page shows this device's board.
+Every score is kept in the browser's localStorage (`src/leaderboard.ts`) and sent to the global board, a free Supabase project called `pac-ram` (`src/online.ts`). The table and its rules are in `supabase/setup.sql`: anyone can read and add scores, nobody can change or delete them, names and scores are checked by the database, and the same name can post at most 5 scores a minute. The key in `src/online.ts` is a publishable key, public by design. If the board cannot be reached the page shows this device's board.
 
 ## Title screen and art
 
