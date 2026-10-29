@@ -1,0 +1,20 @@
+# Free Supabase projects pause after a week without traffic. This reads the
+# leaderboard once a day so the project stays awake even in quiet weeks.
+name: Keep the leaderboard awake
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read the leaderboard
+        run: |
+          code=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "apikey: sb_publishable_8T6mhDIla4Ku5LPkOg_JZg_ydXH78PK" \
+            "https://xnmcdvwjxzjmiocghaak.supabase.co/rest/v1/scores?select=id&limit=1")
+          echo "status $code"
+          test "$code" = "200"

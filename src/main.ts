@@ -2,10 +2,10 @@ import { Sfx, type Bed } from './audio'
 import { createCrt, curve, type Crt } from './crt'
 import { Finale } from './finale'
 import { cleanName, loadBoard, safeName, saveRecord, thisWeek, type Entry } from './leaderboard'
-import { fetchWeekly, online, submit } from './online'
+import { fetchWeekly, online, startRun as startOnlineRun, submit } from './online'
 import { LEVELS } from './levels'
 import { drawBriefing, drawEntry, drawLeaderboard, drawStory } from './scenes'
-import { BOOT_SECONDS, drawBackdrop, drawScreen, layoutFor, snapshot, type Card, type Hit, type HitId, type View } from './screen'
+import { BOOT_SECONDS, DEV, drawBackdrop, drawScreen, layoutFor, snapshot, type Card, type Hit, type HitId, type View } from './screen'
 import { createGame, startRun, update, visual, type Dir, type Game } from './sim'
 import { countVisit, gatherIntel, type Intel } from './intel'
 import { Takeover } from './takeover'
@@ -16,6 +16,7 @@ import { drawFacing, pacFrame, setPacForm } from './sprites'
 import { Upgrade } from './upgrade'
 import { CHAT_VOICES } from './chat'
 import { CREDIT_URL, drawTitle } from './title'
+import { readChallenge, shareRun } from './share'
 import './style.css'
 
 type Stage =
@@ -86,11 +87,38 @@ function refreshBoard(): void {
   })
 }
 
+// The server's ticket for the run in progress; a score is sent only with one.
+let runTicket: Promise<string | null> = Promise.resolve(null)
+
+function ticketRun(): void {
+  runTicket = online ? startOnlineRun() : Promise.resolve(null)
+}
+
+// The last saved run and its weekly rank, for sharing.
+let lastRun: { entry: Entry; rank: number | null } | null = null
+const challenge = readChallenge()
+
 function keep(entry: Entry): number {
   const rank = saveRecord(entry)
   records = thisWeek(loadBoard())
-  void submit(entry).then(() => refreshBoard())
+  const ticket = runTicket
+  runTicket = Promise.resolve(null)
+  const run = { entry, rank: null as number | null }
+  lastRun = run
+  void ticket
+    .then((id) => (id ? submit(entry, id) : null))
+    .then((place) => {
+      run.rank = place
+      refreshBoard()
+    })
   return rank
+}
+
+function share(): void {
+  if (!lastRun) return
+  void shareRun(lastRun.entry, lastRun.rank).then((how) => {
+    if (how === 'saved') showToast('Score card saved and link copied. Post it, tag a friend.', 5)
+  })
 }
 
 function leaveBoard(): void {
@@ -196,6 +224,7 @@ function play(): void {
 
 function beginRun(): void {
   runStartedAt = performance.now()
+  ticketRun()
   if (!seenPrologue) {
     seenPrologue = true
     audio.play('boot', 0.7)
@@ -368,6 +397,7 @@ function runAgain(): void {
   told = new Set()
   grown = 0
   startRun(game)
+  ticketRun()
   play()
 }
 
@@ -438,7 +468,7 @@ function skipAhead(): void {
     saveEntry(true)
     return
   }
-  if (stage.kind !== 'game') return
+  if (stage.kind !== 'game' || !DEV) return
   if (game.mode === 'pause') game.mode = 'play'
   if (game.mode === 'ready' || game.mode === 'play' || game.mode === 'dying') {
     game.mode = 'play'
@@ -470,6 +500,7 @@ function press(id: HitId): void {
   else if (id === 'mute') toggleMute()
   else if (id === 'full') toggleFullscreen()
   else if (id === 'credit') window.open(CREDIT_URL, '_blank', 'noopener')
+  else if (id === 'share') share()
   else if (id === 'board') openBoard()
   else if (id === 'action') pressStart()
   else if (id === 'skip') {
@@ -538,7 +569,7 @@ function drawToast(view: View): void {
   ctx.font = `${size}px "Share Tech Mono", ui-monospace, monospace`
   const w = Math.min(view.width - 24, ctx.measureText(toast.text).width + 40)
   const x = view.width / 2 - w / 2
-  const y = view.height - size * 4.4
+  const y = size * 1.6
   ctx.fillStyle = 'rgba(1, 4, 11, 0.92)'
   ctx.fillRect(x, y, w, size * 2.4)
   ctx.fillStyle = '#ff2d6f'
@@ -940,7 +971,7 @@ function frame(now: number): void {
     hits = stage.up.draw(ctx, v)
   } else if (stage.kind === 'takeover') {
     hits = stage.tk.draw(ctx, v.width, v.height, { name: entryName, focused: nameFocused, records })
-  } else if (booted && game.mode === 'title') hits = drawTitle(ctx, v, 0)
+  } else if (booted && game.mode === 'title') hits = drawTitle(ctx, v, 0, challenge)
   else hits = drawScreen(ctx, game, v)
   drawToast(v)
 

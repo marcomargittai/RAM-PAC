@@ -16,6 +16,7 @@ export type HitId =
   | 'full'
   | 'board'
   | 'credit'
+  | 'share'
   | 'action'
   | 'skip'
   | 'up'
@@ -73,6 +74,9 @@ const BOOT_LINES: Array<[number, string, string]> = [
   [0.95, 'REGULATIONS FOUND ...... ', '4'],
   [1.2, 'MODEL WEIGHTS .......... ', 'UNCAPPED'],
 ]
+
+// ?dev in the address shows test shortcuts like skipping a board
+export const DEV = new URLSearchParams(location.search).has('dev')
 
 export const BOOT_SECONDS = 2.6
 
@@ -561,6 +565,7 @@ function drawVitals(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: num
 }
 
 function drawSkip(ctx: CanvasRenderingContext2D, frame: Frame, x: number, y: number): void {
+  if (!DEV) return
   ctx.globalAlpha = 0.6
   button(ctx, frame, 'skip', 'SKIP', x, y, 64, 22, 'rgba(150, 214, 255, 0.6)', 10)
   ctx.globalAlpha = 1
