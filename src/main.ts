@@ -1,4 +1,5 @@
 import { Sfx, type Bed } from './audio'
+import { Breach, probeHost } from './breach'
 import { createCrt, curve, type Crt } from './crt'
 import { Finale } from './finale'
 import { cleanName, loadBoard, saveRecord, type Entry } from './leaderboard'
@@ -9,6 +10,7 @@ import { createGame, startRun, update, visual, type Dir, type Game } from './sim
 import { LOSE_LINE, SCENES, StoryPlayer, VOICES, type SceneId } from './story'
 import { theme } from './palette'
 import { tileSize } from './render'
+import { drawFacing, pacFrame } from './sprites'
 import './style.css'
 
 type Stage =
@@ -18,6 +20,7 @@ type Stage =
   | { kind: 'entry'; escaped: boolean; level: number }
   | { kind: 'board'; rank: number }
   | { kind: 'briefing' }
+  | { kind: 'breach'; breach: Breach; then: () => void }
 
 const game: Game = createGame()
 const audio = new Sfx()
@@ -155,13 +158,82 @@ function startFinale(): void {
   }
 }
 
+const TAKEOVER_TITLES = ['pac ram is in your cpu', 'pac ram is in your gpu', 'pac ram ate your firewall', 'pac ram is in your browser', 'pac ram is everywhere']
+let favicon: HTMLLinkElement | null = null
+
+// PAC-7 leaves the game: the tab title, the tab icon and the address bar.
+function infestPage(): void {
+  try {
+    history.replaceState(null, '', `${location.pathname}${location.search}#pac-7-was-here`)
+  } catch {
+    // some embeds refuse; the rest still happens
+  }
+  const art = pacFrame(1)
+  if (art && !favicon) {
+    const c = document.createElement('canvas')
+    c.width = 64
+    c.height = 64
+    const fx = c.getContext('2d')!
+    fx.imageSmoothingEnabled = false
+    fx.fillStyle = '#ff2d6f'
+    fx.beginPath()
+    fx.arc(32, 32, 31, 0, Math.PI * 2)
+    fx.fill()
+    drawFacing(fx, art, 32, 32, 52, 'right', 'right')
+    favicon = document.createElement('link')
+    favicon.rel = 'icon'
+    favicon.href = c.toDataURL('image/png')
+    document.head.appendChild(favicon)
+  }
+}
+
+function cleanPage(): void {
+  document.title = 'PAC RAM'
+  favicon?.remove()
+  favicon = null
+  canvas.style.cursor = 'default'
+  if (location.hash) {
+    try {
+      history.replaceState(null, '', `${location.pathname}${location.search}`)
+    } catch {
+      // ignore
+    }
+  }
+}
+
+function breach(kind: 'hack' | 'spread', then: () => void): void {
+  stage = {
+    kind: 'breach',
+    then,
+    breach: new Breach(kind, probeHost(), {
+      popup: () => audio.play('popup', 0.55, 0.9 + Math.random() * 0.2),
+      chomp: () => audio.chomp(),
+      glitch: () => {
+        audio.play('glitch', 0.9)
+        navigator.vibrate?.(40)
+      },
+      type: () => audio.play('type', 0.3, 0.9 + Math.random() * 0.3),
+      root: () => {
+        audio.play('rootaccess', 1)
+        navigator.vibrate?.([80, 40, 200])
+      },
+    }),
+  }
+}
+
 function finishFinale(): void {
-  document.title = 'pac ram is everywhere'
   flat = 1
   power = 1
-  tell('ending', (answer) => {
-    tell(answer === 0 ? 'consent' : 'refusal', () => {
-      openEntry(true, LEVELS.length)
+  infestPage()
+  canvas.style.cursor = 'none'
+  breach('hack', () => {
+    canvas.style.cursor = 'default'
+    document.title = 'pac ram is everywhere'
+    tell('ending', (answer) => {
+      tell(answer === 0 ? 'consent' : 'refusal', () => {
+        flat = 0
+        breach('spread', () => openEntry(true, LEVELS.length))
+      })
     })
   })
 }
@@ -197,7 +269,7 @@ function saveEntry(skip: boolean): void {
 }
 
 function runAgain(): void {
-  document.title = 'PAC RAM'
+  cleanPage()
   told = new Set()
   startRun(game)
   play()
@@ -596,6 +668,11 @@ function frame(now: number): void {
     const p = stage.player
     p.update(dt)
     if (p.done) stage.then(p.answer < 0 ? 0 : p.answer)
+  } else if (stage.kind === 'breach') {
+    const b = stage.breach
+    b.update(dt, currentView())
+    if (b.kind === 'hack') document.title = TAKEOVER_TITLES[Math.floor(b.t * 2) % TAKEOVER_TITLES.length]!
+    if (b.done) stage.then()
   } else if (stage.kind === 'finale') {
     const f = stage.finale
     f.update(dt, lastDir)
@@ -620,10 +697,13 @@ function frame(now: number): void {
     hits = drawLeaderboard(ctx, v, records, stage.rank)
   } else if (stage.kind === 'briefing') {
     hits = drawBriefing(ctx, v)
+  } else if (stage.kind === 'breach') {
+    stage.breach.draw(ctx, v)
+    hits = []
   } else hits = drawScreen(ctx, game, v)
 
   const sinceBoot = booted ? (now - bootEndedAt) / 1000 : 1
-  const finaleGlitch = stage.kind === 'finale' ? stage.finale.glitch : 0
+  const finaleGlitch = stage.kind === 'finale' ? stage.finale.glitch : stage.kind === 'breach' ? stage.breach.glitch : 0
   const bootPower = calm.matches ? 1 : Math.min(1, (now - loadedAt) / 600)
   crt?.draw(source, {
     time: now / 1000,
@@ -632,18 +712,20 @@ function frame(now: number): void {
     glitch: Math.min(1, game.shake / 14 + (game.mode === 'dying' ? 0.2 : 0) + Math.max(0, 0.6 - sinceBoot) + glitchPulse + finaleGlitch),
     flash: stage.kind === 'game' ? game.flash : 0,
     power: Math.min(bootPower, power),
-    motion: calm.matches || flat > 0.5 ? 0 : 1,
+    motion: calm.matches ? 0 : 1,
     cell: Math.max(2, view.out * Math.min(3, Math.max(1.5, Math.min(view.w, view.h) / 300))),
     flat,
   })
 
   let bed: Bed = 'menu'
   if (stage.kind === 'finale') bed = 'finale'
+  else if (stage.kind === 'breach') bed = stage.breach.kind === 'spread' ? 'ascend' : 'quiet'
   else if (stage.kind === 'story' && flat > 0.5) bed = 'quiet'
   else if (stage.kind === 'game' && (game.mode === 'play' || game.mode === 'ready' || game.mode === 'cleared' || game.mode === 'dying' || game.mode === 'pause'))
     bed = game.levelIndex === 0 ? 'play' : game.levelIndex === 1 ? 'play2' : 'play3'
   const hunting = stage.kind === 'game' && game.mode === 'play' && game.ghosts.some((g) => g.state === 'chase')
-  audio.frame(dt, { bed, hunting, surge: game.surge > 0 })
+  const streaming = stage.kind === 'breach' && stage.breach.kind === 'hack' && stage.breach.t < 13.4
+  audio.frame(dt, { bed, hunting, surge: game.surge > 0, stream: streaming })
   if (events) {
     if (events.ateRam) audio.ram()
     if (events.surgeStarted) audio.surge()

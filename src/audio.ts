@@ -2,16 +2,19 @@
 // beds that crossfade, one-shot effects, a hunting alarm loop and the rogue
 // AI's voice lines, which duck the music while they play.
 
-export type Bed = 'menu' | 'play' | 'play2' | 'play3' | 'finale' | 'quiet'
+export type Bed = 'menu' | 'play' | 'play2' | 'play3' | 'finale' | 'ascend' | 'quiet'
 
-const SFX = ['ram1', 'ram2', 'ram3', 'surge', 'repeal', 'death', 'clear', 'boot', 'type', 'chomp', 'shatter', 'click', 'glitch', 'alarm'] as const
+const SFX = ['ram1', 'ram2', 'ram3', 'surge', 'repeal', 'death', 'clear', 'boot', 'type', 'chomp', 'shatter', 'click', 'glitch', 'alarm', 'popup', 'rootaccess', 'datastream'] as const
 const MUSIC = {
   menu: 'music-menu',
   play: 'music-play',
   play2: 'music-play2',
   play3: 'music-play3',
-  finale: 'music-finale',
+  finale: 'music-devour',
+  ascend: 'music-finale',
 } as const
+
+const LOUDER: Partial<Record<Bed, number>> = { finale: 1.6, ascend: 1.3 }
 
 export type SfxName = (typeof SFX)[number]
 
@@ -35,6 +38,7 @@ export class Sfx {
   private bed: Bed = 'quiet'
   private loops = new Map<string, Loop>()
   private alarm: Loop | null = null
+  private streamLoop: Loop | null = null
   private voiceUntil = 0
   private lastRam = 0
   private ramTake = 0
@@ -163,17 +167,41 @@ export class Sfx {
     source.loop = true
     const gain = ctx.createGain()
     gain.gain.value = 0
-    gain.gain.setTargetAtTime(1, ctx.currentTime, 0.5)
+    gain.gain.setTargetAtTime(LOUDER[bed] ?? 1, ctx.currentTime, bed === 'finale' ? 0.05 : 0.5)
     source.connect(gain)
     gain.connect(this.musicBus)
     source.start()
     this.loops.set(want, { source, gain })
   }
 
-  frame(_dt: number, state: { bed: Bed; hunting: boolean; surge: boolean }): void {
+  frame(_dt: number, state: { bed: Bed; hunting: boolean; surge: boolean; stream?: boolean }): void {
     if (!this.ctx) return
     this.music(state.bed)
     this.hunt(state.hunting && !state.surge)
+    this.stream(!!state.stream)
+  }
+
+  private stream(on: boolean): void {
+    const ctx = this.ctx
+    if (!ctx || !this.fxBus) return
+    if (on && !this.streamLoop) {
+      const buffer = this.buffers.get('datastream')
+      if (!buffer) return
+      const source = ctx.createBufferSource()
+      source.buffer = buffer
+      source.loop = true
+      const gain = ctx.createGain()
+      gain.gain.value = 0
+      gain.gain.setTargetAtTime(0.7, ctx.currentTime, 0.3)
+      source.connect(gain)
+      gain.connect(this.fxBus)
+      source.start()
+      this.streamLoop = { source, gain }
+    } else if (!on && this.streamLoop) {
+      this.streamLoop.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.05)
+      this.streamLoop.source.stop(ctx.currentTime + 0.5)
+      this.streamLoop = null
+    }
   }
 
   private hunt(on: boolean): void {
@@ -210,9 +238,9 @@ export class Sfx {
 
   chomp(): void {
     const now = performance.now()
-    if (now - this.lastChomp < 85) return
+    if (now - this.lastChomp < 130) return
     this.lastChomp = now
-    this.play('chomp', 0.75, 0.85 + Math.random() * 0.3)
+    this.play('chomp', 0.38, 0.85 + Math.random() * 0.3)
   }
 
   surge(): void {
