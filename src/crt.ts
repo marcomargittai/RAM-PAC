@@ -12,6 +12,7 @@ export interface CrtParams {
   power: number
   motion: number
   cell: number
+  flat: number
 }
 
 export interface Crt {
@@ -96,6 +97,7 @@ uniform float u_flash;
 uniform float u_power;
 uniform float u_motion;
 uniform float u_cell;
+uniform float u_flat;
 
 float hash(vec2 p) {
   return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
@@ -112,7 +114,7 @@ vec3 tap(vec2 uv) {
 }
 
 void main() {
-  vec2 uv = curve(v_uv);
+  vec2 uv = mix(curve(v_uv), v_uv, u_flat);
 
   float squeeze = clamp(u_power * 2.2 - 0.9, 0.004, 1.0);
   float widen = clamp(u_power * 3.0, 0.02, 1.0);
@@ -130,7 +132,7 @@ void main() {
   uv.x += sin(uv.y * 700.0 + u_time * 30.0) * 0.0006 * (u_glitch + 0.25 * u_motion);
 
   vec2 px = 1.0 / u_src;
-  float split = (1.2 + u_surge * 1.4 + u_glitch * 6.0) * px.x;
+  float split = (0.7 + u_surge * 1.2 + u_glitch * 6.0) * px.x * (1.0 - u_flat);
   vec3 sharp;
   sharp.r = tap(uv + vec2(split, 0.0)).r;
   sharp.g = tap(uv).g;
@@ -138,33 +140,33 @@ void main() {
 
   vec3 soft = tap(uv + px * vec2(1.5, 0.0)) + tap(uv - px * vec2(1.5, 0.0))
             + tap(uv + px * vec2(0.0, 1.5)) + tap(uv - px * vec2(0.0, 1.5));
-  vec3 base = mix(sharp, soft * 0.25, 0.4);
+  vec3 base = mix(sharp, soft * 0.25, 0.18 * (1.0 - u_flat));
 
   vec3 smear = tap(uv - px * vec2(2.0, 0.0)) * 0.5
              + tap(uv - px * vec2(5.0, 0.0)) * 0.3
              + tap(uv - px * vec2(9.0, 0.0)) * 0.18;
-  base += smear * 0.28;
+  base += smear * 0.16 * (1.0 - u_flat);
 
-  vec3 glow = texture2D(u_bloom, uv).rgb;
+  vec3 glow = texture2D(u_bloom, uv).rgb * (1.0 - u_flat);
 
   vec2 cell = gl_FragCoord.xy / u_cell;
   vec2 f = fract(cell + vec2(mod(floor(cell.y), 2.0) * 0.5, 0.0)) - 0.5;
   float dotMask = smoothstep(0.52, 0.18, length(f));
-  float mask = mix(0.32, 1.45, dotMask);
+  float mask = mix(mix(0.5, 1.3, dotMask), 1.0, u_flat);
 
   vec3 col = base * mask + glow * (1.35 + u_surge * 0.5) * (0.55 + 0.45 * dotMask);
 
   float roll = 1.0 - fract(u_time * 0.07);
   col += vec3(0.02, 0.04, 0.07) * smoothstep(0.08, 0.0, abs(uv.y - roll)) * u_motion;
 
-  col += vec3(0.002, 0.006, 0.016);
-  col += (hash(uv * u_src + u_time * 61.0) - 0.5) * (0.05 + u_glitch * 0.14);
+  col += vec3(0.002, 0.006, 0.016) * (1.0 - u_flat);
+  col += (hash(uv * u_src + u_time * 61.0) - 0.5) * (0.05 * (1.0 - u_flat) + u_glitch * 0.14);
   col *= 1.0 - 0.03 * u_motion * sin(u_time * 110.0);
   col += vec3(0.8, 0.92, 1.0) * u_flash * 0.12;
   col *= 1.0 + (1.0 - u_power) * 3.0;
 
   vec2 v = uv * (1.0 - uv);
-  col *= clamp(pow(v.x * v.y * 22.0, 0.32), 0.0, 1.0);
+  col *= mix(clamp(pow(v.x * v.y * 22.0, 0.32), 0.0, 1.0), 1.0, u_flat);
   vec2 edge = smoothstep(vec2(0.0), vec2(0.006), uv) * smoothstep(vec2(0.0), vec2(0.006), 1.0 - uv);
   col *= edge.x * edge.y;
 
@@ -273,6 +275,7 @@ export function createCrt(): Crt | null {
     power: u(tube, 'u_power'),
     motion: u(tube, 'u_motion'),
     cell: u(tube, 'u_cell'),
+    flat: u(tube, 'u_flat'),
   }
 
   function pass(prog: WebGLProgram, out: Target | null, w: number, h: number): void {
@@ -343,6 +346,7 @@ export function createCrt(): Crt | null {
       gl.uniform1f(T.power, params.power)
       gl.uniform1f(T.motion, params.motion)
       gl.uniform1f(T.cell, params.cell)
+      gl.uniform1f(T.flat, params.flat)
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4)
 
       const swap = read

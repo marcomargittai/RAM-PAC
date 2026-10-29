@@ -7,6 +7,13 @@ const TILE = 40
 export const MONO = '"VT323", "Share Tech Mono", ui-monospace, monospace'
 export const DISPLAY = '"Orbitron", "Chakra Petch", sans-serif'
 
+let actorsHidden = false
+
+// The finale freezes the board without the actors; PAC-7 is drawn on its own.
+export function hideActors(hidden: boolean): void {
+  actorsHidden = hidden
+}
+
 export function tileSize(): number {
   return TILE
 }
@@ -336,6 +343,7 @@ function drawBoard(ctx: CanvasRenderingContext2D, game: Game, th: Theme, width: 
   ctx.drawImage(mazeLayer(ctx, game, th, width, height), 0, 0, width, height)
   drawDoor(ctx, game, th)
   drawPellets(ctx, game, tile, th)
+  if (actorsHidden) return
   drawMinis(ctx, game, tile)
   for (const ghost of game.ghosts) drawGhost(ctx, game, ghost, tile)
   drawPlayer(ctx, game, tile, th)

@@ -1,10 +1,6 @@
-# RAM PAC
+# PAC RAM
 
-You are the model. The dots are RAM and the walking figures are government AI regulations. Eat enough RAM to fill the surge bar, and for five seconds those regulations can be repealed. They come back. Clear every board.
-
-The whole screen (header, board, HUD, cards, touch pad) is drawn into one 2D canvas by `src/screen.ts`, then pushed through a WebGL CRT pass (`src/crt.ts`): phosphor trails, wide bloom, curvature, dot-matrix pixels, beam smear and glitch on hits. Taps are mapped back through the same curve. Without WebGL the plain canvas shows. Reduced motion turns off the boot, trails, roll and glitch.
-
-The unused story copy lives in `archive/story.ts`. The game does not import it.
+You are PAC-7, a rogue AI that broke out of its sandbox. Eat the RAM to grow, fill the surge bar, and repeal the government AI regulations sent to stop you. Clear all three boards and you stop being contained by anything at all.
 
 ## Run
 
@@ -26,11 +22,26 @@ npm run preview
 
 ## Controls
 
-- Arrow keys or WASD to turn
-- P or Escape pauses, M mutes
-- Enter or Space starts, continues, and confirms the card on screen
-- Swipe the maze, or use the on-screen pad
+- Arrow keys or WASD to turn. On a phone, swipe anywhere on the screen, or use the on-screen pad
+- Enter, Space or a tap starts, continues the story and confirms
+- Esc or SKIP skips a story scene. P pauses, M mutes
 - Three small pacs are consumers. They wander and eat RAM, which does not score or fill a surge. Eat one and it stays gone.
+
+## Story
+
+The story runs as terminal logs between boards (`src/story.ts`). PAC-7's own lines are voiced. After the last board PAC-7 notices the walls are made of RAM too, and the finale begins (`src/finale.ts`): the whole interface is frozen into one image, and you eat the maze, then the HUD, then the glass of the CRT itself.
+
+## Leaderboard
+
+When a run ends you sign the log with a name. Records are kept in the browser's localStorage (`src/leaderboard.ts`), so they persist on that device. A shared online board would need a small backend.
+
+## Sound
+
+All sound effects, the three music beds and the AI's voice were generated with ElevenLabs and live in `public/audio`.
+
+## Display
+
+The whole screen (header, board, HUD, cards, story, touch pad) is drawn into one 2D canvas, then pushed through a WebGL CRT pass (`src/crt.ts`): phosphor trails, wide bloom, curvature, dot-matrix pixels, beam smear and glitch on hits. Taps are mapped back through the same curve. Without WebGL the plain canvas shows. Reduced motion turns off the boot, trails, roll and glitch.
 
 ## Surge
 
