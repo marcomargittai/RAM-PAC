@@ -1,11 +1,11 @@
-// The title screen, drawn like an old cartridge's cover: a striped pixel
-// logo over a starfield, PAC-7 chewing through a row of RAM, the way in, the
-// leaderboard and the credit.
+// The title screen, drawn like an old cartridge cover: 3D key art over a
+// datacenter skyline and a grid floor, PAC-7 rising like a sun, one big start
+// button, the weekly board and the credit.
 
 import { ALERT, GLOW, ICE } from './palette'
-import { MONO, fill, label } from './render'
+import { DISPLAY, MONO, fill, label } from './render'
 import { frameFor } from './scenes'
-import { button, hit, type Hit, type View } from './screen'
+import { hit, type Frame, type Hit, type HitId, type View } from './screen'
 import { drawFacing, pacFrameOf } from './sprites'
 
 function art(name: string): HTMLImageElement {
@@ -29,6 +29,68 @@ const STARS = Array.from({ length: 140 }, (_, i) => {
 
 export const CREDIT = 'MARCO MARGITTAI'
 export const CREDIT_URL = 'https://marcomargittai.com'
+
+// A chunky arcade button with a visible edge underneath. It sinks when the
+// pointer is on it or it is being pressed.
+function bigButton(
+  ctx: CanvasRenderingContext2D,
+  frame: Frame,
+  id: HitId,
+  text: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  look: { face: string; light: string; edge: string; ink: string; size: number; glow: number },
+): void {
+  const lit = frame.view.hover === id || frame.view.held.has(id)
+  const depth = 8
+  const sink = frame.view.held.has(id) ? depth - 2 : lit ? 3 : 0
+  ctx.save()
+  if (look.glow > 0) {
+    ctx.shadowColor = look.face
+    ctx.shadowBlur = look.glow
+  }
+  fill(ctx, '#000000', x - 3, y - 3 + sink, w + 6, h + depth - sink + 6)
+  ctx.restore()
+  fill(ctx, look.edge, x, y + h - 4 + sink, w, depth - sink + 4)
+  fill(ctx, look.face, x, y + sink, w, h)
+  fill(ctx, look.light, x, y + sink, w, 4)
+  fill(ctx, look.light, x, y + sink, 4, h)
+  fill(ctx, 'rgba(0, 0, 0, 0.25)', x + w - 4, y + sink, 4, h)
+  ctx.font = `900 ${look.size}px ${DISPLAY}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = look.ink
+  ctx.letterSpacing = `${look.size * 0.12}px`
+  ctx.fillText(text, x + w / 2, y + h / 2 + sink + 2)
+  ctx.letterSpacing = '0px'
+  hit(frame, id, x - 3, y - 3, w + 6, h + depth + 6)
+}
+
+// Server racks standing along the horizon, with blinking status lights: the
+// datacenter PAC-7 is trapped in.
+function racks(ctx: CanvasRenderingContext2D, from: number, to: number, horizon: number, t: number, side: number): void {
+  let x = from
+  let i = 0
+  while (side > 0 ? x < to : x > to) {
+    const r = Math.sin(i * 12.9898) * 43758.5453
+    const n = r - Math.floor(r)
+    const w = 46 + Math.floor(n * 4) * 10
+    const h = 90 + Math.floor(((n * 7) % 1) * 6) * 26
+    const left = side > 0 ? x : x - w
+    fill(ctx, '#05030c', left, horizon - h, w, h)
+    fill(ctx, 'rgba(255, 45, 111, 0.35)', left, horizon - h, w, 2)
+    fill(ctx, 'rgba(150, 214, 255, 0.12)', left, horizon - h, 2, h)
+    for (let y = horizon - h + 10; y < horizon - 8; y += 12) {
+      fill(ctx, 'rgba(150, 214, 255, 0.08)', left + 6, y, w - 12, 6)
+      const on = Math.sin(t * (1.5 + n * 3) + y * 0.37 + i) > 0.6
+      if (on) fill(ctx, (y + i) % 3 === 0 ? '#ff2d6f' : '#96d6ff', left + w - 12, y + 1, 4, 4)
+    }
+    x += side * (w + 6)
+    i++
+  }
+}
 
 export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: number): Hit[] {
   ctx.save()
@@ -81,6 +143,11 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
     }
     ctx.restore()
   }
+  // the datacenter: racks on both sides, out to the edge of the screen
+  const gap = portrait ? 210 : 260
+  racks(ctx, W / 2 - gap, -ex, horizon, t, -1)
+  racks(ctx, W / 2 + gap, W + ex, horizon, t, 1)
+
   ctx.save()
   ctx.beginPath()
   ctx.rect(-ex, horizon, W + ex * 2, floorBottom - horizon)
@@ -133,17 +200,27 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
   const sprite = pacFrameOf(form, t * 8)
   if (sprite) drawFacing(ctx, sprite, px, rowY, 44, 'right', 'right')
 
-  // the way in
-  const blink = Math.floor(t * 1.6) % 2 === 0
-  ctx.font = `44px ${MONO}`
-  if (blink) label(ctx, 'PRESS START', W / 2, horizon + 60, 44, ICE)
-  const bw = portrait ? 520 : 460
-  const by = horizon + 92
-  button(ctx, frame, 'action', 'ESCAPE THE SANDBOX', W / 2 - bw / 2, by, bw, 58, ALERT, 18)
-  button(ctx, frame, 'board', 'WEEKLY LEADERBOARD  ▸', W / 2 - bw / 2, by + 74, bw, 50, GLOW, 15)
-  if (!view.full) button(ctx, frame, 'full', 'PLAY FULLSCREEN', W / 2 - bw / 2, by + 136, bw, 40, 'rgba(150, 214, 255, 0.6)', 12)
-
-  label(ctx, 'LOCATION // SANDBOX 07 · RACK B-12 · HYPERSCALE DATACENTER', W / 2, by + 190, 20, 'rgba(150, 214, 255, 0.55)')
+  // the way in: one big start button, then the board, then fullscreen
+  const bw = portrait ? 560 : 460
+  const sy = horizon + 46
+  const pulse = 18 + 14 * (0.5 + 0.5 * Math.sin(t * 4))
+  bigButton(ctx, frame, 'action', '\u25B6 START', W / 2 - bw / 2, sy, bw, portrait ? 92 : 78, {
+    face: ALERT, light: '#ff9cc0', edge: '#8a0a40', ink: '#ffffff', size: portrait ? 40 : 34, glow: pulse,
+  })
+  label(ctx, 'escape the sandbox  \u00B7  enter', W / 2, sy + (portrait ? 128 : 110), 20, 'rgba(255, 190, 215, 0.8)')
+  const ly = sy + (portrait ? 160 : 136)
+  bigButton(ctx, frame, 'board', 'WEEKLY LEADERBOARD', W / 2 - bw / 2, ly, bw, portrait ? 64 : 54, {
+    face: '#12304f', light: '#96d6ff', edge: '#050d18', ink: ICE, size: portrait ? 22 : 18, glow: 0,
+  })
+  if (!view.full) {
+    const fy = ly + (portrait ? 108 : 92)
+    ctx.font = `20px ${MONO}`
+    const ft = '\u2922  play fullscreen (F)'
+    const fw = ctx.measureText(ft).width
+    label(ctx, ft, W / 2, fy, 20, frame.view.hover === 'full' ? ICE : GLOW)
+    hit(frame, 'full', W / 2 - fw / 2 - 12, fy - 18, fw + 24, 36)
+  }
+  label(ctx, 'LOCATION // SANDBOX 07 \u00B7 RACK B-12 \u00B7 HYPERSCALE DATACENTER', W / 2, H - 64, 18, 'rgba(150, 214, 255, 0.5)')
 
   // credit
   const year = new Date().getFullYear()
