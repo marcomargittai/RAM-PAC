@@ -2,10 +2,16 @@
 // beds that crossfade, one-shot effects, a hunting alarm loop and the rogue
 // AI's voice lines, which duck the music while they play.
 
-export type Bed = 'menu' | 'play' | 'finale' | 'quiet'
+export type Bed = 'menu' | 'play' | 'play2' | 'play3' | 'finale' | 'quiet'
 
-const SFX = ['ram', 'surge', 'repeal', 'death', 'clear', 'boot', 'type', 'chomp', 'shatter', 'click', 'glitch', 'alarm'] as const
-const MUSIC = { menu: 'music-menu', play: 'music-play', finale: 'music-finale' } as const
+const SFX = ['ram1', 'ram2', 'ram3', 'surge', 'repeal', 'death', 'clear', 'boot', 'type', 'chomp', 'shatter', 'click', 'glitch', 'alarm'] as const
+const MUSIC = {
+  menu: 'music-menu',
+  play: 'music-play',
+  play2: 'music-play2',
+  play3: 'music-play3',
+  finale: 'music-finale',
+} as const
 
 export type SfxName = (typeof SFX)[number]
 
@@ -31,6 +37,7 @@ export class Sfx {
   private alarm: Loop | null = null
   private voiceUntil = 0
   private lastRam = 0
+  private ramTake = 0
   private lastChomp = 0
   muted = false
 
@@ -194,9 +201,11 @@ export class Sfx {
 
   ram(): void {
     const now = performance.now()
-    if (now - this.lastRam < 45) return
+    if (now - this.lastRam < 60) return
     this.lastRam = now
-    this.play('ram', 0.5, 0.94 + Math.random() * 0.14)
+    this.ramTake = (this.ramTake + 1) % 3
+    const take = (['ram1', 'ram2', 'ram3'] as const)[this.ramTake]!
+    this.play(take, 0.2, 0.97 + Math.random() * 0.06)
   }
 
   chomp(): void {

@@ -411,6 +411,10 @@ function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, tile: number, th:
   brackets(ctx, game.surge > 0 ? th.line : ICE, x - lock, y - lock, lock * 2, lock * 2, 5, 1)
   ctx.globalAlpha = 1
   drawPacAt(ctx, x, y, size, game.player.dir, open)
+  if (game.mode === 'ready' || (game.mode === 'play' && game.intro > 0)) {
+    const bob = Math.round(Math.sin(game.time * 6) * 2)
+    tag(ctx, 'YOU \u00B7 AI', x + 2, y + size / 2 + 16 + bob, 18, 'rgba(1, 4, 11, 0.9)', ICE, ALERT)
+  }
 }
 
 function drawMinis(ctx: CanvasRenderingContext2D, game: Game, tile: number): void {

@@ -55,7 +55,7 @@ const WALLS = [
 export const LEVELS: LevelDef[] = [
   {
     name: 'Public Comment',
-    blurb: 'Eat RAM until the surge bar fills.',
+    blurb: 'Eat all the RAM. Dodge 2 AI laws.',
     rows: [...WALLS],
     laws: 2,
     playerSpeed: 5.5,
@@ -69,7 +69,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     name: 'Committee Markup',
-    blurb: 'Three regulations. Fill the bar to repeal them.',
+    blurb: 'Eat all the RAM. Dodge 3 AI laws.',
     rows: [...WALLS],
     laws: 3,
     playerSpeed: 5.75,
@@ -83,7 +83,7 @@ export const LEVELS: LevelDef[] = [
   },
   {
     name: 'Final Regulation',
-    blurb: 'Four regulations. Fill the bar. Clear the board.',
+    blurb: 'Eat all the RAM. Dodge 4 AI laws.',
     rows: [...WALLS],
     laws: 4,
     playerSpeed: 6.05,
