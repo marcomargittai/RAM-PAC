@@ -1,3 +1,4 @@
+import { track } from './analytics'
 import { Sfx, type Bed } from './audio'
 import { createCrt, curve, type Crt } from './crt'
 import { Finale } from './finale'
@@ -110,6 +111,7 @@ function keep(entry: Entry): number {
     .then((id) => (id ? submit(entry, id) : null))
     .then((place) => {
       run.rank = place
+      track('score', { score: entry.score, rank: place, escaped: entry.escaped }, entry.level - 1)
       refreshBoard()
     })
   return rank
@@ -117,6 +119,7 @@ function keep(entry: Entry): number {
 
 function share(): void {
   if (!lastRun) return
+  track('share', { score: lastRun.entry.score })
   void shareRun(lastRun.entry, lastRun.rank).then((how) => {
     if (how === 'saved') showToast('Score card saved and link copied. Post it, tag a friend.', 5)
   })
@@ -225,6 +228,7 @@ function play(): void {
 
 function beginRun(): void {
   runStartedAt = performance.now()
+  track('run', { challenge: Boolean(challenge) })
   ticketRun()
   if (!seenPrologue) {
     seenPrologue = true
@@ -311,6 +315,7 @@ function cleanPage(): void {
 }
 
 function finishFinale(): void {
+  track('escaped', { score: game.score })
   flat = 1
   power = 1
   stage = {
@@ -336,6 +341,7 @@ function finishFinale(): void {
 function saveTakeover(anonymous: boolean): void {
   if (stage.kind !== 'takeover' || !stage.tk.nameReady) return
   const name = anonymous ? '' : safeName(cleanName(entryName))
+  track('named', { anonymous })
   keep({ name: name || 'ANONYMOUS', score: game.score, level: LEVELS.length, escaped: true, at: Date.now() })
   nameInput.blur()
   nameFocused = false
@@ -378,6 +384,7 @@ function focusName(): void {
 function saveEntry(skip: boolean): void {
   if (stage.kind !== 'entry') return
   let mine: Entry | null = null
+  track(skip ? 'entry_skip' : 'named', { score: game.score }, stage.level - 1)
   if (!skip) {
     mine = {
       name: safeName(cleanName(entryName)) || 'ANON',
@@ -498,6 +505,7 @@ function toggleMute(): void {
 function press(id: HitId): void {
   audio.unlock()
   audio.play('click', 0.5)
+  if (id === 'board' || id === 'menu' || id === 'full' || id === 'mute' || id === 'credit' || id === 'skip') track('click', { id })
   if (id === 'pause') pressPause()
   else if (id === 'mute') toggleMute()
   else if (id === 'full') toggleFullscreen()
@@ -597,6 +605,7 @@ function enterFullscreen(): void {
 // From the pause card back to the title screen; the run is abandoned.
 function quitToTitle(): void {
   if (stage.kind !== 'game') return
+  track('quit', { score: game.score }, game.levelIndex)
   cleanPage()
   told = new Set()
   grown = 0
@@ -948,6 +957,33 @@ function cursorFor(): string {
 }
 
 let last = performance.now()
+// What analytics last saw, so each change is reported once.
+const seen = { stage: '', mode: '', board: -1, runAt: 0 }
+
+function observe(): void {
+  const where = stage.kind === 'story' ? `story:${stage.id}` : stage.kind
+  if (where !== seen.stage) {
+    seen.stage = where
+    if (where !== 'game') track('stage', { to: where }, game.levelIndex)
+  }
+  if (stage.kind !== 'game' || game.mode === seen.mode) return
+  const mode = game.mode
+  seen.mode = mode
+  const at = game.levelIndex
+  if (mode === 'title') seen.board = -1
+  else if (mode === 'ready' && at !== seen.board) {
+    seen.board = at
+    if (at === 0) seen.runAt = performance.now()
+    track('board', { score: game.score }, at)
+  } else if (mode === 'dying') {
+    const by = game.ghosts.find((ghost) => ghost.name === game.caughtName)
+    track('death', { by: by?.tag ?? '?', score: game.score, lives: game.lives }, at)
+  } else if (mode === 'cleared') {
+    track('cleared', { score: game.score, secs: Math.round((performance.now() - seen.runAt) / 1000) }, at)
+  } else if (mode === 'lose') track('gameover', { score: game.score }, at)
+  else if (mode === 'pause') track('pause', undefined, at)
+}
+
 function frame(now: number): void {
   const dt = Math.min(0.05, (now - last) / 1000)
   last = now
@@ -959,18 +995,23 @@ function frame(now: number): void {
   }
   startEdge = false
   pauseEdge = false
+  observe()
   glitchPulse = Math.max(0, glitchPulse - dt * 2.5)
 
   if (stage.kind === 'story') {
     const p = stage.player
     p.update(dt)
-    if (p.done) stage.then(p.answer < 0 ? 0 : p.answer)
+    if (p.done) {
+      if (p.answer >= 0) track('choice', { q: stage.id, a: p.answer })
+      stage.then(p.answer < 0 ? 0 : p.answer)
+    }
   } else if (stage.kind === 'takeover') {
     const tk = stage.tk
     tk.update(dt, window.innerWidth, window.innerHeight)
     if (tk.phase === 'chaos' || tk.phase === 'crash') document.title = TAKEOVER_TITLES[Math.floor(tk.t * 2) % TAKEOVER_TITLES.length]!
     if (tk.phase === 'spread') document.title = 'pac ram is everywhere'
     // the name prompt can be reached from a click, a key or the clock
+    if (tk.phase !== lastTkPhase) track('tk', { phase: tk.phase })
     if (tk.phase === 'name' && lastTkPhase !== 'name') {
       entryName = ''
       focusName()

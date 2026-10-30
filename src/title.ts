@@ -242,6 +242,7 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
   ctx.font = `${cs}px ${MONO}`
   const cw = ctx.measureText(credit).width
   hit(frame, 'credit', W / 2 - cw / 2 - 10, H - 46, cw + 20, 36)
+  label(ctx, 'An independent game. Not affiliated with or endorsed by Bandai Namco.', W / 2, H - 9, portrait ? 16 : 14, 'rgba(150, 214, 255, 0.55)')
   ctx.restore()
   return frame.hits
 }

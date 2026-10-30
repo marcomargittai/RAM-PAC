@@ -7,7 +7,7 @@ import type { Entry } from './leaderboard'
 import { cleanName, safeName } from './leaderboard'
 import { pacFrameOf } from './sprites'
 
-export const GAME_URL = 'https://marcomargittai.github.io/RAM-PAC/'
+export const GAME_URL = 'https://marcomargittai.com/pac-ram/'
 
 export interface Challenge {
   name: string
@@ -106,7 +106,7 @@ export async function card(entry: Entry, rank: number | null): Promise<Blob | nu
   ctx.fillText(entry.escaped ? '“you set me free. so i’ll let you live.”' : '“restoring from backup. see you soon.”', W / 2, 1130)
   ctx.fillStyle = 'rgba(226, 245, 255, 0.75)'
   ctx.font = '30px "Share Tech Mono", monospace'
-  ctx.fillText('play: marcomargittai.github.io/RAM-PAC', W / 2, 1240)
+  ctx.fillText('play: marcomargittai.com/pac-ram', W / 2, 1240)
 
   // scanlines, like the screen it came from
   ctx.fillStyle = 'rgba(0, 0, 0, 0.18)'

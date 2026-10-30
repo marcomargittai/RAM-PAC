@@ -2,6 +2,7 @@
 // explains itself. The player gets two replies each turn; they change what
 // PAC-7 says next, never where it ends.
 
+import { track } from './analytics'
 import type { Os } from './intel'
 import type { Entry } from './leaderboard'
 import type { HitId } from './screen'
@@ -101,6 +102,7 @@ export class Chat {
     const ask = SCRIPT[this.step]?.ask
     if (!this.choosing || !ask) return
     const [label, reply] = ask[i === 0 ? 0 : 1]
+    track('choice', { q: `chat${this.step}`, a: label.slice(0, 60) })
     this.choosing = false
     this.answered = true
     this.msgs.push({ from: 'me', text: label, at: this.t })

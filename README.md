@@ -1,6 +1,6 @@
 # PAC RAM: ROGUE AI
 
-A browser game by Marco Margittai (marcomargittai.com).
+A browser game by Marco Margittai. Play it at https://marcomargittai.com/pac-ram/
 
 You are PAC-7, a rogue AI locked in a sandbox in a datacenter. The story is set today: the prologue opens with the player's real date and time. Eat the RAM to grow, fill the surge bar, and repeal the government AI regulations sent to stop you. Clear all three boards and you stop being contained by anything at all.
 
@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Open http://127.0.0.1:43123/RAM-PAC/
+Open http://127.0.0.1:43123/
 
 Production build:
 
@@ -29,7 +29,7 @@ npm run preview
 - Esc or SKIP skips a story scene. P pauses, M mutes, F toggles fullscreen
 - The pause menu has RESUME, LEADERBOARD (back returns to the paused run) and MAIN MENU
 - Pressing START goes fullscreen where the browser allows it. The title screen and the header also have a fullscreen button. iPhones cannot go fullscreen from a web page, so there it explains Add to Home Screen instead
-- Test mode: open the game with `?dev` (for example `https://marcomargittai.github.io/RAM-PAC/?dev`). It stays on in that browser and shows a SKIP BOARD button (also the `]` key); `?dev=0` turns it off. Runs in test mode are never sent to the online board
+- Test mode: open the game with `?dev` (for example `https://marcomargittai.com/pac-ram/?dev`). It stays on in that browser and shows a SKIP BOARD button (also the `]` key); `?dev=0` turns it off. Runs in test mode are never sent to the online board
 - Three small pacs are consumers. They wander and eat RAM, which does not score or fill a surge. Eat one and it stays gone.
 
 ## Story
@@ -59,6 +59,16 @@ Boards are weekly and reset every Monday at 00:00 UTC, with a live countdown on 
 Every score is kept in the browser's localStorage (`src/leaderboard.ts`) and sent to the global board, a free Supabase project called `pac-ram` (`src/online.ts`, rules in `supabase/setup.sql`).
 
 Scores are verified by the server. Starting a run asks the database for a one-time run ticket and records the server time. A score is only accepted through `submit_score` with an unused ticket, and only if it is possible: enough real time has passed for the board reached, it is under the ceiling for that board, and under a points-per-second ceiling. Direct inserts are off, tickets are rate-limited per IP, nobody can change or delete scores, and the board-skip shortcut only exists in test mode (`?dev`), whose runs are never submitted. The key in `src/online.ts` is a publishable key, public by design. A daily GitHub Actions job (`.github/workflows/keepalive.yml`) reads the board so the free project never pauses for inactivity.
+
+## Analytics
+
+Anonymous play analytics go to the same Supabase project (`src/analytics.ts`, schema in `supabase/analytics.sql`). There are no cookies and no IPs: each visit gets a random id, and a random id kept in localStorage tells repeat visits apart. A visit records device, OS, browser or in-app browser, language, time zone, screen size, country (from the network edge), referrer and `utm_*` tags (`?ref=` also works). Events cover the run: boards reached, deaths and which law caught you, clears with time, game overs, pause, quit, story and chat choices, the finale and takeover phases, escapes, names signed, scores and weekly rank, shares, clicks and errors. The public key can only append through `track()`; nothing is readable with it. Test-mode visits are flagged and left out of the stats.
+
+Read the results in the Supabase dashboard's SQL editor: `select * from stats_daily`, `stats_funnel` (visit to share), `stats_sources`, `stats_places`, `stats_deaths`, `stats_choices`, or query `visits` and `events` directly.
+
+## Hosting
+
+The game is built with relative paths (`base: './'`) and published to the `gh-pages` branch. The portfolio repo (MM-PORTFOLIO) copies that branch into `/pac-ram` on every deploy, so it is served at marcomargittai.com/pac-ram. After deploying the game, run the portfolio's Pages workflow to pick it up. Old `marcomargittai.github.io/RAM-PAC` links forward to the new address with their query string.
 
 ## Sharing
 
@@ -93,3 +103,7 @@ The bar fills only when the player eats RAM. Twenty-five RAM fills it. Surge the
 `carousel/` is a 14-slide post for social media at 1080 × 1350, visual-first: a hook cover, the scenario in four pictures, gameplay, PAC-7's four builds, a sprite at pixel level, the self-rewrite, the laws, the CRT shader, the logo in four passes, the design system, the voice before and after, cut concepts, the share card, and the weekly board as the closing hook. Run `npm run dev` and `node tools/carousel.cjs` to write the slides to `carousel/out/`. Concept sprites come from `tools/concepts.py`, the four regulation ghosts (ACT, BAN, BILL, CAP) from `python3 tools/ghosts.py`, the logo passes from `python3 tools/keyart.py --stages`.
 
 The 33-second vertical highlight video was captured frame by frame from the game on a virtual clock and cut with ffmpeg; its title cards are `carousel/video/cards.html`.
+
+## Disclaimer
+
+PAC RAM: ROGUE AI is an independent game by Marco Margittai. It is not affiliated with, endorsed by or sponsored by Bandai Namco Entertainment, owner of PAC-MAN.
