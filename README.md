@@ -28,6 +28,8 @@ npm run preview
 - Enter, Space or a tap starts, continues the story and confirms
 - Esc or SKIP skips a story scene. P pauses, M mutes, F toggles fullscreen
 - The pause menu has RESUME, LEADERBOARD (back returns to the paused run) and MAIN MENU
+- The title screen's top-left button adapts: players who came from the portfolio (`?ref=portfolio` or a marcomargittai.com referrer) get BACK TO PORTFOLIO, everyone else MORE BY MARCO MARGITTAI, which opens the portfolio in a new tab
+- Sound only plays while the tab is on screen: hiding the tab or leaving the page suspends it
 - Pressing START goes fullscreen where the browser allows it. The title screen and the header also have a fullscreen button. iPhones cannot go fullscreen from a web page, so there it explains Add to Home Screen instead
 - Test mode: open the game with `?dev` (for example `https://marcomargittai.com/pac-ram/?dev`). It stays on in that browser and shows a SKIP BOARD button (also the `]` key); `?dev=0` turns it off. Runs in test mode are never sent to the online board
 - Three small pacs are consumers. They wander and eat RAM, which does not score or fill a surge. Eat one and it stays gone.

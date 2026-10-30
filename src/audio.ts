@@ -71,12 +71,21 @@ export class Sfx {
     }
     // iOS pauses the audio engine on its own (locked screen, app switch, a
     // call, a notification) and reports 'suspended' or 'interrupted'. Wake it
-    // on every gesture until it is running again.
-    if (this.ctx.state !== 'running') void this.ctx.resume().catch(() => {})
+    // on every gesture until it is running again, unless the page is away.
+    if (this.ctx.state !== 'running' && !this.away) void this.ctx.resume().catch(() => {})
     if (!this.session) this.claimSession()
   }
 
   private session = false
+  private away = false
+
+  /** A hidden tab or a page being left stays silent; coming back wakes the sound. */
+  setAway(away: boolean): void {
+    this.away = away
+    if (!this.ctx) return
+    if (away) void this.ctx.suspend().catch(() => {})
+    else this.unlock()
+  }
 
   // Ask to be treated as media playback, so the ring/silent switch and other
   // apps do not silence the game. Newer Safari has an API for it; older iOS

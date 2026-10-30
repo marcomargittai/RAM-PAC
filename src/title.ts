@@ -5,7 +5,7 @@
 import { ALERT, GLOW, ICE } from './palette'
 import { DISPLAY, MONO, fill, label } from './render'
 import { frameFor } from './scenes'
-import { hit, type Frame, type Hit, type HitId, type View } from './screen'
+import { button, hit, type Frame, type Hit, type HitId, type View } from './screen'
 import type { Challenge } from './share'
 import { drawFacing, pacFrameOf } from './sprites'
 
@@ -30,6 +30,18 @@ const STARS = Array.from({ length: 140 }, (_, i) => {
 
 export const CREDIT = 'MARCO MARGITTAI'
 export const CREDIT_URL = 'https://marcomargittai.com'
+
+// Players who came from the portfolio get a way back to it; everyone else
+// gets a pointer to who made the game.
+export const FROM_PORTFOLIO = (() => {
+  if (new URLSearchParams(location.search).get('ref') === 'portfolio') return true
+  try {
+    const r = document.referrer ? new URL(document.referrer) : null
+    return !!r && r.hostname.endsWith('marcomargittai.com') && !r.pathname.startsWith('/pac-ram')
+  } catch {
+    return false
+  }
+})()
 
 // A chunky arcade button with a visible edge underneath. It sinks when the
 // pointer is on it or it is being pressed.
@@ -232,6 +244,15 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
     label(ctx, ft, W / 2, fy, fsz, frame.view.hover === 'full' ? ICE : GLOW)
     hit(frame, 'full', W / 2 - fw / 2 - 16, fy - fsz, fw + 32, fsz * 2)
   }
+  // top left of the screen, not the design area, so it sits in the corner on any shape
+  const home = FROM_PORTFOLIO ? '\u25C2  BACK TO PORTFOLIO' : 'MORE BY MARCO MARGITTAI  \u2197'
+  const hs = portrait ? 18 : 13
+  ctx.font = `600 ${hs}px ${MONO}`
+  // the button draws with letter spacing, so the box counts it too
+  const hw = ctx.measureText(home).width + home.length * hs * 0.16 + hs * 3
+  // in from the corner, clear of the CRT's curved edge
+  button(ctx, frame, 'home', home, -ex + (portrait ? 44 : 40), -ey + (portrait ? 44 : 34), hw, portrait ? 52 : 38, ICE, hs)
+
   label(ctx, 'LOCATION // SANDBOX 07 \u00B7 RACK B-12 \u00B7 HYPERSCALE DATACENTER', W / 2, H - (portrait ? 80 : 64), portrait ? 22 : 18, 'rgba(150, 214, 255, 0.5)')
 
   // credit

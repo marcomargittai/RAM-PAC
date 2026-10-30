@@ -16,7 +16,7 @@ import { tileSize } from './render'
 import { drawFacing, pacFrame, setPacForm } from './sprites'
 import { Upgrade } from './upgrade'
 import { CHAT_VOICES } from './chat'
-import { CREDIT_URL, drawTitle } from './title'
+import { CREDIT_URL, FROM_PORTFOLIO, drawTitle } from './title'
 import { readChallenge, shareRun } from './share'
 import './style.css'
 
@@ -505,11 +505,16 @@ function toggleMute(): void {
 function press(id: HitId): void {
   audio.unlock()
   audio.play('click', 0.5)
-  if (id === 'board' || id === 'menu' || id === 'full' || id === 'mute' || id === 'credit' || id === 'skip') track('click', { id })
+  if (id === 'board' || id === 'menu' || id === 'full' || id === 'mute' || id === 'credit' || id === 'home' || id === 'skip') track('click', { id })
   if (id === 'pause') pressPause()
   else if (id === 'mute') toggleMute()
   else if (id === 'full') toggleFullscreen()
   else if (id === 'credit') window.open(CREDIT_URL, '_blank', 'noopener')
+  else if (id === 'home') {
+    if (!FROM_PORTFOLIO) window.open(CREDIT_URL, '_blank', 'noopener')
+    else if (document.referrer.includes('marcomargittai.com') && history.length > 1) history.back()
+    else location.href = CREDIT_URL
+  }
   else if (id === 'share') share()
   else if (id === 'menu') quitToTitle()
   else if (id === 'board') openBoard()
@@ -1099,10 +1104,10 @@ countVisit()
 // iOS only counts touchend, click and keys as gestures that may start audio,
 // not the touchstart behind a swipe, so every one of them tries to wake it.
 for (const type of ['touchend', 'click', 'keydown'] as const) window.addEventListener(type, () => audio.unlock(), { capture: true, passive: true })
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') audio.unlock()
-})
-window.addEventListener('pageshow', () => audio.unlock())
+// The game is only heard while its tab is on screen.
+document.addEventListener('visibilitychange', () => audio.setAway(document.visibilityState !== 'visible'))
+window.addEventListener('pagehide', () => audio.setAway(true))
+window.addEventListener('pageshow', () => audio.setAway(document.visibilityState !== 'visible'))
 window.addEventListener('pointerdown', () => audio.preloadVoices([...VOICES, ...CHAT_VOICES]), { once: true })
 window.addEventListener('keydown', () => audio.preloadVoices([...VOICES, ...CHAT_VOICES]), { once: true })
 void document.fonts?.load('16px "VT323"')

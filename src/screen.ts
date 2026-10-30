@@ -16,6 +16,7 @@ export type HitId =
   | 'full'
   | 'board'
   | 'credit'
+  | 'home'
   | 'share'
   | 'menu'
   | 'action'
