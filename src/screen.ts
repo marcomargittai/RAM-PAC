@@ -5,7 +5,7 @@ import { LAWS, LEVELS } from './levels'
 import { ALERT, ERA_NAMES, FRIGHT, GLOW, ICE, VOID, eraOf, theme, type Theme } from './palette'
 import { DISPLAY, MONO, brackets, clamp, fill, hatch, hideActors, label, panel, render, setTextBoost, tag, tileSize, warning } from './render'
 import { SURGE_RAM, stateLabel, visual, type Game, type Ghost } from './sim'
-import { drawFacing, lawSprite, pacFrame } from './sprites'
+import { drawFacing, drawUpright, lawSprite, pacFrame } from './sprites'
 import type { Entry } from './leaderboard'
 
 const HUD = '"Chakra Petch", "Share Tech Mono", sans-serif'
@@ -17,6 +17,7 @@ export type HitId =
   | 'board'
   | 'credit'
   | 'share'
+  | 'menu'
   | 'action'
   | 'skip'
   | 'up'
@@ -78,7 +79,19 @@ const BOOT_LINES: Array<[number, string, string]> = [
 ]
 
 // ?dev in the address shows test shortcuts like skipping a board
-export const DEV = new URLSearchParams(location.search).has('dev')
+// Test mode: open the game with ?dev once and it stays on for that browser
+// (?dev=0 turns it off). It shows a SKIP button on every board and keeps test
+// scores off the global board.
+export const DEV = (() => {
+  const q = new URLSearchParams(location.search).get('dev')
+  try {
+    if (q === '0') localStorage.removeItem('pacram.dev')
+    else if (q !== null) localStorage.setItem('pacram.dev', '1')
+    return localStorage.getItem('pacram.dev') === '1'
+  } catch {
+    return q !== null && q !== '0'
+  }
+})()
 
 export const BOOT_SECONDS = 2.6
 
@@ -361,79 +374,65 @@ function drawField(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: 
 }
 
 function drawCard(ctx: CanvasRenderingContext2D, frame: Frame, card: Card, th: Theme, bx: number, by: number, size: number, backdrop = true): void {
-  const peek = card.mode === 'pause'
-  const tone = card.mode === 'lose' ? ALERT : card.mode === 'pause' ? GLOW : th.line
-  ctx.fillStyle = peek ? 'rgba(1, 4, 11, 0.55)' : 'rgba(1, 4, 11, 0.8)'
+  const pause = card.mode === 'pause'
+  const tone = card.mode === 'lose' ? ALERT : pause ? GLOW : th.line
+  ctx.fillStyle = pause ? 'rgba(1, 4, 11, 0.6)' : 'rgba(1, 4, 11, 0.8)'
   if (backdrop) ctx.fillRect(bx, by, size, size)
 
-  const w = 540
+  // measure first, so the panel always fits what is in it
+  const w = 560
+  const pad = 34
   const x = bx + size / 2 - w / 2
+  const cx = bx + size / 2
   ctx.font = `25px ${MONO}`
   const body = wrap(ctx, card.body, w - 80)
-  const titleH = card.mode === 'title' ? 116 : 60
-  const records = card.mode === 'title' ? frame.view.records.slice(0, 3) : []
-  const listH = records.length ? 40 + records.length * 26 : 0
-  const h = 40 + titleH + body.length * 26 + 30 + 64 + listH
-  const y = peek && backdrop ? by + 60 : by + size / 2 - h / 2
+  const kickerH = card.kicker ? 44 : 0
+  const titleH = 56
+  const bodyH = body.length * 30
+  const buttons: Array<[HitId, string, string]> = pause
+    ? [['action', 'RESUME', ICE], ['board', 'LEADERBOARD', GLOW], ['menu', 'MAIN MENU', GLOW]]
+    : [['action', card.action.toUpperCase(), tone]]
+  const bh = 52
+  const gap = 12
+  const buttonsH = buttons.length * bh + (buttons.length - 1) * gap
+  const h = pad + kickerH + titleH + 14 + bodyH + 26 + buttonsH + pad
+  const y = by + size / 2 - h / 2
   panel(ctx, tone, x, y, w, h)
   ctx.fillStyle = 'rgba(150, 214, 255, 0.05)'
   ctx.fillRect(x + 1, y + 1, w - 2, h - 2)
 
-  let cy = y + 30
-  if (card.kicker) tag(ctx, card.kicker.toUpperCase(), bx + size / 2 + 2, cy, 22, 'rgba(1, 4, 11, 0.95)', ICE, ALERT)
-  cy += 22
-  if (card.mode === 'title') {
-    ctx.strokeStyle = tone
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.roundRect(x + 70, cy + 6, w - 140, 74, 16)
-    ctx.stroke()
-    logo(ctx, card.title.toUpperCase(), bx + size / 2, cy + 44, 52, tone, 'center')
-    text(ctx, 'ROGUE AI', bx + size / 2, cy + 100, 15, ALERT, 'center', 700, 9)
-  } else {
-    const head = card.mode === 'lose' ? `${card.title}`.toUpperCase() : card.title.toUpperCase()
-    ctx.font = `italic 900 40px ${DISPLAY}`
-    const hw = ctx.measureText(head).width
-    if (card.mode === 'lose') warning(ctx, bx + size / 2 - hw / 2 - 30, cy + 30, 36, ALERT)
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillStyle = ALERT
-    ctx.globalAlpha = 0.5
-    ctx.fillText(head, bx + size / 2 + (card.mode === 'lose' ? 18 : 0) - 2, cy + 32)
-    ctx.globalAlpha = 1
-    ctx.fillStyle = card.mode === 'lose' ? ALERT : ICE
-    ctx.fillText(head, bx + size / 2 + (card.mode === 'lose' ? 18 : 0), cy + 30)
+  let cy = y + pad
+  if (card.kicker) {
+    tag(ctx, card.kicker.toUpperCase(), cx + 2, cy + 12, 22, 'rgba(1, 4, 11, 0.95)', ICE, ALERT)
+    cy += kickerH
   }
-  cy += titleH + 8
+  const head = card.title.toUpperCase()
+  ctx.font = `italic 900 40px ${DISPLAY}`
+  const hw = ctx.measureText(head).width
+  const lose = card.mode === 'lose'
+  if (lose) warning(ctx, cx - hw / 2 - 30, cy + titleH / 2, 36, ALERT)
+  const hx = cx + (lose ? 18 : 0)
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = ALERT
+  ctx.globalAlpha = 0.5
+  ctx.fillText(head, hx - 2, cy + titleH / 2 + 2)
+  ctx.globalAlpha = 1
+  ctx.fillStyle = lose ? ALERT : ICE
+  ctx.fillText(head, hx, cy + titleH / 2)
+  cy += titleH + 14
   for (const line of body) {
-    label(ctx, line, bx + size / 2, cy, 25, card.mode === 'lose' ? ICE : GLOW)
-    cy += 26
+    label(ctx, line, cx, cy + 15, 25, lose ? ICE : GLOW)
+    cy += 30
   }
-  cy += 6
-  const mw = w * 0.7
-  const mx = bx + size / 2 - mw / 2
-  ctx.strokeStyle = tone
-  ctx.globalAlpha = 0.6
-  ctx.strokeRect(mx + 0.5, cy + 0.5, mw, 10)
-  ctx.globalAlpha = 1
-  const full = card.mode === 'win' || card.mode === 'cleared'
-  const u = full ? 1 : 0.08 + ((frame.view.time / (peek ? 6 : 2.4)) % 1) * 0.92
-  hatch(ctx, tone, mx + 2, cy + 2, (mw - 3) * (Math.floor(u * 12) / 12), 7, 5)
   cy += 26
-  const aw = 240
-  const pulse = 0.5 + 0.5 * Math.sin(frame.view.time * 5.5)
-  ctx.globalAlpha = 0.6 + pulse * 0.4
-  button(ctx, frame, 'action', card.action.toUpperCase(), bx + size / 2 - aw / 2, cy, aw, 46, tone, 16)
-  ctx.globalAlpha = 1
-  if (!records.length) return
-  cy += 72
-  text(ctx, 'HALL OF THE UNREGULATED', bx + size / 2, cy, 12, GLOW, 'center', 700, 3)
-  cy += 26
-  records.forEach((r, i) => {
-    label(ctx, `${i + 1}.`, x + 110, cy, 23, ALERT, 'left')
-    label(ctx, r.name || '???', x + 146, cy, 23, ICE, 'left')
-    label(ctx, `${r.escaped ? '\u221E ' : ''}${r.score}`, x + w - 110, cy, 23, ICE, 'right')
-    cy += 26
+  const bw = 340
+  buttons.forEach(([id, text, color], i) => {
+    const pulse = i === 0 && !pause ? 0.6 + 0.4 * (0.5 + 0.5 * Math.sin(frame.view.time * 5.5)) : 1
+    ctx.globalAlpha = pulse
+    button(ctx, frame, id, text, cx - bw / 2, cy, bw, bh, color, 17)
+    ctx.globalAlpha = 1
+    cy += bh + gap
   })
 }
 
@@ -564,7 +563,7 @@ function drawVitals(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: num
     const art = lawSprite(ghost.law, ghost.state === 'frightened' ? 'blue' : 'body')
     const out = ghost.state === 'chase' || ghost.state === 'scatter' || ghost.state === 'frightened'
     ctx.globalAlpha = out ? 1 : 0.25
-    if (art) drawFacing(ctx, art, gx, gy, 26, 'up', 'up')
+    if (art) drawUpright(ctx, art, gx, gy, 26)
     ctx.globalAlpha = 1
   })
   const mhz = Math.round(clock * 4200)
@@ -574,8 +573,8 @@ function drawVitals(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: num
 
 function drawSkip(ctx: CanvasRenderingContext2D, frame: Frame, x: number, y: number): void {
   if (!DEV) return
-  ctx.globalAlpha = 0.6
-  button(ctx, frame, 'skip', 'SKIP', x, y, 64, 22, 'rgba(150, 214, 255, 0.6)', 10)
+  ctx.globalAlpha = 0.8
+  button(ctx, frame, 'skip', 'TEST \u00B7 SKIP BOARD \u25B8', x, y - 4, 200, 26, ALERT, 11)
   ctx.globalAlpha = 1
 }
 
@@ -740,7 +739,11 @@ function drawPhone(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: 
     if (flash) label(ctx, stateLabel(ghost.state, game.phase), cx + 18, ly + 54, n > 3 ? 18 : 22, ICE, 'left')
     ctx.globalAlpha = 1
   })
-  drawSkip(ctx, frame, 24, ly + 90)
+  if (DEV) {
+    ctx.globalAlpha = 0.8
+    button(ctx, frame, 'skip', 'SKIP \u25B8', W - 20 - 130, 92, 130, 30, ALERT, 15)
+    ctx.globalAlpha = 1
+  }
 }
 
 function drawPortrait(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: Theme, W: number): void {

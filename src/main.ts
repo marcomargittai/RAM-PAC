@@ -91,7 +91,8 @@ function refreshBoard(): void {
 let runTicket: Promise<string | null> = Promise.resolve(null)
 
 function ticketRun(): void {
-  runTicket = online ? startOnlineRun() : Promise.resolve(null)
+  // test mode keeps its scores on this device only
+  runTicket = online && !DEV ? startOnlineRun() : Promise.resolve(null)
 }
 
 // The last saved run and its weekly rank, for sharing.
@@ -444,6 +445,7 @@ function pressStart(): void {
     return
   }
   if (game.mode === 'title') {
+    enterFullscreen()
     beginRun()
     return
   }
@@ -501,6 +503,7 @@ function press(id: HitId): void {
   else if (id === 'full') toggleFullscreen()
   else if (id === 'credit') window.open(CREDIT_URL, '_blank', 'noopener')
   else if (id === 'share') share()
+  else if (id === 'menu') quitToTitle()
   else if (id === 'board') openBoard()
   else if (id === 'action') pressStart()
   else if (id === 'skip') {
@@ -583,6 +586,25 @@ function drawToast(view: View): void {
 
 // The player asked for fullscreen. iPhones cannot do it from a web page, so
 // they get the next best thing: how to add the game to the home screen.
+// Starting a run goes fullscreen where the browser allows it. iPhones cannot,
+// and the title screen already offers the home-screen tip there.
+function enterFullscreen(): void {
+  const el = document.documentElement
+  if (document.fullscreenElement || !el.requestFullscreen) return
+  void el.requestFullscreen().catch(() => {})
+}
+
+// From the pause card back to the title screen; the run is abandoned.
+function quitToTitle(): void {
+  if (stage.kind !== 'game') return
+  cleanPage()
+  told = new Set()
+  grown = 0
+  runTicket = Promise.resolve(null)
+  startRun(game)
+  game.mode = 'title'
+}
+
 function toggleFullscreen(): void {
   audio.unlock()
   if (document.fullscreenElement) {
@@ -649,6 +671,7 @@ window.addEventListener('keydown', (event) => {
   } else if (event.key === 'Escape') {
     event.preventDefault()
     if (stage.kind === 'story' || stage.kind === 'upgrade') skipAhead()
+    else if (stage.kind === 'board') leaveBoard()
     else pressPause()
   } else if (event.key === 'm' || event.key === 'M') {
     toggleMute()

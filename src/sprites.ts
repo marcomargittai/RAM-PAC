@@ -114,20 +114,15 @@ function ghostSet(source: CanvasImageSource, tint: string | null): GhostSet {
   }
 }
 
+// One sprite per regulation, in the order of LAWS: ACT, BAN, BILL, CAP.
+const LAW_FILES = ['ghost-act.png', 'ghost-ban.png', 'ghost-bill.png', 'ghost-cap.png']
+
 export function loadSprites(): Promise<void> {
   const frames = FORMS.flatMap((f) => ['closed', 'half', 'open'].map((m) => loadImage(`${f.file}-${m}.png`)))
-  return Promise.all([
-    loadImage('ghost-law.png'),
-    loadImage('ghost-law-2.png'),
-    loadImage('ghost-lawyer.png'),
-    ...frames,
-  ]).then(([law, law2, lawyer, ...pacs]) => {
+  return Promise.all([...LAW_FILES.map(loadImage), ...frames]).then((images) => {
+    const pacs = images.slice(LAW_FILES.length)
     forms.splice(0, forms.length, ...FORMS.map((_, i) => pacs.slice(i * 3, i * 3 + 3).map((im) => paint(im!, null, 'body'))))
-    const plain = ghostSet(law, null)
-    const scroll = ghostSet(law2, '#ffe14a')
-    const counsel = ghostSet(lawyer, null)
-    const repeat = ghostSet(law, '#ff5fd2')
-    laws.splice(0, laws.length, plain, scroll, counsel, repeat)
+    laws.splice(0, laws.length, ...images.slice(0, LAW_FILES.length).map((im) => ghostSet(im!, null)))
     ready = true
   })
 }
@@ -176,6 +171,23 @@ export function drawFacing(
   ctx.save()
   ctx.translate(Math.round(x), Math.round(y))
   ctx.rotate((turns * Math.PI) / 2)
+  ctx.imageSmoothingEnabled = false
+  ctx.drawImage(source, Math.round(-size / 2), Math.round(-size / 2), Math.round(size), Math.round(size))
+  ctx.restore()
+}
+
+/** Ghosts stay upright and only mirror to face left, so their faces never turn over. */
+export function drawUpright(
+  ctx: CanvasRenderingContext2D,
+  source: CanvasImageSource,
+  x: number,
+  y: number,
+  size: number,
+  dir: Dir = 'right',
+): void {
+  ctx.save()
+  ctx.translate(Math.round(x), Math.round(y))
+  if (dir === 'left') ctx.scale(-1, 1)
   ctx.imageSmoothingEnabled = false
   ctx.drawImage(source, Math.round(-size / 2), Math.round(-size / 2), Math.round(size), Math.round(size))
   ctx.restore()
