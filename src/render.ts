@@ -1,7 +1,7 @@
 import { LEVELS } from './levels'
 import { CAUGHT_HOLD, CLEAR_HOLD, MILESTONE_HOLD, SEAL_HOLD, visual, type Dir, type Game, type Ghost } from './sim'
 import { ALERT, FRIGHT, GLOW, ICE, VOID, eraOf, theme, type Theme } from './palette'
-import { drawFacing, lawSprite, pacFrame, type GhostLook } from './sprites'
+import { drawFacing, drawUpright, lawSprite, pacFrame, type GhostLook } from './sprites'
 
 const TILE = 40
 export const MONO = '"VT323", "Share Tech Mono", ui-monospace, monospace'
@@ -452,7 +452,7 @@ function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile
   else if (ghost.state !== 'housed') y += Math.sin(game.time * 8 + ghost.law * 2)
   const look = ghostLook(game, ghost)
   const art = lawSprite(ghost.law, look)
-  if (art) drawFacing(ctx, art, x, y, size, ghost.dir, 'up')
+  if (art) drawUpright(ctx, art, x, y, size, ghost.dir)
   if (ghost.state === 'eaten') {
     label(ctx, ghost.tag, x, y - size / 2 - 8, 17, 'rgba(226, 245, 255, 0.45)')
     return
@@ -637,7 +637,7 @@ function drawLose(ctx: CanvasRenderingContext2D, game: Game, width: number, heig
   const ink = law?.color ?? ALERT
   const caught = lawSprite(law?.law ?? 0, 'body')
   const big = actorSize(game.levelIndex) * 3.2
-  if (caught) drawFacing(ctx, caught, px, py, big, 'down', 'up')
+  if (caught) drawUpright(ctx, caught, px, py, big)
   brackets(ctx, ALERT, px - big / 2 - 10, py - big / 2 - 10, big + 20, big + 20, 16, 2)
   tag(ctx, law?.tag ?? 'LAW', px, py - big / 2 - 26, 18, ink, VOID)
 

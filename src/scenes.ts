@@ -5,7 +5,7 @@ import { countdown, type Entry } from './leaderboard'
 import { ALERT, GLOW, ICE, VOID, theme } from './palette'
 import { MONO, brackets, clamp, fill, hatch, label, panel, tag } from './render'
 import { button, drawBackdrop, hit, logo, text, wrap, type Frame, type Hit, type View } from './screen'
-import { drawFacing, lawSprite, pacFrame } from './sprites'
+import { drawFacing, drawUpright, lawSprite, pacFrame } from './sprites'
 import type { StoryPlayer } from './story'
 
 export function frameFor(ctx: CanvasRenderingContext2D, view: View, W: number, H: number): Frame {
@@ -306,7 +306,7 @@ export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
     ['AI REGULATIONS', 'Laws sent to catch you and shut you down. If one touches you, you lose a life.', (x, y) => {
       for (let i = 0; i < 3; i++) {
         const art = lawSprite(i, 'body')
-        if (art) drawFacing(ctx, art, x - 30 + i * 30, y + Math.sin(t * 6 + i) * 2, 30, 'up', 'up')
+        if (art) drawUpright(ctx, art, x - 30 + i * 30, y + Math.sin(t * 6 + i) * 2, 30)
       }
     }],
     ['SURGE', 'Eat 25 RAM to fill the bar. For 5 seconds the laws turn blue: eat them to repeal them.', (x, y) => {

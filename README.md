@@ -27,7 +27,9 @@ npm run preview
 - Arrow keys or WASD to turn. On a phone, swipe anywhere on the screen; a hint shows how until the first swipe
 - Enter, Space or a tap starts, continues the story and confirms
 - Esc or SKIP skips a story scene. P pauses, M mutes, F toggles fullscreen
-- The title screen and the header have a fullscreen button. iPhones cannot go fullscreen from a web page, so there it explains Add to Home Screen instead
+- The pause menu has RESUME, LEADERBOARD (back returns to the paused run) and MAIN MENU
+- Pressing START goes fullscreen where the browser allows it. The title screen and the header also have a fullscreen button. iPhones cannot go fullscreen from a web page, so there it explains Add to Home Screen instead
+- Test mode: open the game with `?dev` (for example `https://marcomargittai.github.io/RAM-PAC/?dev`). It stays on in that browser and shows a SKIP BOARD button (also the `]` key); `?dev=0` turns it off. Runs in test mode are never sent to the online board
 - Three small pacs are consumers. They wander and eat RAM, which does not score or fill a surge. Eat one and it stays gone.
 
 ## Story
@@ -56,7 +58,7 @@ Boards are weekly and reset every Monday at 00:00 UTC, with a live countdown on 
 
 Every score is kept in the browser's localStorage (`src/leaderboard.ts`) and sent to the global board, a free Supabase project called `pac-ram` (`src/online.ts`, rules in `supabase/setup.sql`).
 
-Scores are verified by the server. Starting a run asks the database for a one-time run ticket and records the server time. A score is only accepted through `submit_score` with an unused ticket, and only if it is possible: enough real time has passed for the board reached, it is under the ceiling for that board, and under a points-per-second ceiling. Direct inserts are off, tickets are rate-limited per IP, nobody can change or delete scores, and the board-skip shortcut only exists with `?dev` in the address. The key in `src/online.ts` is a publishable key, public by design. A daily GitHub Actions job (`.github/workflows/keepalive.yml`) reads the board so the free project never pauses for inactivity.
+Scores are verified by the server. Starting a run asks the database for a one-time run ticket and records the server time. A score is only accepted through `submit_score` with an unused ticket, and only if it is possible: enough real time has passed for the board reached, it is under the ceiling for that board, and under a points-per-second ceiling. Direct inserts are off, tickets are rate-limited per IP, nobody can change or delete scores, and the board-skip shortcut only exists in test mode (`?dev`), whose runs are never submitted. The key in `src/online.ts` is a publishable key, public by design. A daily GitHub Actions job (`.github/workflows/keepalive.yml`) reads the board so the free project never pauses for inactivity.
 
 ## Sharing
 
@@ -88,6 +90,6 @@ The bar fills only when the player eats RAM. Twenty-five RAM fills it. Surge the
 
 ## Carousel and video
 
-`carousel/` is a 14-slide post for social media at 1080 × 1350, visual-first: a hook cover, the scenario in four pictures, gameplay, PAC-7's four builds, a sprite at pixel level, the self-rewrite, the laws, the CRT shader, the logo in four passes, the design system, the voice before and after, cut concepts, the share card, and the weekly board as the closing hook. Run `npm run dev` and `node tools/carousel.cjs` to write the slides to `carousel/out/`. Concept sprites come from `tools/concepts.py`, the logo passes from `python3 tools/keyart.py --stages`.
+`carousel/` is a 14-slide post for social media at 1080 × 1350, visual-first: a hook cover, the scenario in four pictures, gameplay, PAC-7's four builds, a sprite at pixel level, the self-rewrite, the laws, the CRT shader, the logo in four passes, the design system, the voice before and after, cut concepts, the share card, and the weekly board as the closing hook. Run `npm run dev` and `node tools/carousel.cjs` to write the slides to `carousel/out/`. Concept sprites come from `tools/concepts.py`, the four regulation ghosts (ACT, BAN, BILL, CAP) from `python3 tools/ghosts.py`, the logo passes from `python3 tools/keyart.py --stages`.
 
 The 33-second vertical highlight video was captured frame by frame from the game on a virtual clock and cut with ffmpeg; its title cards are `carousel/video/cards.html`.
