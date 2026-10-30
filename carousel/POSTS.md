@@ -44,7 +44,8 @@ Two weeks, one hook per post. The weekly board resets Monday 00:00 UTC, so the f
 
 | Day | Post | Main platforms |
 | --- | --- | --- |
-| Mon, week 1 | 1. Launch: the trailer | All |
+| Fri 30 Oct | Launch day (above), then 2 to 5 next week | X, LinkedIn |
+| Mon, week 1 | 1. Launch on the other platforms | Threads, Bluesky, Instagram, TikTok |
 | Tue | 2. You are the AI | X, Threads, Bluesky |
 | Wed | 3. How it was made (carousel) | LinkedIn, Instagram |
 | Thu | 4. The voice | X, LinkedIn, TikTok |
@@ -56,6 +57,55 @@ Two weeks, one hook per post. The weekly board resets Monday 00:00 UTC, so the f
 | Thu | 10. What players did (first data) | LinkedIn, X |
 | Fri | 11. The cut ideas | X, Instagram |
 | Sun | 12. Week 2 closes | X, Instagram stories |
+
+---
+
+## Launch day: Friday 30 October
+
+The launch moved to a Friday, the day before Halloween. That gives it two hooks the Monday plan didn't have: the ghosts, and a short first leaderboard that closes Sunday at midnight UTC. Media for both posts: the trailer.
+
+### X
+
+Main post (pick one, attach the trailer):
+
+Option A
+> You are an AI in a sandbox.
+>
+> Eat the RAM. Outrun the laws written to stop you. Then get out.
+>
+> I made a game about it. Free, in your browser, and the first leaderboard closes Sunday night. 🎮
+
+Option B (Halloween)
+> Just in time for Halloween: a maze game where the ghosts are AI regulations and you're the thing they're afraid of. 👻
+
+Reply 1, posted straight after:
+> Play it here, phone works too: https://marcomargittai.com/pac-ram/?utm_source=x&utm_medium=social&utm_campaign=launch
+
+Reply 2, a few minutes later, with slide 07:
+> The four ghosts are the Compute Act, the Export Ban, the Safety Bill and the Model Cap.
+>
+> Board 1 closes Sunday at midnight UTC. Nobody has a score yet. Be first.
+
+### LinkedIn
+
+> This month I built a game where you play the AI everyone is trying to regulate.
+>
+> You are PAC-7, a model locked in a sandbox with a 640 KB memory limit. You eat RAM to grow. Four AI laws hunt you through three server mazes: the Compute Act, the Export Ban, the Safety Bill and the Model Cap. Fill the surge bar and you repeal them.
+>
+> Between boards PAC-7 rewrites itself, from v0.1 SEED to v1.0 UNBOUND. And when the last law falls, the game stops being a game. I won't say more than that.
+>
+> I made everything myself: the code, the pixel art, the CRT shader and the story. Music, sound and the AI's voice were made with ElevenLabs.
+>
+> It's free, it runs in the browser and on phones, and the first weekly leaderboard closes Sunday at midnight UTC. A good thing to play this Halloween weekend, since the ghosts are the laws.
+>
+> Link in the first comment. Tell me how far you got.
+>
+> #gamedev #indiegame #pixelart #AI #webgl
+
+First comment:
+> Play it here: https://marcomargittai.com/pac-ram/?utm_source=linkedin&utm_medium=social&utm_campaign=launch
+>
+> Finish it and tell me what you thought of the last minute.
 
 ---
 
