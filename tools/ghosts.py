@@ -191,6 +191,9 @@ def save(px, name):
     im = Image.new('RGBA', (S, S), (0, 0, 0, 0))
     for (x, y), c in px.items():
         if 0 <= x < S and 0 <= y < S:
+            if c != EYE and min(c) > 180:
+                # keep pale highlights out of the eye-white range
+                c = tuple(max(0, v - (min(c) - 180)) for v in c)
             im.putpixel((x, y), c + (255,))
     im.save(os.path.join(OUT, name))
     return im
