@@ -33,7 +33,7 @@ def glitch(im, n=4, amp=40):
     r, g, b = im.split()
     return Image.merge('RGB', (ImageChops.offset(r, 8, 0), g, ImageChops.offset(b, -8, 0)))
 
-TXT = {k: Image.open(f'{S}/tr/txt/{k}.png').convert('RGBA') for k in ['t1', 't2', 't3', 't4', 't5', 't6', 'end']}
+TXT = {k: Image.open(f'{S}/tr/txt/{k}.png').convert('RGBA') for k in ['t1', 't3', 't4', 't5', 't6', 'end']}
 
 def overlay(im, key, age, life):
     t = TXT[key]
@@ -67,7 +67,7 @@ shots = [
     (rng('b', 330, 450, 12) + rng('b', 456, 476, 2) + rng('b', 556, 619, 6), 1.0, 1.0, (540, 960), 1),  # takeover
 ]
 # text: key -> (first frame, last frame)
-TEXT = {'t1': (6, 56), 't2': (64, 116), 't3': (124, 152), 't4': (172, 200), 't5': (234, 256), 't6': (292, 314)}
+TEXT = {'t1': (6, 58), 't3': (124, 152), 't4': (172, 200), 't5': (234, 256), 't6': (292, 314)}
 FLASH = {119: 0.9, 120: 0.55, 121: 0.25}
 END_AT, TOTAL = 346, 420
 

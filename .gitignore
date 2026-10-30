@@ -6,3 +6,5 @@ dist
 
 # the highlight video is delivered separately, it is too big for the repo
 carousel/out/*.mp4
+carousel/out/*.webm
+carousel/out/pac-ram-card-*
