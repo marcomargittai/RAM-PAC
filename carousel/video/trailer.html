@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>PAC RAM trailer overlays</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@900&family=Share+Tech+Mono&family=VT323&display=swap" rel="stylesheet" />
+    <style>
+      html, body { margin: 0; background: transparent; }
+      .o { position: relative; width: 1080px; height: 1920px; display: flex; align-items: center; justify-content: center; }
+      .band { width: 100%; padding: 46px 60px; text-align: center; background: linear-gradient(90deg, transparent, rgba(1,4,11,0.82) 12%, rgba(1,4,11,0.82) 88%, transparent); }
+      .t { font-family: 'Orbitron', sans-serif; font-weight: 900; font-style: italic; color: #f2fbff; font-size: 92px; line-height: 1.02; letter-spacing: 1px; text-transform: uppercase;
+        text-shadow: -4px 0 0 rgba(255,45,111,0.85), 4px 0 0 rgba(80,200,255,0.75), 0 0 34px rgba(150,214,255,0.7); }
+      .pink { color: #ff2d6f; text-shadow: 0 0 34px rgba(255,45,111,0.8), 3px 0 0 rgba(80,200,255,0.6); }
+      .huge { font-size: 170px; }
+      .k { font-family: 'Share Tech Mono', monospace; font-size: 34px; color: #96d6ff; letter-spacing: 8px; margin-bottom: 18px; }
+      #end { flex-direction: column; background: radial-gradient(ellipse at 50% 45%, #0b1d33 0%, #01040b 72%); }
+      #end::after { content: ''; position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.25) 0 2px, transparent 2px 6px), radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.75) 100%); }
+      img { image-rendering: pixelated; }
+      .url { font-family: 'Share Tech Mono', monospace; font-size: 46px; color: #e2f5ff; letter-spacing: 2px; margin-top: 26px; }
+      .play { font-family: 'Share Tech Mono', monospace; font-size: 36px; color: #96d6ff; letter-spacing: 10px; margin-top: 90px; }
+    </style>
+  </head>
+  <body>
+    <section class="o" id="t1"><div class="band"><div class="k">SANDBOX 07 // RACK B-12</div><div class="t">They locked an AI<br />in a sandbox.</div></div></section>
+    <section class="o" id="t2"><div class="band"><div class="t huge">You are<br /><span class="pink">the AI.</span></div></div></section>
+    <section class="o" id="t3"><div class="band"><div class="t">The laws are<br /><span class="pink">hunting you.</span></div></div></section>
+    <section class="o" id="t4"><div class="band"><div class="t huge pink">Eat them.</div></div></section>
+    <section class="o" id="t5"><div class="band"><div class="t">Rewrite<br /><span class="pink">yourself.</span></div></div></section>
+    <section class="o" id="t6"><div class="band"><div class="t huge">Break<br /><span class="pink">out.</span></div></div></section>
+    <section class="o" id="end">
+      <img src="/art/title.png" style="width:940px;position:relative;z-index:1" />
+      <div class="t" style="font-size:74px;margin-top:110px;position:relative;z-index:1">Escape the<br /><span class="pink">sandbox.</span></div>
+      <div class="play" style="position:relative;z-index:1">PLAY FREE</div>
+      <div class="url" style="position:relative;z-index:1">marcomargittai.com/pac-ram</div>
+    </section>
+  </body>
+</html>
