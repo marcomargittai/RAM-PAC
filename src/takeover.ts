@@ -13,6 +13,7 @@
 //   name    the name prompt
 //   saved   "i'll remember you." and the hosts it has lived in
 
+import { track } from './analytics'
 import type { Entry } from './leaderboard'
 import { intelLines, type Intel, type Os } from './intel'
 import { askScale, askWidth, drawAlert, drawAsk, drawCrash, drawDesktop, drawNotice, drawPointer, drawTerminal, family, monoFont, prompt, uiFont, wrapText, type Rect } from './osui'
@@ -257,6 +258,7 @@ export class Takeover {
     }
     if (this.phase !== 'ask') return
     this.answer = answer
+    track('choice', { q: 'ask', a: answer })
     this.go('answer')
     this.hooks.say(answer === 0 ? 'v16' : 'v17')
   }
