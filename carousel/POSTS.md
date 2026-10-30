@@ -6,7 +6,9 @@ Copy for launching PAC RAM: ROGUE AI on X, LinkedIn, Threads, Bluesky, Instagram
 
 | Asset | File | Use it for |
 | --- | --- | --- |
-| Trailer, 14 s, 9:16 | `carousel/out/pac-ram-trailer.mp4` (not in git, delivered separately) | X, LinkedIn, Reels, TikTok, Shorts, Threads |
+| Trailer, 15 s, 9:16 | `carousel/out/pac-ram-trailer.mp4` (not in git, delivered separately) | X, Reels, TikTok, Shorts, Threads |
+| Trailer, 15 s, 4:5 | `carousel/out/pac-ram-trailer-4x5.mp4` (not in git) | LinkedIn feed |
+| Trailer covers | `carousel/out/pac-ram-trailer-cover.jpg`, `-cover-4x5.jpg` (not in git) | Video thumbnails |
 | Carousel, 14 slides, 4:5 | `carousel/out/p01.png` to `p14.png` | Instagram, Threads, X (4 per post) |
 | Carousel as one PDF | `carousel/out/pac-ram-carousel.pdf` | LinkedIn document post (swipeable) |
 | Looping card, 4:5 | `pac-ram-card-4x5.mp4` (not in git) | Portfolio, Bluesky, replies |
