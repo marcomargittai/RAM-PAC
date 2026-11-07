@@ -20,6 +20,6 @@ Play it at marcomargittai.com/pac-ram
 
 ## Shorter version
 
-Some notes on how PAC RAM works: the ghost logic, the story structure, the art direction, the voice and the ending. 9 sheets.
+Some notes on how PAC RAM works: the ghost logic, the upgrades, the art direction and the ending. 9 sheets.
 
 marcomargittai.com/pac-ram
