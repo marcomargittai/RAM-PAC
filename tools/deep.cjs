@@ -7,6 +7,8 @@ const fs = require('fs')
 const OUT = path.join(__dirname, '../carousel/deep/out/')
 ;(async () => {
   fs.mkdirSync(OUT, { recursive: true })
+  // clear the previous render so a shorter deck leaves no stale sheets
+  for (const f of fs.readdirSync(OUT)) if (/^\d+\.png$/.test(f)) fs.unlinkSync(OUT + f)
   const b = await chromium.launch()
   const p = await b.newPage({ viewport: { width: 1200, height: 1500 }, deviceScaleFactor: 1 })
   await p.goto('http://127.0.0.1:43123/carousel/deep/index.html')

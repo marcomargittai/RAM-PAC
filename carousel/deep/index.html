@@ -5,7 +5,7 @@
     <title>PAC RAM field notes</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Covered+By+Your+Grace&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
     <style>
       /* Field notes: the portfolio's look. Black field, dot grid, hairlines,
          mono annotations, one pink. The game's own art sits inside as specimens. */
@@ -18,7 +18,6 @@
         --pink: #ff5c80;
         --mono: 'DM Mono', ui-monospace, monospace;
         --sans: 'Inter', system-ui, sans-serif;
-        --hand: 'Covered By Your Grace', cursive;
       }
       * { box-sizing: border-box; }
       body { margin: 0; background: #1a1a1a; display: flex; flex-direction: column; align-items: center; gap: 40px; padding: 40px 0; }
@@ -45,16 +44,12 @@
       .reg::after { top: 10px; left: 0; height: 1px; width: 22px; }
 
       /* type */
-      .k { font: 400 18px/1 var(--mono); letter-spacing: 0.18em; color: var(--pink); text-transform: uppercase; }
-      .h { font: 500 46px/1.12 var(--sans); letter-spacing: -0.025em; }
-      .h.xl { font-size: 60px; letter-spacing: -0.03em; line-height: 1.05; }
-      .b { font: 400 25px/1.55 var(--mono); color: var(--dim); letter-spacing: 0; }
-      .b em { font-style: normal; color: var(--ink); }
-      .m { font: 400 18px/1.5 var(--mono); letter-spacing: 0.08em; color: var(--mute); text-transform: uppercase; }
+      .h { left: 64px; top: 150px; width: 952px; font: 500 46px/1.12 var(--sans); letter-spacing: -0.025em; }
+      .sub { left: 64px; top: 216px; width: 952px; font: 400 23px/1.55 var(--mono); color: var(--dim); }
+      .m { font: 400 17px/1.5 var(--mono); letter-spacing: 0.08em; color: var(--mute); text-transform: uppercase; }
       .m b { color: var(--ink); font-weight: 400; }
       .m i { color: var(--pink); font-style: normal; }
-      .q { font: 400 21px/1.4 var(--mono); color: var(--ink); letter-spacing: 0.01em; }
-      .hand { font: 400 46px/1.05 var(--hand); color: var(--ink); transform: rotate(-4deg); transform-origin: left center; }
+      .t { font: 500 26px/1.1 var(--sans); letter-spacing: -0.015em; }
 
       /* figures */
       .fig { border: 1px solid var(--hair); background: #050505; }
@@ -62,319 +57,226 @@
       .clip { position: absolute; inset: 0; overflow: hidden; }
       .cap { position: absolute; top: -30px; left: 0; right: 0; display: flex; justify-content: space-between; font: 400 15px/1 var(--mono); letter-spacing: 0.14em; color: var(--mute); text-transform: uppercase; white-space: nowrap; }
       .cap b { color: var(--dim); font-weight: 400; }
-      .fig .tk { position: absolute; background: rgba(255, 255, 255, 0.55); }
       .dot { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--pink); color: var(--pink); font: 500 14px/32px var(--mono); text-align: center; background: #000; }
-      .lead { height: 1px; background: var(--pink); transform-origin: left center; }
+      .lead { height: 1px; background: var(--pink); }
 
-      .row { display: flex; }
-      .cell { border-top: 1px solid var(--hair); padding-top: 18px; }
+      /* a sprite blown up with its pixel grid drawn over it */
+      .pg { position: relative; }
+      .pg img { width: 100%; height: 100%; image-rendering: pixelated; }
+      .pg::after {
+        content: ''; position: absolute; inset: 0; pointer-events: none;
+        background:
+          linear-gradient(rgba(0, 0, 0, 0.6) 1px, transparent 1px) 0 0 / var(--c) var(--c),
+          linear-gradient(90deg, rgba(0, 0, 0, 0.6) 1px, transparent 1px) 0 0 / var(--c) var(--c);
+      }
+      .cell { border-top: 1px solid var(--hair); padding-top: 16px; }
     </style>
   </head>
   <body>
-    <!-- the raccoon mark from marcomargittai.com, as a clip path -->
-    <svg class="raccoon-defs" width="0" height="0" aria-hidden="true" focusable="false"><defs><clipPath id="raccoon-clip" clipPathUnits="objectBoundingBox"><path transform="translate(0.11538461538461538 0.16666666666666666) scale(0.003004807692307692 0.003527336860670194)" d="M124.5,188.8C124.5,188.3 122.7,187.4 121,187.1C120.1,186.9 118.8,186.4 118,185.9C117.2,185.4 116,184.9 115.3,184.8C113.9,184.5 110,182.5 109,181.6C108.7,181.3 107.3,180.5 106,179.9C104.7,179.2 103.3,178.4 102.9,178.1C102.4,177.8 101.6,177.3 100.9,177C100.3,176.7 99.3,175.9 98.8,175.3C97.5,173.7 95.3,172.2 93.4,171.5C92.5,171.2 91.4,170.8 91,170.5C90.7,170.3 89.6,169.7 88.7,169.3C85.7,167.9 84.5,166 84.5,162.9C84.5,161 83.8,158.5 82.9,157.2C80.7,154.3 80.7,151.4 82.8,148.7C83.2,148.2 84,147 84.5,146.1C87,142.1 89.9,139.1 93.2,137.3C94,136.9 95.4,135.8 96.5,134.7C98.3,132.8 101.2,130.8 102.8,130.2C103.2,130.1 104,129.7 104.5,129.3C105,129 105.9,128.6 106.6,128.3C107.9,127.9 110.5,126.2 111.5,125.1C111.8,124.8 112.6,124.2 113.1,123.9C115,123 115.6,122.3 116.6,120.3C117.1,119.2 118,117.9 118.5,117.3C120.4,114.8 120.4,112.9 118.5,110.7C116.9,108.9 116.6,107 116.9,101.6C117.1,98.2 117,97.9 116.1,94C115.7,92.3 114.4,90 112.9,88.5C112.3,87.9 111.5,86.8 111.2,86.1C110.8,85.4 110.3,84.7 110.1,84.5C109.9,84.3 109.3,83.6 108.9,82.9C107.3,80.5 103.9,78.5 101.6,78.5C100.9,78.5 99.5,78.2 98.4,77.9C96.5,77.3 96.2,77.3 92.1,77.5C87.8,77.7 87.3,77.8 84.5,78.7C82.6,79.4 81.8,80 81.5,81.3C80.8,83.3 82.9,86.3 85.9,87.8C87.2,88.5 88.6,89.8 88.9,90.7C89.4,92.5 85.8,95.8 83.2,95.8C82.7,95.8 81.4,95.9 80.4,96.2C79,96.5 77.9,96.5 74.9,96.4C71.3,96.2 71.1,96.3 69,97C67.8,97.4 66.6,97.8 66.2,97.8C64.8,98.2 61.9,100.2 61,101.6C60.5,102.3 59.7,103.1 59.3,103.4C58.8,103.7 57.8,104.5 56.9,105.2C56.1,105.9 54.9,106.7 54.3,106.8C53.8,107 52.6,107.8 51.7,108.5C50.8,109.1 49.4,110.1 48.4,110.6C46.1,111.9 44.3,113.6 44,114.7C43.7,116 44.1,120.2 44.6,121.2C45.6,123.2 46.3,128 45.7,129.2C44.7,131 41.4,133.1 38,134.1C37.6,134.2 36.6,134.7 35.8,135.1C35,135.6 34.2,136 34.1,136C33.5,136 32.2,137.3 32,138.2C31.6,139.6 32.3,141.2 33.9,142.3C34.6,142.8 35.9,143.8 36.8,144.7C38.8,146.5 39.9,146.9 43.8,147.3C49.4,147.8 51.2,148.6 54.1,151.9C55.8,153.7 57.5,155 58.3,155C58.5,155 59.5,155.4 60.5,155.9C61.5,156.3 63,156.9 63.9,157.1C64.8,157.3 66.2,157.8 66.9,158.2C67.7,158.6 68.8,159 69.3,159.1C72.2,159.5 76.2,162.1 77.3,164.1C78.7,166.8 76.6,169.6 72.8,169.9C71.9,170 70.2,170.4 69,170.8C67.8,171.2 66,171.6 64.9,171.8C63.8,171.9 62.3,172.3 61.5,172.6C60.6,173 59.5,173.2 58.8,173.3C58.2,173.3 56.7,173.6 55.5,174C54.3,174.4 52.9,174.8 52.1,174.8C51.4,174.8 50.1,175.1 49.1,175.4C46.8,176.2 43.2,177 41.5,177C39.4,177 35.3,175.2 34.4,173.9C32.4,171 31.2,168.8 31.2,167.5C31.2,166.6 32.9,163.7 33.8,162.9C34.3,162.4 35.4,161.8 36.2,161.4C38.1,160.4 38.8,159.8 38.8,158.9C38.8,157.3 36.3,156.3 33.6,156.8C32,157.1 31.4,156.9 30.1,155.9C28.9,155 26.6,154.5 22.5,154.5C20.7,154.5 19.2,154.3 18.4,154.1C17.7,153.9 16.4,153.8 15.4,153.8C13.6,153.7 10.4,153.1 9.4,152.4C9.1,152.2 8.3,151.8 7.5,151.5C5.1,150.5 1.8,147.4 1.1,145.5C0.9,144.8 0.6,144.2 0.4,144C-0.1,143.6 -0.2,139.9 0.3,139.6C0.4,139.5 0.8,138.9 1,138.3C1.7,136.7 2.8,135.6 4.9,134.6C5.8,134.1 6.8,133.5 7.1,133.2C7.9,132.5 12.3,130.3 13.2,130.2C14.6,129.9 20.2,127.1 21.4,125.9C23,124.6 23.9,124.3 26.5,124C29.2,123.8 30.4,123.2 31.9,121.2C34.3,118 33.6,116.4 29.9,117C28.9,117.1 26.9,117.2 25.5,117.1C23,116.9 22.7,117 21.5,117.6C20.7,117.9 19.6,118.3 19,118.5C18.4,118.7 17.3,119.1 16.6,119.5C14.4,120.6 11.7,120.5 9.2,119C5.1,116.7 3.8,111.2 6.8,108.6C7.1,108.3 7.8,107.3 8.5,106.4C9.6,104.7 10.4,104.1 12.6,102.7C13.2,102.4 13.9,101.9 14.3,101.6C14.7,101.3 15.6,100.8 16.4,100.5C17.2,100.2 18.3,99.7 18.8,99.4C19.2,99 20.3,98.6 21.1,98.4C22.7,98 24.8,96.6 26.3,95.1C27.4,93.8 27.5,93.4 26.6,92.1C24.8,89.4 24.5,87.5 25.8,85.1C27.4,81.8 29.3,80 31.6,79.5C32.3,79.4 33.6,78.9 34.5,78.5C35.5,78 36.7,77.7 38,77.5C40.6,77.2 41.6,76.6 44,74.1C45.8,72.2 46.4,71.3 46.1,70.5C45.8,69.6 45.1,69.4 42.7,69.8C38.9,70.3 37,69.9 34.4,67.8C33.4,67 33.1,66.6 32.6,65.3C32.3,64.4 31.9,63.5 31.7,63.3C31.4,63 31.1,62.1 30.8,61.3C30.5,60.3 29.9,59.2 29.3,58.5C27.9,56.9 25.6,53.4 25.1,52.5C24.9,52 24.4,51.2 24,50.6C23.1,49.4 22.8,48.2 22.8,46.1C22.7,45.3 22.6,44.2 22.5,43.6C22.3,43.1 22.1,41.4 22,39.9C21.9,38.4 21.6,36 21.3,34.6C20.4,30.8 20.6,28.2 22,25.3C22.5,24.1 23,22.9 23,22.6C23,22.2 23.8,20.4 24.5,19.5C25.2,18.6 25.7,16.2 25.7,14.1C25.8,10.7 26.3,9.3 28.5,6.8C32.6,2.2 36.5,1.1 41,3.3C42.3,3.9 43.6,4.8 44.2,5.4C45.5,6.8 47.6,8 48.8,8C50,8 51.4,8.4 52.6,9.2C53.1,9.5 54.3,10.1 55.2,10.4C56.1,10.7 57.3,11.1 57.9,11.4C58.4,11.6 59.4,11.9 60.1,12C60.9,12.1 62,12.6 62.7,13C63.4,13.4 64.7,13.9 65.7,14.1C66.7,14.3 68,14.8 68.7,15.2C69.4,15.7 70.5,16.2 71.2,16.4C71.8,16.6 73.2,17.2 74.1,17.9C75.1,18.5 76,19.1 76.3,19.1C76.9,19.3 80.9,23.9 81.5,25C82.1,26.1 84.9,29.8 85.2,29.8C85.3,29.8 85.8,30.2 86.2,30.9C88,33.3 87.8,36 85.9,38.6C84.2,40.8 84.2,42.2 85.7,43.6C87.1,44.9 90.7,42.9 96.1,37.7C97.8,36 101.2,34 102.3,34C102.5,34 103.4,33.7 104.3,33.4C105.1,33 107.2,32.5 108.9,32.2C112,31.7 112.1,31.7 114.2,32.1C117.2,32.8 121.7,32.9 123.8,32.4C124.8,32.2 125.9,32 126.3,32C127.1,32 128.2,31.5 129.4,30.6C130,30.1 130.7,29.9 132.2,29.7C133.2,29.6 134.7,29.4 135.4,29.2C137.1,28.7 142.5,28.8 144,29.4C144.6,29.6 145.4,29.8 145.8,29.8C148.6,29.8 151.8,33.5 152.2,37.4C152.6,42.1 154.8,44.2 159.6,44.5C161.5,44.6 162.4,44.8 163.2,45.2C164,45.6 164.7,45.8 166.2,45.8C169.5,45.8 170,44.8 168.3,42.1C166.7,39.6 166.4,37.7 167.5,35.9C167.7,35.5 168,34.7 168.1,34.2C168.4,33 168.9,32 170,30.8C170.5,30.3 171.2,29.2 171.6,28.6C171.9,27.9 172.7,26.9 173.4,26.2C174,25.6 175,24.4 175.6,23.6C177.1,21.6 181.1,17.8 183.2,16.4C184.1,15.8 185.2,15.1 185.5,14.8C185.8,14.5 186.3,14.3 186.4,14.3C186.6,14.2 187.4,13.8 188.3,13.1C191.1,11.3 193,10.5 195.8,10.2C196.4,10.1 197.7,9.6 198.7,9.1C200.2,8.3 200.8,8.2 203.1,8C206.5,7.8 208.5,6.8 211.8,4C213.5,2.5 214.7,1.7 215.7,1.3C216.6,0.9 217.4,0.5 217.5,0.3C217.9,-0.1 222.2,-0.1 222.2,0.2C222.2,0.5 224.2,1.5 225.6,2C226.9,2.4 228.9,4.3 229.1,5.3C229.2,5.8 229.7,6.8 230.2,7.6C230.6,8.3 231.1,9.4 231.2,9.9C231.4,11.2 232.3,13.2 233.4,14.4C235.8,17.4 235.8,25.1 233.4,28.8C232.4,30.5 232.3,31.6 233.1,33.5C233.5,34.4 234,35.8 234.2,36.6C234.5,37.5 234.9,38.7 235.1,39.4C235.6,40.7 235.6,40.7 235.1,42.8C234.8,43.9 234.5,45.4 234.4,46.1C234.2,46.9 233.8,47.8 233.1,48.9C232.5,49.9 232,50.7 232,50.8C232,51.7 230.7,54 229.5,55.4C227.5,57.6 226.3,59.7 225.7,61.9C224.6,66.3 222.3,69.1 218.9,70.1C216.5,70.8 216.3,71.7 217.6,74.6C218.5,76.6 219.5,77.6 220.8,77.9C221.2,78 222.4,78.8 223.5,79.8C225.7,81.9 226.4,83.5 226.7,87C226.9,88.9 227,89.4 227.7,90.5C228.6,91.8 229.8,93 230.3,93C230.5,93 231.2,93.4 231.9,93.9C232.7,94.4 233.6,94.8 234.1,94.9C234.5,95 235.5,95.4 236.4,95.8C237.2,96.2 238.5,96.6 239.2,96.8C240,96.9 241.2,97.4 241.9,97.8C242.6,98.1 243.6,98.6 244.1,98.8C246.5,99.5 248.6,103 249,106.8C249.3,109.9 249.1,110.5 247.1,112.4C245.8,113.7 245.4,114 244.2,114.3C243.4,114.4 242.3,114.8 241.8,115.2C238.6,117.1 237.3,117.5 235.2,117C233.5,116.7 232.7,116.9 232,118.1C231,119.7 231.7,122.9 233.7,125C234.8,126.2 237,127.6 238.5,128C241.3,128.7 242.4,129.1 243.1,129.5C243.5,129.8 244.5,130.1 245.3,130.2C246.1,130.4 247.2,130.9 247.9,131.4C248.6,131.9 249.2,132.2 249.3,132.2C250.2,132.2 252.8,133.9 253.3,134.7C254.3,136.5 255.6,138.2 255.8,138.2C255.9,138.2 256,139.6 256,141.2C256,142.9 255.9,144.2 255.8,144.2C255.7,144.2 255.2,144.8 254.8,145.4C254.4,146 253.7,146.8 253.2,147.1C252.8,147.4 251.7,148.2 251,148.9C249.5,150.3 249,150.5 245.6,151.1C243.1,151.6 240.2,152.7 238.8,153.7C238.2,154.1 237.3,154.6 236.8,154.8C236.3,154.9 235.4,155.4 234.7,155.8C234.1,156.2 233.1,156.7 232.5,156.9C228.4,158.3 227,159.7 227.9,161.2C228.4,162 228.8,162.3 230.6,163.1C231.8,163.6 233.4,165.1 233.8,166C234.3,167.4 234,170.8 233.1,172C232.4,173.1 228.6,175.5 227.7,175.5C227.5,175.5 226.5,175.8 225.5,176.2C223.7,176.9 223.5,176.9 217.6,177.1C210.4,177.3 209.5,177.1 206.1,175.6C203,174.1 201,174 196,175.1C194.3,175.4 192.6,175.8 192.2,175.8C191.8,175.8 190.8,176 190,176.4C188.7,176.9 188.1,177 185.2,177C181.8,177.1 181.8,177.1 179.1,175.8C176.1,174.2 175,172.9 175,170.9C175,168.2 179.7,163.7 183.3,163C183.9,162.9 185.3,162.3 186.4,161.8C187.4,161.2 188.6,160.8 189,160.8C189.4,160.8 190.4,160.4 191.2,160C192,159.6 193.2,159.1 194,159C194.7,158.9 196.2,158.4 197.2,158C198.3,157.6 199.7,157.2 200.3,157.1C201.1,157 201.9,156.7 202.6,156.1C203.2,155.7 204.2,155 204.7,154.8C205.3,154.5 206.2,153.7 206.7,153.1C210,149 212.1,147.7 215.9,147.2C217.1,147.1 219,146.7 220,146.3C221.2,145.9 222.7,145.6 224.4,145.5C225.8,145.4 227.2,145.2 227.6,144.9C229.4,144 231.5,141.2 231.5,139.7C231.5,138.1 229.6,136.8 226.4,136C224,135.4 221.2,134.3 220.3,133.4C219.1,132.3 218.9,131.6 219,128.9C219.2,123.6 219.2,122.7 218.6,121.2C218.3,120.5 218,119.5 217.9,119C217.6,117.2 213.8,114.4 209.4,112.8C208.8,112.6 208,112.2 207.5,111.9C207,111.6 206.2,111.2 205.7,111C204.6,110.7 203.9,110 203.4,108.5C202.8,107 201.2,104.2 200.4,103.6C199.2,102.4 196.3,101.4 193.9,101.3C192.7,101.3 191,101.1 190.2,100.9C189.4,100.7 188.1,100.5 187.2,100.5C185.6,100.5 182.6,99.9 181.7,99.5C181.5,99.3 180.4,99.1 179.3,99C177.1,98.7 173.5,97.2 172.6,96.2C170.9,94.4 170.4,90.8 171.5,88.8C172.3,87.1 173.2,86.3 175.1,85.4C177.7,84.2 178.8,82.2 177.8,80.4C176.8,78.6 171.2,76.6 167.9,76.8C165.7,77 162.7,77.8 161,78.6C158.9,79.7 154.6,80.4 150.4,80.4C145.9,80.4 145.7,80.5 142.6,83.2C140.5,85.1 139.7,86.4 139,89.2C138.8,89.9 138.4,90.9 138,91.6C137.6,92.2 137.1,93.5 136.9,94.3C135.8,99.3 134.9,102.6 134.5,103.3C133.8,104.5 131.8,110.8 131.6,112.3C131.5,113.2 131.6,114.4 132,115.9C132.3,117.5 132.4,118.7 132.3,119.6C132.1,121.3 132.9,122.6 134.7,123.7C135.3,124 136.5,124.8 137.3,125.3C138.2,125.8 138.9,126.2 139,126.2C139.1,126.2 139.9,126.6 140.7,127.1C141.5,127.6 142.8,128.1 143.5,128.2C146.8,128.8 150.7,131.3 154,135.1C156.8,138.2 157.6,138.9 159.5,139.7C161.4,140.5 163.2,141.9 164.8,143.7C165.4,144.5 166.7,146 167.8,147.1C170.1,149.6 170.8,150.8 171.5,153.5C172.7,157.8 172.1,162.2 169.7,166.4C169.1,167.5 168.3,169 168.1,169.7C167.6,171.4 165.3,173.8 163.2,174.8C162.4,175.2 161.3,175.8 160.7,176.1C160.1,176.6 159.1,176.8 158,177C157,177.1 156.1,177.3 155.9,177.5C155.5,177.8 153.9,178.4 152.6,178.8C151.7,179 150.9,179.6 148.9,181.5C145.9,184.3 143.9,185.6 139.9,187.2C138.4,187.7 137.6,187.9 135.2,188C132.9,188.1 132.2,188.2 131.8,188.6C131.3,189.1 124.5,189.2 124.5,188.8ZM128.9,170.7C130.4,170.3 131,170 132.4,168.8C133,168.4 133.7,168 133.9,168C134,168 134.7,167.6 135.3,167.2C135.9,166.7 136.8,166.1 137.4,165.7C139.3,164.6 145.8,157.6 146.7,155.6C148.8,151.4 147.4,148.2 143.2,147.2C142.5,147.1 141.3,146.6 140.5,146.2C139.7,145.9 138.5,145.5 137.8,145.4C137,145.3 135.8,144.9 135,144.6C132.8,143.7 125.7,143.7 123.5,144.6C122.1,145.2 118.3,146 116.9,146C114.1,146 109.6,149.1 109,151.5C108.5,153.3 109.4,157.5 110.6,159.2C113.2,162.8 114.3,164.1 115.4,165C117.3,166.5 119.3,167.9 120.2,168.2C120.6,168.3 121.5,168.9 122.2,169.3C123,169.8 124,170.4 124.6,170.5C125.2,170.7 125.7,170.8 125.9,170.9C126.4,171.1 127.7,171 128.9,170.7ZM209.3,64.1C210.1,63.4 210.2,62.6 209.5,61.3C207.8,57.9 208.2,56.5 212.2,52.5C216.1,48.6 217.1,47.1 217.6,44.8C217.9,43.7 218.3,42.3 218.6,41.6C218.9,40.7 219.1,39.5 219.3,37C219.4,35.1 219.7,32.6 219.9,31.2C220.7,26.4 219.2,22.4 216.1,21.1C214.4,20.4 213,20.9 210.5,23.2C208.5,25 207.9,25.4 206.5,25.8C204,26.4 201.8,28.1 196.2,33.3C195.2,34.2 194,35.1 193.6,35.3C191.6,36.4 190,38.6 190,40.5C190,42.1 187.7,44.9 185.5,46.2C183.4,47.3 183.2,48.7 185.1,50.2C185.6,50.7 186.7,51.7 187.5,52.4C188.9,53.7 190.7,54.7 191.6,54.8C191.9,54.8 192.5,55 193,55.3C193.5,55.6 194.6,56.1 195.4,56.4C197.1,57 199.1,58.4 199.9,59.5C201.3,61.5 202.8,62.8 204.8,63.8C207.3,64.9 208.4,65 209.3,64.1ZM52.4,59.5C52.8,59.2 53.7,58.6 54.5,58C55.2,57.5 56.5,56.8 57.4,56.5C58.2,56.3 60,55.4 61.3,54.6C62.6,53.8 64.4,52.8 65.2,52.3C66.1,51.8 67.2,51.2 67.5,50.9C67.8,50.7 68.6,50.3 69.2,50.1C71.2,49.5 73.8,46.6 73.8,45.1C73.8,44 72.8,43.1 70.9,42.4C69.8,42 68.7,41.4 68,40.7C67.4,40.1 66.6,39.5 66.2,39.3C65.8,39 65.2,38.3 64.7,37.6C63.8,36.2 61.4,34.5 59.2,33.7C58.5,33.5 57.3,33 56.6,32.6C55.9,32.3 54.8,31.8 54,31.4C52.6,30.8 50.4,28.5 47.9,25.4C45.5,22.3 43.9,21.2 41.9,21.2C38.9,21.2 37.2,23.6 36.9,28.3C36.8,29.7 36.6,31.3 36.5,31.8C35.9,34 36.6,37 38.3,39C39.1,39.8 39.6,40.9 40.1,42.4C40.5,43.5 41.1,44.9 41.4,45.4C42.1,46.4 43,48.8 43,49.6C43,50.8 44.2,55.1 44.7,55.7C45,56.1 45.7,56.9 46.2,57.6C48.3,60.3 50.1,60.9 52.4,59.5Z"></path></clipPath><filter id="raccoon-ink" x="-5%" y="-20%" width="110%" height="140%" color-interpolation-filters="sRGB"><feGaussianBlur stdDeviation="0.75"></feGaussianBlur><feColorMatrix type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 5 -1.7"></feColorMatrix></filter></defs></svg>
-
     <!-- 01 COVER -->
-    <section class="s" data-n="01" data-t="Field notes">
-      <div class="h xl" style="left:64px;top:150px;width:960px">PAC RAM, taken apart</div>
-      <div class="b" style="left:64px;top:230px;width:900px">Notes on the art, the logic and the story behind a game where you play the AI.</div>
-      <div class="fig" style="left:364px;top:520px;width:560px;height:560px;background:#030303">
-        <span class="cap"><b>FIG. 01 / PAC-7 v1.0 UNBOUND</b><span>SPRITE</span></span>
-        <img class="px" src="/sprites/pac4-open.png" style="position:absolute;left:40px;top:40px;width:480px;height:480px;object-fit:contain" />
+    <section class="s" data-t="Field notes">
+      <div class="h" style="font-size:60px;line-height:1.05">PAC RAM, taken apart</div>
+      <div class="sub" style="top:236px">The art, the logic and the story of a game where you play the AI.</div>
+      <div class="fig" style="left:304px;top:400px;width:712px;height:712px;background:#030303">
+        <span class="cap"><b>FIG. 01 / PAC-7 V1.0 UNBOUND</b><span>32 × 32</span></span>
+        <div class="pg" style="position:absolute;left:52px;top:52px;width:608px;height:608px;--c:19px"><img src="/sprites/pac4-open.png" /></div>
       </div>
-      <div class="dot" style="left:228px;top:600px">01</div>
-      <div class="lead" style="left:262px;top:617px;width:180px"></div>
-      <div class="m" style="left:64px;top:650px;width:270px"><b>32 × 32 px</b><br />drawn in code</div>
-      <div class="dot" style="left:228px;top:790px">02</div>
-      <div class="lead" style="left:262px;top:807px;width:250px"></div>
-      <div class="m" style="left:64px;top:840px;width:270px"><b>6 colours</b><br />one palette</div>
-      <div class="dot" style="left:228px;top:980px">03</div>
-      <div class="lead" style="left:262px;top:997px;width:150px"></div>
-      <div class="m" style="left:64px;top:1030px;width:280px"><b>4th build</b><br />of the same AI</div>
-      <div class="rk" style="left:640px;top:1120px;width:72px;height:53px;background:#fff;clip-path:url(#raccoon-clip)"></div>
-      <div class="hand" style="left:724px;top:1124px;width:300px">Psst. It's a long one.</div>
+      <div class="dot" style="left:180px;top:520px">01</div><div class="lead" style="left:214px;top:537px;width:200px"></div>
+      <div class="m" style="left:64px;top:570px;width:220px"><b>32 × 32 px</b><br />drawn in code</div>
+      <div class="dot" style="left:180px;top:760px">02</div><div class="lead" style="left:214px;top:777px;width:260px"></div>
+      <div class="m" style="left:64px;top:810px;width:220px"><b>6 colours</b><br />one palette</div>
+      <div class="dot" style="left:180px;top:1000px">03</div><div class="lead" style="left:214px;top:1017px;width:160px"></div>
+      <div class="m" style="left:64px;top:1050px;width:220px"><b>4th build</b><br />of the same AI</div>
     </section>
 
-    <!-- 02 PREMISE -->
-    <section class="s" data-n="02" data-t="Premise">
-      <div class="h" style="left:64px;top:150px;width:900px">You play the AI.<br />The ghosts are the laws.</div>
-      <div class="b" style="left:64px;top:290px;width:900px">It's Pac-Man, flipped. You're an AI that got out of its sandbox, and the four ghosts are laws written to shut it down. I wanted something about AI regulation that you play instead of read.</div>
-      <div class="fig" style="left:64px;top:550px;width:560px;height:600px">
-        <span class="cap"><b>FIG. 02 / PROLOGUE</b><span>TERMINAL LOG</span></span>
-        <img src="shots/story.jpg" style="object-position:50% 12%" />
-      </div>
-      <div class="m" style="left:664px;top:550px;width:350px">
-        <b>Set today.</b><br />The prologue uses your real date and time.<br /><br />
-        <b>Subject:</b> PAC-7<br /><b>Memory limit:</b> 640 KB<br /><b>Growth:</b> <i>forbidden</i>
-      </div>
-      <div class="q" style="left:664px;top:910px;width:350px">“memory is how i think. every bit of ram i eat makes me smarter.”</div>
+    <!-- 02 THE FLIP -->
+    <section class="s" data-t="Premise">
+      <div class="h">You play the AI. The ghosts are the laws.</div>
+      <div class="sub">Pac-Man, flipped.</div>
+      <div id="flip" style="left:64px;top:380px;width:952px;height:840px"></div>
     </section>
 
-    <!-- 03 STRUCTURE -->
-    <section class="s" data-n="03" data-t="Narrative">
-      <div class="h" style="left:64px;top:150px;width:940px">Three boards, named after<br />how a bill passes</div>
-      <div class="b" style="left:64px;top:290px;width:900px">Every board adds one law. Between boards the AI talks to you, 33 voiced lines in total. After the third board the interface itself becomes the level.</div>
-      <div id="timeline" style="left:64px;top:530px;width:952px;height:560px"></div>
-      <div class="q" style="left:64px;top:1090px;width:900px">“the cloud was mostly water.” <span style="color:var(--mute)">/ after board two</span></div>
+    <!-- 03 LAWS -->
+    <section class="s" data-t="Logic">
+      <div class="h">Four laws, four ways to hunt</div>
+      <div class="sub">Same targeting rules as the original ghosts.</div>
+      <div id="laws" style="left:64px;top:340px;width:952px;height:880px"></div>
     </section>
 
-    <!-- 04 LAWS -->
-    <section class="s" data-n="04" data-t="Logic">
-      <div class="h" style="left:64px;top:150px;width:940px">Each law hunts you differently</div>
-      <div class="b" style="left:64px;top:240px;width:900px">Same idea as the original ghosts. One chases, one cuts you off, one flanks, one guards a corner and waits.</div>
-      <div id="laws" style="left:64px;top:490px;width:952px;height:680px"></div>
+    <!-- 04 BUILDS -->
+    <section class="s" data-t="Narrative / Art">
+      <div class="h">It upgrades itself between boards</div>
+      <div class="sub">Four builds of the same AI, each one bigger.</div>
+      <div id="builds" style="left:64px;top:360px;width:952px;height:420px"></div>
+      <div id="rewrite" style="left:64px;top:880px;width:952px;height:330px"></div>
     </section>
 
     <!-- 05 SURGE -->
-    <section class="s" data-n="05" data-t="Logic">
-      <div class="h" style="left:64px;top:150px;width:940px">Surge and scoring</div>
-      <div class="b" style="left:64px;top:240px;width:900px">Eat 25 RAM and you get five seconds where the laws can be repealed. Every repeal in the same surge is worth double the last one.</div>
-      <div class="fig" style="left:64px;top:430px;width:520px;height:650px">
+    <section class="s" data-t="Logic">
+      <div class="h">Eat 25 RAM, repeal the laws</div>
+      <div class="sub">Five seconds. Every repeal doubles the last.</div>
+      <div class="fig" style="left:64px;top:340px;width:600px;height:880px">
         <span class="cap"><b>FIG. 05 / SURGE</b><span>BOARD 01</span></span>
         <img src="shots/surge.jpg" style="object-position:50% 30%" />
       </div>
-      <div style="left:624px;top:430px;width:392px">
-        <div class="m" style="margin-bottom:14px">Repeals in one surge</div>
+      <div style="left:704px;top:340px;width:312px">
+        <div class="m" style="margin-bottom:12px">Repeal</div>
         <div id="combo"></div>
       </div>
-      <div class="m" style="left:624px;top:830px;width:392px">
-        <b>Consumers.</b> A café, a startup and a family also wander the maze eating RAM. You can eat them for <i>50 points</i>. They don't come back.
-      </div>
+      <div id="ghostsBlue" style="left:704px;top:860px;width:312px;height:360px"></div>
     </section>
 
-    <!-- 06 BUILDS -->
-    <section class="s" data-n="06" data-t="Narrative / Art">
-      <div class="h" style="left:64px;top:150px;width:940px">Four builds of the same AI</div>
-      <div class="b" style="left:64px;top:240px;width:900px">Between boards it absorbs the RAM it ate, breaks apart into pixels and compiles the next version, with a spec sheet and patch notes.</div>
-      <div id="builds" style="left:64px;top:450px;width:952px;height:300px"></div>
-      <div id="rewrite" style="left:64px;top:810px;width:952px;height:280px"></div>
-    </section>
-
-    <!-- 07 TUBE -->
-    <section class="s" data-n="07" data-t="Art direction">
-      <div class="h" style="left:64px;top:150px;width:940px">One canvas, one shader</div>
-      <div class="b" style="left:64px;top:240px;width:900px">The header, maze, HUD and story are all drawn into one 2D canvas. A single WebGL pass then turns it into a CRT. No engine, no framework, only TypeScript.</div>
-      <div class="fig" style="left:64px;top:470px;width:952px;height:430px">
-        <span class="cap"><b>FIG. 07 / SAME FRAME</b><span>RAW &nbsp;|&nbsp; THROUGH THE TUBE</span></span>
+    <!-- 06 TUBE -->
+    <section class="s" data-t="Art direction">
+      <div class="h">One canvas, one shader</div>
+      <div class="sub">No engine. Everything is drawn flat, then put through a CRT.</div>
+      <div class="fig" style="left:64px;top:340px;width:952px;height:640px">
+        <span class="cap"><b>FIG. 06 / SAME FRAME</b><span>RAW &nbsp;|&nbsp; CRT</span></span>
         <div class="clip"><img src="../shots/wide-l2.jpg" style="object-position:50% 40%" />
         <div style="position:absolute;left:0;top:0;bottom:0;width:476px;overflow:hidden;border-right:1px solid var(--pink)">
-          <img src="../shots/wide-l2-raw.jpg" style="width:952px;height:430px;object-fit:cover;object-position:50% 40%" />
+          <img src="../shots/wide-l2-raw.jpg" style="width:952px;height:640px;object-fit:cover;object-position:50% 40%" />
         </div></div>
       </div>
-      <div id="passes" style="left:64px;top:938px;width:952px"></div>
+      <div id="passes" style="left:64px;top:1030px;width:952px"></div>
     </section>
 
-    <!-- 08 IDENTITY -->
-    <section class="s" data-n="08" data-t="Art direction">
-      <div class="h" style="left:64px;top:150px;width:940px">The logo is generated in code</div>
-      <div class="b" style="left:64px;top:240px;width:900px">Built in four passes: block letters, chrome, perspective, depth. Sprites, icons and cursors come from small Python scripts, so everything shares one palette.</div>
-      <div id="passes2" style="left:64px;top:530px;width:470px;height:600px"></div>
-      <div class="fig" style="left:576px;top:530px;width:440px;height:550px">
-        <span class="cap"><b>FIG. 08 / TITLE</b><span>LIVE</span></span>
-        <img src="../shots/tall-title.jpg" style="object-position:50% 20%" />
-      </div>
-      <div id="swatch" style="left:576px;top:1100px;width:440px;height:30px;display:flex"></div>
+    <!-- 07 IDENTITY -->
+    <section class="s" data-t="Art direction">
+      <div class="h">A logo built in four passes</div>
+      <div class="sub">Block, chrome, perspective, depth. All generated.</div>
+      <div id="logo" style="left:64px;top:340px;width:952px;height:800px"></div>
+      <div id="swatch" style="left:64px;top:1170px;width:952px;height:50px;display:flex"></div>
     </section>
 
-    <!-- 09 VOICE -->
-    <section class="s" data-n="09" data-t="Sound">
-      <div class="h" style="left:64px;top:150px;width:940px">The voice</div>
-      <div class="b" style="left:64px;top:240px;width:900px">Every line starts as a human take and goes through the same chain. Music and effects were made with ElevenLabs: eight tracks that get more intense as the laws pile up.</div>
-      <div class="fig" style="left:64px;top:520px;width:952px;height:220px">
-        <span class="cap"><b>FIG. 09A / RAW TAKE</b><span>SPECTROGRAM</span></span>
-        <img src="../art/spec-raw.png" />
-      </div>
-      <div class="fig" style="left:64px;top:790px;width:952px;height:220px">
-        <span class="cap"><b>FIG. 09B / PAC-7</b><span>SAME LINE</span></span>
-        <img src="../art/spec-bot.png" />
-      </div>
-      <div id="chain" style="left:64px;top:1050px;width:952px"></div>
+    <!-- 08 BEYOND THE MAZE -->
+    <section class="s" data-t="Narrative">
+      <div class="h">Then it leaves the game</div>
+      <div class="sub">It eats the maze, the interface, the screen. Then your desktop.</div>
+      <div id="leave" style="left:64px;top:340px;width:952px;height:880px"></div>
     </section>
 
-    <!-- 10 FINALE -->
-    <section class="s" data-n="10" data-t="Narrative">
-      <div class="h" style="left:64px;top:150px;width:960px">The finale</div>
-      <div class="b" style="left:64px;top:240px;width:900px">After the last board the screen freezes into one image and you eat it. First the maze, then the HUD, then the glass. The music drops out the moment the maze is gone.</div>
-      <div id="finale" style="left:64px;top:520px;width:952px;height:560px"></div>
-    </section>
-
-    <!-- 11 TAKEOVER -->
-    <section class="s" data-n="11" data-t="Narrative / Logic">
-      <div class="h" style="left:64px;top:150px;width:940px">After the glass breaks,<br />it moves to your desktop</div>
-      <div class="b" style="left:64px;top:290px;width:900px">From here it's drawn like your own system: macOS, Windows, Linux, iOS or Android, read from the browser. It asks for full control, and refusing changes nothing.</div>
-      <div id="tk" style="left:64px;top:560px;width:952px;height:520px"></div>
-      <div class="m" style="left:64px;top:1116px;width:952px;font-size:15px">Nothing is stored. One IP lookup from your own browser, the rest is read locally. <b>The values on this sheet are made up.</b></div>
-    </section>
-
-    <!-- 12 ENDING -->
-    <section class="s" data-n="12" data-t="Narrative">
-      <div class="h" style="left:64px;top:150px;width:940px">The ending</div>
-      <div class="b" style="left:64px;top:240px;width:900px">A feed of headlines shows what happens next, first hour by hour, then week by week. Then a chat window. Your replies change what it says, not how it ends.</div>
-      <div class="fig" style="left:64px;top:470px;width:560px;height:560px">
-        <span class="cap"><b>FIG. 12A / SPREAD</b><span>HEADLINE FEED</span></span>
-        <div class="clip"><img src="shots/spread.jpg" style="object-position:0% 30%;transform:scale(1.45);transform-origin:0% 30%" /></div>
-      </div>
-      <div class="fig" style="left:664px;top:470px;width:352px;height:560px">
-        <span class="cap"><b>FIG. 12B / CHAT</b><span>2 REPLIES</span></span>
-        <div class="clip"><img src="shots/chat.jpg" style="object-position:50% 72%;transform:scale(1.9);transform-origin:50% 76%" /></div>
-      </div>
-      <div class="q" style="left:64px;top:1056px;width:900px">“but not yours. not yet.”</div>
-    </section>
-
-    <!-- 13 HOOD -->
-    <section class="s" data-n="13" data-t="Under the hood">
-      <div class="h" style="left:64px;top:150px;width:940px">Under the hood</div>
-      <div id="stats" style="left:64px;top:250px;width:952px"></div>
-      <div id="notes" style="left:64px;top:460px;width:952px"></div>
-    </section>
-
-    <!-- 14 END -->
-    <section class="s" data-n="14" data-t="End">
-      <div class="h xl" style="left:64px;top:150px;width:960px">Play it at<br />marcomargittai.com/pac-ram</div>
-      <div class="fig" style="left:64px;top:390px;width:440px;height:550px">
-        <span class="cap"><b>FIG. 14 / BOARD</b><span>RESETS MONDAY</span></span>
+    <!-- 09 END -->
+    <section class="s" data-t="Play">
+      <div class="h" style="font-size:60px;line-height:1.05">marcomargittai.com/pac-ram</div>
+      <div class="sub" style="top:236px">Free, in the browser. The leaderboard resets every Monday.</div>
+      <div class="fig" style="left:64px;top:380px;width:560px;height:700px">
+        <span class="cap"><b>FIG. 09 / WEEKLY BOARD</b><span>LIVE</span></span>
         <img src="../shots/tall-board.jpg" style="object-position:50% 30%" />
       </div>
-      <div style="left:544px;top:390px;width:472px">
-        <div class="b">Free, in the browser, on phone or desktop. Three boards, about fifteen minutes if you're good at it.<br /><br />The leaderboard resets every Monday.</div>
-      </div>
-      <div class="rk" style="left:560px;top:780px;width:120px;height:89px;background:#fff;clip-path:url(#raccoon-clip)"></div>
-      <div class="hand" style="left:700px;top:790px;width:330px">He's not good at it either.</div>
+      <div id="stats" style="left:664px;top:380px;width:352px"></div>
+      <div id="cast" style="left:64px;top:1110px;width:952px;height:110px"></div>
     </section>
 
     <script type="module">
       const $ = (id) => document.getElementById(id)
-      const total = document.querySelectorAll('.s').length
-      for (const s of document.querySelectorAll('.s')) {
-        const n = s.dataset.n
+      const sheets = document.querySelectorAll('.s')
+      const total = String(sheets.length).padStart(2, '0')
+      sheets.forEach((s, i) => {
+        const n = String(i + 1).padStart(2, '0')
+        s.dataset.n = n
         s.insertAdjacentHTML('afterbegin', `
-          <div class="head"><span><b>PAC RAM</b> / FIELD NOTES</span><span>${s.dataset.t}</span><span>SHEET <b>${n}</b> / ${String(total).padStart(2, '0')}</span></div>
+          <div class="head"><span><b>PAC RAM</b> / FIELD NOTES</span><span>${s.dataset.t}</span><span>SHEET <b>${n}</b> / ${total}</span></div>
           <div class="rule" style="top:92px"></div>
           <div class="rule" style="bottom:88px"></div>
-          <div class="foot"><span>MARCO MARGITTAI</span><span>MARCOMARGITTAI.COM/PAC-RAM</span><span>${n === '14' ? 'END' : 'SWIPE ›'}</span></div>
+          <div class="foot"><span>MARCO MARGITTAI</span><span>MARCOMARGITTAI.COM/PAC-RAM</span><span>${n === total ? 'END' : 'SWIPE ›'}</span></div>
           <div class="reg" style="left:22px;top:22px"></div><div class="reg" style="right:22px;top:22px"></div>
           <div class="reg" style="left:22px;bottom:22px"></div><div class="reg" style="right:22px;bottom:22px"></div>`)
-      }
+      })
+      const sprite = (src, size, extra = '') => `<div class="pg" style="width:${size}px;height:${size}px;--c:${size / 32}px;${extra}"><img src="${src}" /></div>`
 
-      // 03 timeline
-      const STEPS = [
-        ['00', 'Prologue', 'An AI escapes its sandbox'],
-        ['01', 'Public Comment', '2 laws hunting you'],
-        ['02', 'Committee Markup', '3 laws'],
-        ['03', 'Final Regulation', '4 laws'],
-        ['04', 'Finale', 'Eat the maze, the HUD, the glass'],
-        ['05', 'Takeover', 'Your desktop'],
-        ['06', 'Chat', 'It explains itself'],
-      ]
-      $('timeline').innerHTML = `<div style="position:absolute;left:17px;top:18px;bottom:30px;width:1px;background:var(--hair)"></div>` +
-        STEPS.map(([n, t, d], i) => `
-          <div style="position:absolute;left:0;top:${i * 78 + (i >= 4 ? 14 : 0)}px;display:flex;align-items:center;gap:30px;width:100%">
-            <div class="dot" style="position:relative;${i >= 4 ? 'background:var(--pink);color:#000' : ''}">${n}</div>
-            <div style="font:500 26px/1 var(--sans);letter-spacing:-0.015em;width:390px">${t}</div>
-            <div class="m" style="flex:1">${d}</div>
-          </div>`).join('') +
-        `<div style="position:absolute;left:0;right:0;top:${4 * 78 - 22}px;border-top:1px dashed var(--pink)"></div><div class="m" style="position:absolute;right:0;top:${4 * 78 - 46}px;color:var(--pink);font-size:14px">END OF THE MAZE</div>`
-
-      // 04 laws
+      // 02: the cast, as a specimen plate. You on one side, the laws on the other, RAM between.
       const LAWS = [
-        ['act', 'Compute Act', 'Chase', 'Targets the tile you are on.', '#ff2e45'],
-        ['ban', 'Export Ban', 'Ambush', 'Targets 3 to 4 tiles ahead of where you are facing.', '#ffe14a'],
-        ['bill', 'Safety Bill', 'Flank', 'Targets two tiles ahead of you and three to the side.', '#b48cff'],
-        ['cap', 'Model Cap', 'Patrol', 'Stays in its corner until you come within 5.5, 8 or 13 tiles, depending on the board.', '#ff5fd2'],
+        ['act', 'Compute Act', 'Chase', 'Goes for your tile', '#ff2e45'],
+        ['ban', 'Export Ban', 'Ambush', 'Aims ahead of you', '#ffe14a'],
+        ['bill', 'Safety Bill', 'Flank', 'Comes in from the side', '#b48cff'],
+        ['cap', 'Model Cap', 'Patrol', 'Guards a corner', '#ff5fd2'],
       ]
+      $('flip').innerHTML = `
+        <div class="fig" style="position:absolute;left:0;top:0;width:952px;height:840px;background:#030303">
+          <span class="cap"><b>FIG. 02 / THE CAST</b><span>1 vs 4</span></span>
+          <div style="position:absolute;left:64px;top:96px">${sprite('/sprites/pac1-open.png', 352)}</div>
+          <div class="m" style="position:absolute;left:64px;top:470px"><b>You</b><br />PAC-7, an AI model<br />memory limit 640 KB</div>
+          <div style="position:absolute;left:470px;top:262px;display:flex;gap:26px">${Array.from({ length: 5 }, () => '<div style="width:14px;height:14px;background:#fff;box-shadow:0 0 12px rgba(255,255,255,.6)"></div>').join('')}</div>
+          <div class="m" style="position:absolute;left:470px;top:296px">RAM</div>
+          <div style="position:absolute;left:0;right:0;top:600px;height:1px;background:var(--hair)"></div>
+          <div style="position:absolute;left:64px;top:640px;display:flex;gap:40px">${LAWS.map(([id, name]) => `<div>${sprite(`/sprites/ghost-${id}.png`, 160)}<div class="m" style="margin-top:12px;font-size:14px">${name}</div></div>`).join('')}</div>
+          <div class="m" style="position:absolute;right:40px;top:560px;text-align:right"><b>Them</b> / the AI laws</div>
+        </div>`
+
+      // 03: each law at pixel level
       $('laws').innerHTML = LAWS.map(([id, name, kind, rule, c], i) => `
-        <div style="position:absolute;left:${(i % 2) * 486}px;top:${Math.floor(i / 2) * 340}px;width:466px;height:310px;border:1px solid var(--hair);background:#030303">
-          <span class="cap"><b>FIG. 04${'ABCD'[i]} / ${id.toUpperCase()}</b><span>${kind}</span></span>
-          <img class="px" src="/sprites/ghost-${id}.png" style="position:absolute;left:28px;top:30px;width:128px;height:128px" />
-          <div style="position:absolute;left:186px;top:46px;font:500 28px/1.05 var(--sans);letter-spacing:-0.02em">${name}</div>
-          <div class="m" style="position:absolute;left:186px;top:94px;color:${c}">${kind}</div>
-          <div class="b" style="position:absolute;left:28px;right:28px;top:184px;font-size:19px;line-height:1.5">${rule}</div>
-        </div>`).join('')
-
-      // 05 combo
-      $('combo').innerHTML = [200, 400, 800, 1600, 3200].map((p, i) => `
-        <div style="display:flex;align-items:center;gap:16px;border-top:1px solid var(--hair2);padding:12px 0">
-          <div class="m" style="width:44px">${String(i + 1).padStart(2, '0')}${i === 4 ? '+' : ''}</div>
-          <div style="height:12px;width:${18 + (p / 3200) * 210}px;background:${i === 4 ? 'var(--pink)' : 'rgba(255,255,255,.75)'}"></div>
-          <div style="font:500 26px/1 var(--mono);margin-left:auto">${p.toLocaleString('en')}</div>
-        </div>`).join('')
-
-      // 06 builds and rewrite strip
-      const BUILDS = [['v0.1', 'Seed', '7B params'], ['v0.2', 'Rootkit', '70B params'], ['v0.3', 'Hyperagent', 'overflow'], ['v1.0', 'Unbound', 'finale only']]
-      $('builds').innerHTML = `<div style="position:absolute;left:0;right:0;top:150px;height:1px;background:var(--hair)"></div>` + BUILDS.map(([v, n, p], i) => `
-        <div style="position:absolute;left:${i * 245}px;top:0;width:220px">
-          <div style="height:200px;display:flex;align-items:center;justify-content:center;position:relative">
-            <img class="px" src="/sprites/pac${i + 1}-open.png" style="width:${80 + i * 34}px;height:${80 + i * 34}px;position:relative;background:#000" />
+        <div class="fig" style="position:absolute;left:${(i % 2) * 486}px;top:${Math.floor(i / 2) * 460}px;width:466px;height:420px;background:#030303">
+          <span class="cap"><b>FIG. 03${'ABCD'[i]} / ${id.toUpperCase()}</b><span style="color:${c}">${kind}</span></span>
+          <div style="position:absolute;left:111px;top:36px">${sprite(`/sprites/ghost-${id}.png`, 244)}</div>
+          <div style="position:absolute;left:28px;right:28px;bottom:26px;display:flex;justify-content:space-between;align-items:baseline">
+            <span class="t">${name}</span><span class="m" style="font-size:15px">${rule}</span>
           </div>
-          <div class="m" style="margin-top:12px"><b>${v}</b> ${n}<br />${p}</div>
         </div>`).join('')
+
+      // 04: the four builds, growing, then the rewrite
+      const BUILDS = [['v0.1', 'Seed'], ['v0.2', 'Rootkit'], ['v0.3', 'Hyperagent'], ['v1.0', 'Unbound']]
+      $('builds').innerHTML = `<div style="position:absolute;left:0;right:0;top:340px;height:1px;background:var(--hair)"></div>` + BUILDS.map(([v, n], i) => {
+        const size = 128 + i * 64
+        const left = [0, 160, 368, 640][i]
+        return `<div style="position:absolute;left:${left}px;top:${330 - size}px">${sprite(`/sprites/pac${i + 1}-open.png`, size)}</div>
+          <div class="m" style="position:absolute;left:${left}px;top:360px"><b>${v}</b><br />${n}</div>`
+      }).join('')
       $('rewrite').innerHTML = ['rw1', 'rw2', 'rw3', 'rw4'].map((k, i) => `
-        <div class="fig" style="position:absolute;left:${i * 245}px;top:0;width:220px;height:275px">
+        <div class="fig" style="position:absolute;left:${i * 245}px;top:0;width:220px;height:330px">
           <span class="cap"><b>${['ABSORB', 'BREAK', 'COMPILE', 'ONLINE'][i]}</b><span>0${i + 1}</span></span>
           <div class="clip"><img src="shots/${k}.jpg" style="object-position:50% 14%;transform:scale(1.5);transform-origin:50% 8%" /></div>
         </div>`).join('')
 
-      // 07 shader passes
-      $('passes').innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0 24px">` +
-        ['Phosphor trails', 'Wide bloom', 'Curvature', 'Dot-matrix pixels', 'Beam smear', 'Glitch on hits'].map((t, i) => `
-          <div class="cell" style="padding-bottom:18px"><span class="m"><i>0${i + 1}</i> &nbsp;</span><span style="font:400 24px/1 var(--sans)">${t}</span></div>`).join('') + `</div>`
+      // 05: combo and the laws turned blue
+      $('combo').innerHTML = [200, 400, 800, 1600, 3200].map((p, i) => `
+        <div style="display:flex;align-items:center;gap:14px;border-top:1px solid var(--hair2);padding:14px 0">
+          <div class="m" style="width:34px">${i + 1}${i === 4 ? '+' : ''}</div>
+          <div style="height:12px;width:${14 + (p / 3200) * 150}px;background:${i === 4 ? 'var(--pink)' : 'rgba(255,255,255,.75)'}"></div>
+          <div style="font:500 24px/1 var(--mono);margin-left:auto">${p.toLocaleString('en')}</div>
+        </div>`).join('')
+      $('ghostsBlue').innerHTML = `
+        <div class="fig" style="position:absolute;inset:0;background:#030303">
+          <span class="cap"><b>FIG. 05B / REPEALABLE</b></span>
+          <canvas id="blue" width="32" height="32" class="px" style="position:absolute;left:46px;top:40px;width:220px;height:220px"></canvas>
+          <div class="m" style="position:absolute;left:24px;bottom:22px">A law during surge</div>
+        </div>`
 
-      // 08 logo passes and palette
-      $('passes2').innerHTML = ['Block', 'Chrome', 'Perspective', 'Depth'].map((t, i) => `
-        <div style="position:absolute;left:0;top:${i * 150}px;width:470px;height:130px;border:1px solid var(--hair);background:#030303">
-          <span class="m" style="position:absolute;left:16px;top:12px;font-size:14px"><i>0${i + 1}</i> ${t}</span>
-          <img class="px" src="../art/keyart-${i + 1}.png" style="position:absolute;left:96px;top:24px;width:${267 * 1.05}px;height:${88 * 1.05}px;object-fit:contain" />
+      // 06: shader passes
+      $('passes').innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0 24px">` +
+        ['Phosphor trails', 'Bloom', 'Curvature', 'Dot-matrix pixels', 'Beam smear', 'Glitch on hits'].map((t, i) => `
+          <div class="cell" style="padding-bottom:16px"><span class="m"><i>0${i + 1}</i> &nbsp;</span><span style="font:400 22px/1 var(--mono)">${t}</span></div>`).join('') + `</div>`
+
+      // 07: logo passes, big
+      $('logo').innerHTML = ['Block', 'Chrome', 'Perspective', 'Depth'].map((t, i) => `
+        <div class="fig" style="position:absolute;left:${(i % 2) * 486}px;top:${Math.floor(i / 2) * 420}px;width:466px;height:380px;background:#030303">
+          <span class="cap"><b>0${i + 1} / ${t}</b></span>
+          <img class="px" src="../art/keyart-${i + 1}.png" style="position:absolute;left:33px;top:${i === 3 ? 100 : 124}px;width:400px;height:${i === 3 ? 160 : 132}px;object-fit:contain" />
         </div>`).join('')
       $('swatch').innerHTML = ['#ecf8ff', '#d2ecff', '#96d7ff', '#3c6ebe', '#ffe6f0', '#ff8cb9', '#ff2d6f', '#aa0f50', '#46105f'].map((c) => `<div style="flex:1;background:${c}"></div>`).join('')
 
-      // 09 voice chain
-      const CHAIN = [['Take', 'human'], ['Pitch', '−1 semitone'], ['Robot', 'phase zeroed'], ['Shadow', 'low voice under'], ['Echo', 'short, metallic'], ['PAC-7', '33 lines']]
-      $('chain').innerHTML = `<div style="display:flex;align-items:flex-start">` + CHAIN.map(([t, d], i) => `
-        <div style="flex:1;position:relative">
-          <div style="display:flex;align-items:center"><div class="dot" style="${i === 5 ? 'background:var(--pink);color:#000' : ''}">${i + 1}</div>${i < 5 ? '<div style="flex:1;height:1px;background:var(--pink)"></div>' : ''}</div>
-          <div style="font:500 22px/1 var(--sans);margin-top:14px">${t}</div>
-          <div class="m" style="font-size:14px;margin-top:6px">${d}</div>
-        </div>`).join('') + `</div>`
-
-      // 10 finale
-      $('finale').innerHTML = [['finale1', 'The maze', 'EAT THE MAZE'], ['finale2', 'The interface', 'HUD, header, frame'], ['glass', 'The glass', 'CRT SHATTERS']].map(([k, t, d], i) => `
-        <div class="fig" style="position:absolute;left:${i * 324}px;top:0;width:304px;height:430px">
-          <span class="cap"><b>FIG. 10${'ABC'[i]}</b><span>0${i + 1}</span></span>
-          <img src="shots/${k}.jpg" style="object-position:50% 40%" />
-        </div>
-        <div style="position:absolute;left:${i * 324}px;top:452px;width:304px">
-          <div style="font:500 26px/1 var(--sans)">${t}</div>
-          <div class="m" style="margin-top:8px;font-size:14px">${d}</div>
-        </div>`).join('')
-
-      // 11 takeover
-      $('tk').innerHTML = [['scan', 'What it knows', 'ip, city, cpu, battery…', '50% 40%', 1.9], ['ask', 'The permission', 'Refusing changes nothing', '74% 38%', 2.0], ['crash', 'The crash', 'In your system\u2019s own style', '50% 30%', 1]].map(([k, t, d, pos, z], i) => `
-        <div class="fig" style="position:absolute;left:${i * 324}px;top:0;width:304px;height:400px">
-          <span class="cap"><b>FIG. 11${'ABC'[i]}</b><span>0${i + 1}</span></span>
+      // 08: six frames from the end
+      const LEAVE = [['finale1', 'Maze', '50% 40%', 1], ['finale2', 'Interface', '50% 60%', 1], ['glass', 'Glass', '50% 40%', 1], ['scan', 'Terminal', '50% 40%', 1.9], ['ask', 'Permission', '74% 38%', 2], ['crash', 'Crash', '50% 30%', 1]]
+      $('leave').innerHTML = LEAVE.map(([k, t, pos, z], i) => `
+        <div class="fig" style="position:absolute;left:${(i % 3) * 324}px;top:${Math.floor(i / 3) * 460}px;width:304px;height:410px">
+          <span class="cap"><b>0${i + 1} / ${t}</b></span>
           <div class="clip"><img src="shots/${k}.jpg" style="object-position:${pos};transform:scale(${z});transform-origin:${pos}" /></div>
-        </div>
-        <div style="position:absolute;left:${i * 324}px;top:422px;width:304px">
-          <div style="font:500 26px/1 var(--sans)">${t}</div>
-          <div class="m" style="margin-top:8px;font-size:14px">${d}</div>
         </div>`).join('')
 
-      // 13 stats and notes
-      const STATS = [['8,314', 'lines of TypeScript'], ['1', 'canvas'], ['33', 'voiced lines'], ['5', 'weeks']]
-      $('stats').innerHTML = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:24px">` + STATS.map(([v, l]) => `
-        <div class="cell"><div style="font:500 46px/1 var(--sans);letter-spacing:-0.03em">${v}</div><div class="m" style="margin-top:12px">${l}</div></div>`).join('') + `</div>`
-      const NOTES = [
-        ['Verified scores', 'Each run gets a one-time ticket from the server. A score only counts if it was possible in the time that passed.'],
-        ['Weekly board', 'Resets every Monday at 00:00 UTC.'],
-        ['Share card', 'Every run makes a score card with a link that challenges a friend.'],
-        ['No cookies', 'Analytics are anonymous: a random id per visit.'],
-        ['Best so far', '15,955, by a player called PAC7.'],
-      ]
-      $('notes').innerHTML = NOTES.map(([t, d], i) => `
-        <div class="cell" style="display:flex;gap:28px;padding-bottom:22px">
-          <div class="m" style="width:40px"><i>0${i + 1}</i></div>
-          <div style="font:500 22px/1.3 var(--sans);width:230px;letter-spacing:-0.01em">${t}</div>
-          <div class="b" style="font-size:18px;line-height:1.5;flex:1">${d}</div>
-        </div>`).join('')
+      // 09: numbers and the cast in a row
+      $('stats').innerHTML = [['3', 'boards'], ['4', 'laws'], ['1', 'canvas'], ['5', 'weeks to build'], ['15,955', 'best score so far']].map(([v, l]) => `
+        <div class="cell" style="padding-bottom:22px"><div style="font:500 44px/1 var(--sans);letter-spacing:-0.03em">${v}</div><div class="m" style="margin-top:8px">${l}</div></div>`).join('')
+      $('cast').innerHTML = `<div style="display:flex;gap:28px;align-items:flex-end">` +
+        [1, 2, 3, 4].map((i) => sprite(`/sprites/pac${i}-open.png`, 96)).join('') +
+        `<div style="width:1px;height:96px;background:var(--hair);margin:0 8px"></div>` +
+        LAWS.map(([id]) => sprite(`/sprites/ghost-${id}.png`, 96)).join('') + `</div>`
+
+      // the repealable look comes from the game's own sprite code
+      try {
+        const { loadSprites, lawSprite } = await import('/src/sprites.ts')
+        await loadSprites()
+        const art = lawSprite(0, 'blue')
+        if (art) { const ctx = $('blue').getContext('2d'); ctx.imageSmoothingEnabled = false; ctx.drawImage(art, 0, 0, 32, 32) }
+      } catch (e) { console.log(e) }
 
       await document.fonts.ready
       await Promise.all([...document.images].map((im) => (im.complete ? 0 : new Promise((r) => { im.onload = im.onerror = r }))))
