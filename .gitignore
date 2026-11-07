@@ -8,3 +8,4 @@ dist
 carousel/out/*.mp4
 carousel/out/*.webm
 carousel/out/pac-ram-card-*
+carousel/deep/out/*.mp4
