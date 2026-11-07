@@ -2,24 +2,26 @@
 
 Attach `out/pac-ram-field-notes.pdf` as a document. Give it the title "PAC RAM, taken apart".
 
----
+## Option 1
 
-Last week I shared the trailer for PAC RAM. A few people asked how it works, so I put together some notes on the art, the logic and the story.
+PAC RAM, taken apart.
 
-It's Pac-Man, but you play the AI. The four ghosts are AI laws: Compute Act, Export Ban, Safety Bill and Model Cap. They use the same targeting logic as the original ghosts. One chases you, one cuts you off, one flanks and one guards a corner.
+The ghosts are AI laws, and each one hunts you differently. Every frame goes through one shader that fakes an old CRT, down to the dot grid.
 
-The three boards are named after the steps a bill goes through, and each one adds a law. Between boards the AI rewrites itself into a new build and talks to you. After the last board the game falls away. You eat the maze, then the interface, then the screen, and it carries on as if it's on your own computer.
+marcomargittai.com/pac-ram
 
-Every frame is drawn flat into one canvas, then a single WebGL shader turns it into a CRT: phosphor trails, bloom, a slightly curved screen and a dot grid you can see when you zoom in. No engine. The logo, sprites and cursors are generated with small scripts, the voice is a human take run through a processing chain, and the music and effects are made with ElevenLabs.
+## Option 2
 
-It took about five weeks. Scores are verified on the server and the leaderboard resets every Monday.
+Some sheets from PAC RAM. The sprites, the ghost logic and the shader that makes it look like an old TV.
 
-Play it at marcomargittai.com/pac-ram
+You play the AI. I'm still not good at it.
 
----
+marcomargittai.com/pac-ram
 
-## Shorter version
+## Option 3
 
-Some notes on how PAC RAM works: the ghost logic, the upgrades, the CRT shader and the ending. 9 sheets.
+A game where you play the AI and the ghosts are the laws trying to stop you.
+
+Sheet 6 is the CRT shader up close. That one took the longest.
 
 marcomargittai.com/pac-ram
