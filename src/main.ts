@@ -70,7 +70,7 @@ let bootEndedAt = booted ? loadedAt : 0
 let stage: Stage = { kind: 'game' }
 // Capture hook for the trailer and carousel tools (tools/trailer, tools/deepshots.cjs). Dev server only.
 if (import.meta.env.DEV) {
-  Object.assign(window, { __game: game })
+  Object.assign(window, { __game: game, __src: source, __crt: crt })
   Object.defineProperty(window, '__dbg', { get: () => ({ stage }) })
 }
 let records: Entry[] = thisWeek(loadBoard())

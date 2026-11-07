@@ -12,7 +12,7 @@ The three boards are named after the steps a bill goes through, and each one add
 
 Everything is drawn into one canvas and finished by one WebGL shader. No engine. The logo, sprites and cursors are generated with small scripts, the voice is a human take run through a processing chain, and the music and effects are made with ElevenLabs.
 
-It took about five weeks. Scores are verified on the server and the leaderboard resets every Monday. The best one so far is 15,955.
+It took about five weeks. Scores are verified on the server and the leaderboard resets every Monday.
 
 Play it at marcomargittai.com/pac-ram
 

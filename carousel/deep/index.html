@@ -126,18 +126,17 @@
       <div id="ghostsBlue" style="left:704px;top:860px;width:312px;height:360px"></div>
     </section>
 
-    <!-- 06 TUBE -->
+    <!-- 06 TUBE: one frame, before and after the shader, then what the shader does -->
     <section class="s" data-t="Art direction">
-      <div class="h">One canvas, one shader</div>
-      <div class="sub">No engine. Everything is drawn flat, then put through a CRT.</div>
-      <div class="fig" style="left:64px;top:340px;width:952px;height:640px">
-        <span class="cap"><b>FIG. 06 / SAME FRAME</b><span>RAW &nbsp;|&nbsp; CRT</span></span>
-        <div class="clip"><img src="../shots/wide-l2.jpg" style="object-position:50% 40%" />
-        <div style="position:absolute;left:0;top:0;bottom:0;width:476px;overflow:hidden;border-right:1px solid var(--pink)">
-          <img src="../shots/wide-l2-raw.jpg" style="width:952px;height:640px;object-fit:cover;object-position:50% 40%" />
-        </div></div>
+      <div class="h">The CRT, up close</div>
+      <div class="sub" style="width:780px">The game draws every frame flat. One WebGL shader turns it into a tube.</div>
+      <div class="fig" style="left:916px;top:150px;width:100px;height:125px">
+        <img src="shots/crt-tube.png" />
+        <div style="position:absolute;left:41px;top:40px;width:17px;height:17px;border:1px solid var(--pink)"></div>
       </div>
-      <div id="passes" style="left:64px;top:1030px;width:952px"></div>
+      <div id="pair" style="left:64px;top:340px;width:952px;height:440px"></div>
+      <div id="pipe" style="left:64px;top:826px;width:952px"></div>
+      <div id="details" style="left:64px;top:976px;width:952px;height:270px"></div>
     </section>
 
     <!-- 07 IDENTITY -->
@@ -241,10 +240,50 @@
           <div class="m" style="position:absolute;left:24px;bottom:22px">A law during surge</div>
         </div>`
 
-      // 06: shader passes
-      $('passes').innerHTML = `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:0 24px">` +
-        ['Phosphor trails', 'Bloom', 'Curvature', 'Dot-matrix pixels', 'Beam smear', 'Glitch on hits'].map((t, i) => `
-          <div class="cell" style="padding-bottom:16px"><span class="m"><i>0${i + 1}</i> &nbsp;</span><span style="font:400 22px/1 var(--mono)">${t}</span></div>`).join('') + `</div>`
+      // 06: the same pixels before and after, then what the shader does to them
+      const zoom = (src, x, y, size, box, smooth = false) => {
+        const k = box / size
+        return `<img src="${src}" class="${smooth ? '' : 'px'}" style="position:absolute;left:${-x * k}px;top:${-y * k}px;width:${1080 * k}px;height:${1350 * k}px;max-width:none" />`
+      }
+      $('pair').innerHTML = [['shots/crt-raw.png', 'A / Flat canvas', 'Before'], ['shots/crt-tube.png', 'B / Through the shader', 'After']].map(([src, t, d], i) => `
+        <div class="fig" style="position:absolute;left:${i * 486}px;top:0;width:466px;height:440px">
+          <span class="cap"><b>FIG. 06${t}</b><span>${d}</span></span>
+          <div class="clip">${zoom(src, 450, 440, 180, 466)}</div>
+        </div>`).join('') + `<div class="m" style="position:absolute;left:0;right:0;top:452px;text-align:center;font-size:14px">Same frame, same pixels, 2.6× zoom</div>`
+      const PIPE = [['Phosphor', 'last frame fades 0.7×'], ['Bloom', '¼ res, blurred twice'], ['Tube', 'curve, split, smear'], ['Dot mask', '3 px hex grid']]
+      $('pipe').innerHTML = `<div style="display:flex">` + PIPE.map(([t, d], i) => `
+        <div style="flex:1">
+          <div style="display:flex;align-items:center"><div class="dot">${i + 1}</div>${i < 3 ? '<div style="flex:1;height:1px;background:var(--pink)"></div>' : ''}</div>
+          <div class="m" style="margin-top:10px;font-size:15px"><b>${t}</b><br />${d}</div>
+        </div>`).join('') + `</div>`
+      const DETAILS = [
+        ['Dot mask', 'one RAM dot, 9×', (b) => zoom('shots/crt-tube.png', 266, 703, 34, b)],
+        ['Colour split', 'red right, blue left', (b) => zoom('shots/crt-tube.png', 498, 541, 40, b)],
+        ['Bloom', 'light spills past edges', (b) => zoom('shots/crt-tube.png', 520, 480, 120, b, true)],
+        ['Curvature', 'drawn 4× for clarity', () => '<canvas id="curve" width="206" height="206" style="position:absolute;left:8px;top:0"></canvas>'],
+      ]
+      $('details').innerHTML = DETAILS.map(([t, d, f], i) => `
+        <div class="fig" style="position:absolute;left:${i * 243}px;top:0;width:223px;height:206px">
+          <span class="cap"><b>06${'CDEF'[i]}</b></span>
+          <div class="clip">${f(223)}</div>
+        </div>
+        <div class="m" style="position:absolute;left:${i * 243}px;top:218px;font-size:14px"><b>${t}</b><br />${d}</div>`).join('')
+      // the shader's own curve (src/crt.ts), applied to a grid, exaggerated 4x
+      {
+        const c = $('curve'), g = c.getContext('2d'), W = c.width, img = g.createImageData(W, W)
+        const kx = 0.035 * 4, ky = 0.05 * 4
+        for (let py = 0; py < W; py++) for (let px = 0; px < W; px++) {
+          const cx = (px + 0.5) / W * 2 - 1, cy = (py + 0.5) / W * 2 - 1
+          const u = (cx + cx * cy * cy * kx) * 0.5 + 0.5, v = (cy + cy * cx * cx * ky) * 0.5 + 0.5
+          const o = (py * W + px) * 4
+          if (u < 0 || u > 1 || v < 0 || v > 1) { img.data[o + 3] = 255; continue }
+          const line = Math.min(Math.abs(u * 10 - Math.round(u * 10)), Math.abs(v * 10 - Math.round(v * 10))) < 0.035
+          const edge = u < 0.01 || u > 0.99 || v < 0.01 || v > 0.99
+          const [r, gg, b] = edge ? [255, 92, 128] : line ? [200, 200, 200] : [8, 8, 8]
+          img.data[o] = r; img.data[o + 1] = gg; img.data[o + 2] = b; img.data[o + 3] = 255
+        }
+        g.putImageData(img, 0, 0)
+      }
 
       // 07: logo passes, big
       $('logo').innerHTML = ['Block', 'Chrome', 'Perspective', 'Depth'].map((t, i) => `
@@ -263,7 +302,7 @@
         </div>`).join('')
 
       // 09: numbers and the cast in a row
-      $('stats').innerHTML = [['3', 'boards'], ['4', 'laws'], ['1', 'canvas'], ['5', 'weeks to build'], ['15,955', 'best score so far']].map(([v, l]) => `
+      $('stats').innerHTML = [['3', 'boards'], ['4', 'laws'], ['1', 'canvas'], ['5', 'weeks to build']].map(([v, l]) => `
         <div class="cell" style="padding-bottom:22px"><div style="font:500 44px/1 var(--sans);letter-spacing:-0.03em">${v}</div><div class="m" style="margin-top:8px">${l}</div></div>`).join('')
       $('cast').innerHTML = `<div style="display:flex;gap:28px;align-items:flex-end">` +
         [1, 2, 3, 4].map((i) => sprite(`/sprites/pac${i}-open.png`, 96)).join('') +
