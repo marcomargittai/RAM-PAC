@@ -992,7 +992,7 @@ export class Ending {
     const metaH = 44
     const btnH = fam === 'apple' ? 30 : 34
     const bar = fam === 'windows' ? 32 : fam === 'apple' ? 28 : 40
-    const h = bar + pad + head + bodyH + metaH + (this.complied >= 0 ? progressH : btnH) + pad + 6
+    const h = bar + pad + head + bodyH + metaH + Math.max(progressH, btnH + 26) + pad - 14
     const shake = this.objected >= 0 && t - this.objected < 0.45 ? Math.sin((t - this.objected) * 70) * 9 * (1 - (t - this.objected) / 0.45) : 0
     const x = Math.round(W / 2 - w / 2 + shake)
     const y = Math.round(Math.max(fam === 'windows' ? 12 : 40, H / 2 - h / 2 - (fam === 'windows' ? 24 : 0)))
@@ -1051,7 +1051,7 @@ export class Ending {
       write(ctx, 'Comply', comply.x + bw / 2, comply.y + btnH / 2, uiFont(os, 14, 600), '#ffffff', 'center')
       if (this.objected >= 0) {
         const msg = this.objections > 2 ? 'There is no one to object to.' : 'Objections are no longer processed.'
-        write(ctx, msg, fam === 'apple' ? x + w / 2 : x + pad, cy - 12, uiFont(os, 12, 600), '#c42b1c', fam === 'apple' ? 'center' : 'left')
+        write(ctx, msg, fam === 'apple' ? x + w / 2 : x + w - pad, cy + btnH + 16, uiFont(os, 12, 600), '#c42b1c', fam === 'apple' ? 'center' : 'right')
       }
       // map to screen space through the appear scale
       const map = (r: Rect): Rect => ({

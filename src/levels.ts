@@ -146,7 +146,7 @@ export const LEVELS: LevelDef[] = [
       { x: 13, y: 14, dir: 'left' },
       { x: 13, y: 2, dir: 'left' },
     ],
-    miniSpeed: 3.7,
+    miniSpeed: 3.0,
     minisEdible: false,
   },
   {
@@ -171,7 +171,7 @@ export const LEVELS: LevelDef[] = [
       { x: 9, y: 14, dir: 'left' },
       { x: 9, y: 18, dir: 'right' },
     ],
-    miniSpeed: 2.9,
+    miniSpeed: 2.4,
     minisEdible: false,
   },
   {
@@ -198,7 +198,7 @@ export const LEVELS: LevelDef[] = [
       { x: 5, y: 15, dir: 'down' },
       { x: 19, y: 15, dir: 'down' },
     ],
-    miniSpeed: 2.1,
+    miniSpeed: 1.8,
     minisEdible: true,
   },
 ]
