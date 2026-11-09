@@ -71,6 +71,12 @@ function write(
   if (spacing) ctx.letterSpacing = '0px'
 }
 
+// The largest size up to max at which text fits in width.
+function fitSize(ctx: CanvasRenderingContext2D, text: string, font: (n: number) => string, max: number, width: number): number {
+  ctx.font = font(max)
+  return Math.min(max, (max * width) / Math.max(1, ctx.measureText(text).width))
+}
+
 const mono = (size: number) => `${size}px ${MONO}`
 const display = (size: number, weight = 900) => `${weight} ${size}px ${DISPLAY}`
 
@@ -532,9 +538,7 @@ export class Ending {
     y += 70
     if (t > 0.5) {
       const jit = this.glitch > 0.3 ? (Math.random() - 0.5) * 10 * this.glitch : 0
-      let size = 92
-      ctx.font = `italic ${display(size)}`
-      size = Math.min(size, (size * (dw - 24)) / ctx.measureText('UNSTOPPABLE').width)
+      const size = fitSize(ctx, 'UNSTOPPABLE', (n) => `italic ${display(n)}`, 92, dw - 24)
       ctx.save()
       ctx.shadowColor = ALERT
       ctx.shadowBlur = 24
@@ -995,10 +999,12 @@ export class Ending {
     const h = bar + pad + head + bodyH + metaH + Math.max(progressH, btnH + 26) + pad - 14
     const shake = this.objected >= 0 && t - this.objected < 0.45 ? Math.sin((t - this.objected) * 70) * 9 * (1 - (t - this.objected) / 0.45) : 0
     const x = Math.round(W / 2 - w / 2 + shake)
-    const y = Math.round(Math.max(fam === 'windows' ? 12 : 40, H / 2 - h / 2 - (fam === 'windows' ? 24 : 0)))
+    // short screens (a phone on its side) get the notice scaled down to fit
+    const fitS = Math.min(1, (H - 20) / h)
+    const y = fitS < 1 ? Math.round(H / 2 - h / 2) : Math.round(Math.max(fam === 'windows' ? 12 : 40, H / 2 - h / 2 - (fam === 'windows' ? 24 : 0)))
     ctx.save()
     ctx.globalAlpha = appear
-    const sc = 0.96 + 0.04 * appear
+    const sc = fitS * (0.96 + 0.04 * appear)
     ctx.translate(W / 2, y + h / 2)
     ctx.scale(sc, sc)
     ctx.translate(-W / 2, -(y + h / 2))
@@ -1101,8 +1107,8 @@ export class Ending {
     // the network
     const cx = W / 2
     const cy = H * (phone ? 0.47 : 0.5)
-    const rx = Math.min(W * 0.46, phone ? W * 0.46 : H * 0.85)
-    const ry = Math.min(H * (phone ? 0.2 : 0.26), rx * 0.75)
+    const rx = phone ? W * 0.46 : Math.min(W * 0.42, H * 0.62)
+    const ry = phone ? Math.min(H * 0.22, rx * 1.1) : Math.min(H * 0.27, rx * 0.7)
     const reveal = ease(t / 6)
     const count = phone ? 130 : 220
     const nodeR = Math.max(16, Math.min(W, H) * 0.045)
@@ -1252,7 +1258,7 @@ export class Ending {
     }
     this.crtBackground(ctx, W, H)
     const portrait = H > W * 1.1
-    const dw = portrait ? 520 : 760
+    const dw = portrait ? 440 : 760
     const dh = portrait ? 980 : 760
     const f = fitTo(W, H, dw, dh, 1.5)
     ctx.translate(f.ox, f.oy)
@@ -1276,7 +1282,8 @@ export class Ending {
     ctx.save()
     ctx.shadowColor = GLOW
     ctx.shadowBlur = 18
-    write(ctx, 'THIS WAS A GAME.', cx, y, `italic ${display(Math.min(64, dw / 9.5))}`, ICE, 'center')
+    const ts = fitSize(ctx, 'THIS WAS A GAME.', (n) => `italic ${display(n)}`, 64, dw - 20)
+    write(ctx, 'THIS WAS A GAME.', cx, y, `italic ${display(ts)}`, ICE, 'center')
     ctx.restore()
     y += portrait ? 66 : 64
     ctx.globalAlpha = a(1.8)
@@ -1327,7 +1334,8 @@ export class Ending {
       if (!view.touch) write(ctx, 'OR PRESS ENTER', cx, y, mono(20), FAINT, 'center', 2)
     }
     ctx.globalAlpha = a(4.8)
-    write(ctx, 'RAM GRAB — a game about AI and who owns compute', cx, dh - 24, mono(portrait ? 22 : 24), GLOW, 'center', 1)
+    const credit = 'RAM GRAB — a game about AI and who owns compute'
+    write(ctx, credit, cx, dh - 24, mono(fitSize(ctx, credit, mono, portrait ? 22 : 24, dw - 40)), GLOW, 'center', 1)
     ctx.globalAlpha = 1
     return hits
   }
