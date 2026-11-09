@@ -154,7 +154,7 @@ function assertWalls(game: Game): void {
 const seen = createGame()
 if (mode(seen) !== 'title') fail('title missing')
 if (LEVELS.length < 3) fail('need 3 levels')
-if (LEVELS[0]!.laws !== 2 || LEVELS[1]!.laws !== 3 || LEVELS[2]!.laws !== 4) fail('law count should rise')
+if (LEVELS[0]!.laws.length !== 2 || LEVELS[1]!.laws.length !== 4 || LEVELS[2]!.laws.length !== 5) fail('law count should rise')
 
 const probe = createGame()
 startRun(probe)
@@ -456,7 +456,7 @@ for (let level = 1; level < 3; level++) {
     [2, 18, 'left'],
     [15, 18, 'right'],
   ] as const
-  for (let law = 0; law < LEVELS[finalLevel]!.laws; law++) {
+  for (let law = 0; law < LEVELS[finalLevel]!.laws.length; law++) {
     for (const [x, y, dir] of corners) {
       const game = reachLevel(finalLevel)
       const ghost = game.ghosts[law]!

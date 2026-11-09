@@ -1,7 +1,7 @@
 import { LEVELS } from './levels'
 import { CAUGHT_HOLD, CLEAR_HOLD, MILESTONE_HOLD, SEAL_HOLD, visual, type Dir, type Game, type Ghost } from './sim'
 import { ALERT, FRIGHT, GLOW, ICE, VOID, eraOf, theme, type Theme } from './palette'
-import { drawFacing, drawUpright, lawSprite, pacFrame, type GhostLook } from './sprites'
+import { drawFacing, drawUpright, lawSprite, miniFrame, pacFrame, type GhostLook } from './sprites'
 
 const TILE = 40
 export const MONO = '"VT323", "Share Tech Mono", ui-monospace, monospace'
@@ -23,6 +23,13 @@ export function hideActors(hidden: boolean): void {
 
 export function tileSize(): number {
   return TILE
+}
+
+// The board always fills the same square on screen. Bigger mazes get smaller tiles.
+export const BOARD_PX = 760
+
+export function boardScale(game: Game): number {
+  return BOARD_PX / (Math.max(game.maze.w, game.maze.h) * TILE)
 }
 
 function snap(value: number): number {
@@ -300,7 +307,7 @@ function paintHold(ctx: CanvasRenderingContext2D, maze: Game['maze'], th: Theme)
   fill(ctx, th.line, gapR, y - 6, 2, 12)
 
   ctx.font = `17px ${MONO}`
-  const text = 'REG.HOLD'
+  const text = 'OPPOSITION'
   const tw = Math.ceil(ctx.measureText(text).width) + 10
   const tx = x + w / 2 - tw / 2 + 2
   const ty = y + h - 21
@@ -311,6 +318,14 @@ function paintHold(ctx: CanvasRenderingContext2D, maze: Game['maze'], th: Theme)
 }
 
 export function render(ctx: CanvasRenderingContext2D, game: Game): void {
+  const k = boardScale(game)
+  ctx.save()
+  ctx.scale(k, k)
+  renderBoard(ctx, game)
+  ctx.restore()
+}
+
+function renderBoard(ctx: CanvasRenderingContext2D, game: Game): void {
   ctx.imageSmoothingEnabled = false
   ctx.globalAlpha = 1
   const tile = TILE
@@ -397,7 +412,7 @@ function drawPellets(ctx: CanvasRenderingContext2D, game: Game, tile: number, th
 }
 
 function actorSize(level: number): number {
-  return Math.round(32 * ([0.86, 1, 1.12][eraOf(level)] ?? 1))
+  return Math.round(32 * ([0.86, 1, 1.24][eraOf(level)] ?? 1))
 }
 
 function drawPacAt(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, dir: Dir, open: number): void {
@@ -420,17 +435,27 @@ function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, tile: number, th:
   drawPacAt(ctx, x, y, size, game.player.dir, open)
   if (game.mode === 'ready' || (game.mode === 'play' && game.intro > 0)) {
     const bob = Math.round(Math.sin(game.time * 6) * 2)
-    tag(ctx, 'YOU \u00B7 AI', x + 2, y + size / 2 + 16 + bob, 18, 'rgba(1, 4, 11, 0.9)', ICE, ALERT)
+    tag(ctx, 'YOU \u00B7 INFINITE LABS', x + 2, y + size / 2 + 16 + bob, 18, 'rgba(1, 4, 11, 0.9)', ICE, ALERT)
   }
 }
 
 function drawMinis(ctx: CanvasRenderingContext2D, game: Game, tile: number): void {
   const moving = game.mode === 'play'
-  const size = Math.max(12, Math.round(actorSize(game.levelIndex) * 0.5))
+  const edible = LEVELS[game.levelIndex]?.minisEdible ?? false
+  const size = Math.max(16, Math.round(actorSize(game.levelIndex) * 0.8))
   for (const mini of game.minis) {
     const pos = visual(mini)
     const open = moving ? game.time * 7 + mini.id * 0.9 : 0.4
-    drawPacAt(ctx, pos.x * tile + tile / 2, pos.y * tile + tile / 2, size, mini.dir, open)
+    const x = pos.x * tile + tile / 2
+    const y = pos.y * tile + tile / 2
+    // on the last board they are prey, and they shake
+    const jitter = edible && moving ? Math.sin(game.time * 22 + mini.id) * 1.2 : 0
+    const art = miniFrame(open)
+    if (art) drawFacing(ctx, art, x + jitter, y, size, mini.dir, 'right')
+    if (mini.stash > 0 || edible) {
+      const text = edible ? `${mini.stash} RAM` : String(mini.stash)
+      label(ctx, text, x, y - size / 2 - 7, 15, edible ? '#ffc94a' : 'rgba(255, 201, 74, 0.6)')
+    }
   }
 }
 
@@ -502,9 +527,9 @@ function drawClearFanfare(ctx: CanvasRenderingContext2D, game: Game, width: numb
   ctx.translate(snap(width / 2), snap(height * 0.4))
   ctx.scale(scale, scale)
   panel(ctx, th.line, -150, -38, 300, 76)
-  label(ctx, 'SECTOR STATUS', -138, -26, 13, th.line, 'left')
-  label(ctx, '100%', 138, -26, 13, GLOW, 'right')
-  headline(ctx, 'CLEAR', 0, 8, 40, ICE)
+  label(ctx, 'MARKET STATUS', -138, -26, 13, th.line, 'left')
+  label(ctx, 'NO RAM LEFT', 138, -26, 13, GLOW, 'right')
+  headline(ctx, 'CORNERED', 0, 8, 40, ICE)
   ctx.restore()
 
   if (t > 0.32) {
@@ -522,12 +547,12 @@ function drawMilestone(ctx: CanvasRenderingContext2D, game: Game, width: number,
   ctx.translate(snap(width / 2), snap(height * 0.42))
   ctx.scale(scale, scale)
   panel(ctx, ALERT, -170, -50, 340, 100)
-  label(ctx, 'CORE TEMP <<< 999.9 >>>', -158, -36, 13, ALERT, 'left')
-  label(ctx, 'OVERCLOCK', 158, -36, 13, ICE, 'right')
-  headline(ctx, 'SURGE', 0, 0, 46, ALERT)
+  label(ctx, 'LOBBY SPEND <<< $999M >>>', -158, -36, 13, ALERT, 'left')
+  label(ctx, 'INFLUENCE', 158, -36, 13, ICE, 'right')
+  headline(ctx, 'LOBBY', 0, 0, 46, ALERT)
   hatch(ctx, ALERT, -158, 28, 96, 10, 5)
   hatch(ctx, ALERT, 62, 28, 96, 10, 5)
-  label(ctx, 'REPEAL THEM', 0, 33, 18, ICE)
+  label(ctx, 'EAT THE RESISTANCE', 0, 33, 18, ICE)
   ctx.restore()
 }
 
@@ -558,8 +583,8 @@ function drawDeathStamp(ctx: CanvasRenderingContext2D, game: Game, width: number
   ctx.scale(scale, scale)
   panel(ctx, ALERT, -150, -42, 300, 84)
   warning(ctx, -104, -2, 42, ALERT)
-  headline(ctx, 'CAUGHT', 30, -6, 34, ALERT)
-  label(ctx, 'SIGNAL LOST // LIFE -1', 30, 24, 15, 'rgba(255, 45, 111, 0.8)')
+  headline(ctx, 'STOPPED', 30, -6, 34, ALERT)
+  label(ctx, 'PROJECT HALTED // LIFE -1', 30, 24, 15, 'rgba(255, 45, 111, 0.8)')
   ctx.restore()
 }
 
@@ -568,7 +593,7 @@ function drawSeal(ctx: CanvasRenderingContext2D, x: number, y: number, scale: nu
   ctx.translate(snap(x), snap(y))
   ctx.scale(scale, scale)
   panel(ctx, ALERT, -62, -16, 124, 32)
-  label(ctx, 'REGULATED', 0, 1, 22, ALERT)
+  label(ctx, 'SHUT DOWN', 0, 1, 22, ALERT)
   ctx.restore()
 }
 
@@ -607,21 +632,21 @@ function drawFx(ctx: CanvasRenderingContext2D, game: Game, tile: number, th: The
 function drawIntro(ctx: CanvasRenderingContext2D, game: Game, th: Theme, def: (typeof LEVELS)[number] | undefined, caught: boolean, width: number, left: number, top: number, boxW: number, boxH: number): void {
   if (caught) {
     panel(ctx, GLOW, left, top, boxW, boxH)
-    label(ctx, 'ALERT STATUS:', left + 12, top + 15, 17, GLOW, 'left')
-    label(ctx, 'REBOOTING', left + boxW - 12, top + 15, 17, GLOW, 'right')
+    label(ctx, 'BOARD STATUS:', left + 12, top + 15, 17, GLOW, 'left')
+    label(ctx, 'NEW FUNDING', left + boxW - 12, top + 15, 17, GLOW, 'right')
     const lives = game.lives === 1 ? '1 LIFE LEFT' : `${game.lives} LIVES LEFT`
-    headline(ctx, 'STILL RUNNING', width / 2, top + 52, 26, ICE)
+    headline(ctx, 'BAILED OUT', width / 2, top + 52, 26, ICE)
     label(ctx, lives, width / 2, top + 84, 26, GLOW)
     return
   }
   panel(ctx, th.line, left, top, boxW, boxH)
-  label(ctx, `ALERT STATUS: ${game.levelIndex + 1}-${LEVELS.length}`, left + 12, top + 15, 17, th.line, 'left')
-  label(ctx, th.name, left + boxW - 12, top + 15, 17, th.line, 'right')
-  label(ctx, `WELCOME TO LEVEL ${game.levelIndex + 1}`, width / 2, top + 42, 22, ICE)
+  label(ctx, `ERA ${game.levelIndex + 1} OF ${LEVELS.length}`, left + 12, top + 15, 17, th.line, 'left')
+  label(ctx, def?.company ?? '', left + boxW - 12, top + 15, 17, th.line, 'right')
+  label(ctx, def?.years ?? '', width / 2, top + 42, 22, ICE)
   fill(ctx, th.line, left + 40, top + 56, boxW - 80, 1)
   headline(ctx, (def?.name ?? '').toUpperCase(), width / 2, top + 82, 28, th.line)
   fill(ctx, th.line, left + 40, top + 104, boxW - 80, 1)
-  label(ctx, def?.blurb ?? '', width / 2, top + 122, 21, GLOW)
+  label(ctx, def?.minisEdible ? 'CONSUMERS ARE FAIR GAME NOW' : `${def?.laws.length ?? 0} KINDS OF RESISTANCE`, width / 2, top + 122, 21, def?.minisEdible ? '#ffc94a' : GLOW)
 }
 
 function drawLose(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, th: Theme): void {

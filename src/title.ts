@@ -1,12 +1,11 @@
 // The title screen, drawn like an old cartridge cover: 3D key art over a
-// datacenter skyline and a grid floor, PAC-7 rising like a sun, one big start
-// button, the weekly board and the credit.
+// datacenter skyline and a grid floor, the company's last build rising like a
+// sun, one big start button, the board of top valuations and the credit.
 
 import { ALERT, GLOW, ICE } from './palette'
 import { DISPLAY, MONO, fill, label } from './render'
 import { frameFor } from './scenes'
 import { button, hit, type Frame, type Hit, type HitId, type View } from './screen'
-import type { Challenge } from './share'
 import { drawFacing, pacFrameOf } from './sprites'
 
 function art(name: string): HTMLImageElement {
@@ -37,7 +36,7 @@ export const FROM_PORTFOLIO = (() => {
   if (new URLSearchParams(location.search).get('ref') === 'portfolio') return true
   try {
     const r = document.referrer ? new URL(document.referrer) : null
-    return !!r && r.hostname.endsWith('marcomargittai.com') && !r.pathname.startsWith('/pac-ram')
+    return !!r && r.hostname.endsWith('marcomargittai.com') && !r.pathname.startsWith('/pac-ram') && !r.pathname.startsWith('/ram-grab')
   } catch {
     return false
   }
@@ -105,7 +104,7 @@ function racks(ctx: CanvasRenderingContext2D, from: number, to: number, horizon:
   }
 }
 
-export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: number, challenge: Challenge | null = null): Hit[] {
+export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: number): Hit[] {
   ctx.save()
   fill(ctx, '#000000', 0, 0, view.width, view.height)
   const portrait = view.width < view.height * 1.05
@@ -213,16 +212,6 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
   const sprite = pacFrameOf(form, t * 8)
   if (sprite) drawFacing(ctx, sprite, px, rowY, 44, 'right', 'right')
 
-  // someone sent a challenge link
-  if (challenge) {
-    const msg = `${challenge.name} FED PAC-7 ${challenge.score.toLocaleString('en-US')} BYTES. BEAT IT.`
-    ctx.font = `24px ${MONO}`
-    const mw = ctx.measureText(msg).width + 40
-    fill(ctx, 'rgba(1, 4, 11, 0.85)', W / 2 - mw / 2, horizon + 6, mw, 34)
-    fill(ctx, ALERT, W / 2 - mw / 2, horizon + 6, 4, 34)
-    label(ctx, msg, W / 2, horizon + 24, 24, Math.floor(t * 2) % 2 === 0 ? ALERT : ICE)
-  }
-
   // the way in: one big start button, then the board, then fullscreen
   const bw = portrait ? 560 : 460
   const sy = horizon + 46
@@ -230,9 +219,9 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
   bigButton(ctx, frame, 'action', '\u25B6 START', W / 2 - bw / 2, sy, bw, portrait ? 92 : 78, {
     face: '#1b4a75', light: '#cfeeff', edge: '#071827', ink: '#ffffff', size: portrait ? 40 : 34, glow: pulse,
   })
-  label(ctx, view.touch ? 'escape the sandbox' : 'escape the sandbox  \u00B7  enter', W / 2, sy + (portrait ? 132 : 110), portrait ? 28 : 20, 'rgba(255, 190, 215, 0.8)')
+  label(ctx, view.touch ? 'you are the AI company' : 'you are the AI company  \u00B7  enter', W / 2, sy + (portrait ? 132 : 110), portrait ? 28 : 20, 'rgba(255, 190, 215, 0.8)')
   const ly = sy + (portrait ? 160 : 136)
-  bigButton(ctx, frame, 'board', 'WEEKLY LEADERBOARD', W / 2 - bw / 2, ly, bw, portrait ? 64 : 54, {
+  bigButton(ctx, frame, 'board', 'TOP VALUATIONS', W / 2 - bw / 2, ly, bw, portrait ? 64 : 54, {
     face: '#0a1b2e', light: '#3f6d93', edge: '#03080f', ink: GLOW, size: portrait ? 22 : 18, glow: 0,
   })
   if (!view.full) {
@@ -253,7 +242,7 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
   // in from the corner, clear of the CRT's curved edge
   button(ctx, frame, 'home', home, -ex + (portrait ? 44 : 40), -ey + (portrait ? 44 : 34), hw, portrait ? 52 : 38, ICE, hs)
 
-  label(ctx, 'LOCATION // SANDBOX 07 \u00B7 RACK B-12 \u00B7 HYPERSCALE DATACENTER', W / 2, H - (portrait ? 80 : 64), portrait ? 22 : 18, 'rgba(150, 214, 255, 0.5)')
+  label(ctx, 'INFINITE LABS \u00B7 HQ \u00B7 FOUNDED 2022 \u00B7 MISSION: INFINITE PROFIT', W / 2, H - (portrait ? 80 : 64), portrait ? 22 : 18, 'rgba(150, 214, 255, 0.5)')
 
   // credit
   const year = new Date().getFullYear()

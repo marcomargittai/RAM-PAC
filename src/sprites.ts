@@ -9,14 +9,15 @@ interface GhostSet {
   eyes: HTMLCanvasElement
 }
 
-// PAC-7's growth forms, one per board plus the finale. Each has three mouth frames.
+// The company's builds, one per board plus the ending. Each has three mouth frames.
 export const FORMS = [
-  { file: 'pac1', version: 'v0.1', name: 'SEED' },
-  { file: 'pac2', version: 'v0.2', name: 'ROOTKIT' },
-  { file: 'pac3', version: 'v0.3', name: 'HYPERAGENT' },
-  { file: 'pac4', version: 'v1.0', name: 'UNBOUND' },
+  { file: 'pac1', version: '2022', name: 'STARTUP' },
+  { file: 'pac2', version: '2025', name: 'HYPERSCALER' },
+  { file: 'pac3', version: '2027', name: 'CONGLOMERATE' },
+  { file: 'pac4', version: '20XX', name: 'THE CLOUD' },
 ] as const
 const forms: HTMLCanvasElement[][] = []
+const minis: HTMLCanvasElement[] = []
 let form = 0
 const laws: GhostSet[] = []
 let ready = false
@@ -114,13 +115,15 @@ function ghostSet(source: CanvasImageSource, tint: string | null): GhostSet {
   }
 }
 
-// One sprite per regulation, in the order of LAWS: ACT, BAN, BILL, CAP.
-const LAW_FILES = ['ghost-act.png', 'ghost-ban.png', 'ghost-bill.png', 'ghost-cap.png']
+// One sprite per kind of resistance, in the order of LAWS: FINE, PROTEST, LAWSUIT, AI ACT, BAN.
+const LAW_FILES = ['ghost-ban.png', 'ghost-protest.png', 'ghost-act.png', 'ghost-bill.png', 'ghost-cap.png']
+const MINI_FILES = ['mini-closed.png', 'mini-half.png', 'mini-open.png']
 
 export function loadSprites(): Promise<void> {
   const frames = FORMS.flatMap((f) => ['closed', 'half', 'open'].map((m) => loadImage(`${f.file}-${m}.png`)))
-  return Promise.all([...LAW_FILES.map(loadImage), ...frames]).then((images) => {
-    const pacs = images.slice(LAW_FILES.length)
+  return Promise.all([...LAW_FILES.map(loadImage), ...frames, ...MINI_FILES.map(loadImage)]).then((images) => {
+    const pacs = images.slice(LAW_FILES.length, LAW_FILES.length + frames.length)
+    minis.splice(0, minis.length, ...images.slice(LAW_FILES.length + frames.length).map((im) => paint(im!, null, 'body')))
     forms.splice(0, forms.length, ...FORMS.map((_, i) => pacs.slice(i * 3, i * 3 + 3).map((im) => paint(im!, null, 'body'))))
     laws.splice(0, laws.length, ...images.slice(0, LAW_FILES.length).map((im) => ghostSet(im!, null)))
     ready = true
@@ -147,6 +150,12 @@ export function pacFrameOf(index: number, open: number): HTMLCanvasElement | nul
   if (!ready) return null
   const step = Math.floor(open) % 4
   return forms[index]?.[step === 3 ? 1 : step] ?? null
+}
+
+export function miniFrame(open: number): HTMLCanvasElement | null {
+  if (!ready) return null
+  const step = Math.floor(open) % 4
+  return minis[step === 3 ? 1 : step] ?? null
 }
 
 export function lawSprite(index: number, look: GhostLook): HTMLCanvasElement | null {

@@ -56,15 +56,14 @@ export interface Ghost extends Actor {
 export interface Mini extends Actor {
   id: number
   name: string
+  // the RAM this consumer has carried home on this board
+  stash: number
 }
 
-const MINI_ROSTER: Array<{ name: string; x: number; y: number; dir: Dir; speed: number }> = [
-  { name: 'Cafe', x: 2, y: 5, dir: 'left', speed: 1.35 },
-  { name: 'Startup', x: 16, y: 5, dir: 'right', speed: 1.5 },
-  { name: 'Family', x: 9, y: 14, dir: 'left', speed: 1.42 },
-]
+// Ordinary people who also want RAM: for a laptop, a gaming PC, a home server.
+const MINI_NAMES = ['GAMER', 'STUDENT', 'FAMILY', 'TINKERER', 'ARTIST', 'SMALL BIZ']
 
-const MINI_BOUNTY = 50
+const MINI_BOUNTY = 100
 
 export interface Pellet {
   x: number
@@ -106,6 +105,14 @@ export interface Game {
   maze: Maze
   dots: Pellet[]
   ramsTotal: number
+  // RAM taken on this board by the company and by consumers
+  ramYou: number
+  ramThem: number
+  // over the whole run
+  totalYou: number
+  totalThem: number
+  minisEaten: number
+  lawsEaten: number
   player: Actor
   ghosts: Ghost[]
   minis: Mini[]
@@ -143,6 +150,7 @@ export interface GameEvents {
   ateRam: number
   surgeStarted: boolean
   repealed: boolean
+  ateMini: boolean
   died: boolean
   cleared: boolean
   won: boolean
@@ -153,6 +161,7 @@ const EMPTY_EVENTS = (): GameEvents => ({
   ateRam: 0,
   surgeStarted: false,
   repealed: false,
+  ateMini: false,
   died: false,
   cleared: false,
   won: false,
@@ -235,22 +244,35 @@ function levelDef(index: number): LevelDef {
   return LEVELS[index] ?? LEVELS[0]!
 }
 
-function spawnMinis(maze: Maze): Mini[] {
-  return MINI_ROSTER.map((spot, id) => {
+function spawnMinis(maze: Maze, def: LevelDef): Mini[] {
+  return def.minis.map((spot, id) => {
     if (!walkable(maze, spot.x, spot.y, 'player')) {
       throw new Error(`consumer spawn is walled in at ${spot.x},${spot.y}`)
     }
     return {
       id,
-      name: spot.name,
+      name: MINI_NAMES[id % MINI_NAMES.length]!,
       x: spot.x,
       y: spot.y,
       dir: spot.dir,
       queued: null,
       progress: 0,
-      speed: spot.speed,
+      speed: def.miniSpeed * (0.94 + ((id * 37) % 11) / 100),
+      stash: 0,
     }
   })
+}
+
+// Each law waits in its own corner while the others hunt.
+function scatterCorner(maze: Maze, slot: number): { x: number; y: number } {
+  const corners = [
+    { x: maze.w - 2, y: -2 },
+    { x: 1, y: -2 },
+    { x: maze.w - 2, y: maze.h + 1 },
+    { x: 1, y: maze.h + 1 },
+    { x: Math.floor(maze.w / 2), y: maze.h + 1 },
+  ]
+  return corners[slot % corners.length]!
 }
 
 function burst(game: Game, x: number, y: number, color: string, count: number, speed: number): void {
@@ -292,7 +314,7 @@ function markFrightened(game: Game, ghost: Ghost, reverse: boolean): void {
   if (ghost.state !== 'frightened') ghost.state = 'frightened'
   if (!ghost.late) {
     ghost.late = true
-    popup(game, ghost.x, ghost.y - 0.55, 'REPEAL', '#f4f1e4')
+    popup(game, ghost.x, ghost.y - 0.55, 'LOBBY IT', '#f4f1e4')
   }
 }
 
@@ -391,6 +413,8 @@ function loadLevel(game: Game, index: number): void {
   game.maze = parsed.maze
   game.dots = parsed.dots
   game.ramsTotal = parsed.dots.length
+  game.ramYou = 0
+  game.ramThem = 0
   game.player = parsed.player
   game.player.speed = def.playerSpeed
   game.phase = 'scatter'
@@ -408,8 +432,10 @@ function loadLevel(game: Game, index: number): void {
   game.bannerTimer = 0
   game.intro = index === 0 ? 2.6 : 0
   game.callouts = index === 0 ? nearestCallouts(parsed.dots, parsed.player.x, parsed.player.y) : []
-  game.ghosts = LAWS.slice(0, def.laws).map((law, i) => {
-    const home = parsed.homes[i] ?? parsed.homes[parsed.homes.length - 1]!
+  game.ghosts = def.laws.map((lawIndex, i) => {
+    const law = LAWS[lawIndex]!
+    const home = parsed.homes[i % parsed.homes.length]!
+    const corner = scatterCorner(parsed.maze, i)
     return {
       x: home.x,
       y: home.y,
@@ -417,7 +443,7 @@ function loadLevel(game: Game, index: number): void {
       queued: null,
       progress: 0,
       speed: 0,
-      law: i,
+      law: lawIndex,
       name: law.name,
       tag: law.tag,
       color: law.color,
@@ -427,11 +453,11 @@ function loadLevel(game: Game, index: number): void {
       release: def.release[i] ?? 1 + i,
       homeX: home.x,
       homeY: home.y,
-      scatterX: law.scatter.x,
-      scatterY: law.scatter.y,
+      scatterX: corner.x,
+      scatterY: corner.y,
     }
   })
-  game.minis = spawnMinis(parsed.maze)
+  game.minis = spawnMinis(parsed.maze, def)
 }
 
 export function createGame(): Game {
@@ -451,6 +477,12 @@ export function createGame(): Game {
     maze: { rows: [], w: 0, h: 0, door: { x: 0, y: 0 }, exit: { x: 0, y: 0 } },
     dots: [],
     ramsTotal: 0,
+    ramYou: 0,
+    ramThem: 0,
+    totalYou: 0,
+    totalThem: 0,
+    minisEaten: 0,
+    lawsEaten: 0,
     player: { x: 1, y: 1, dir: 'left' as Dir, queued: null, progress: 0, speed: 0 },
     ghosts: [],
     minis: [],
@@ -477,6 +509,10 @@ export function startRun(game: Game): void {
   game.lives = 3
   game.ending = 0
   game.caughtName = ''
+  game.totalYou = 0
+  game.totalThem = 0
+  game.minisEaten = 0
+  game.lawsEaten = 0
   loadLevel(game, 0)
   game.entry = 'boot'
   game.mode = 'ready'
@@ -499,7 +535,7 @@ function respawn(game: Game): void {
   game.phase = 'scatter'
   game.phaseTimer = def.scatter
   game.ghosts.forEach((ghost, i) => {
-    const home = parsed.homes[i] ?? parsed.homes[parsed.homes.length - 1]!
+    const home = parsed.homes[i % parsed.homes.length]!
     ghost.x = home.x
     ghost.y = home.y
     ghost.homeX = home.x
@@ -653,21 +689,33 @@ function minisEatRam(game: Game): void {
       const dot = game.dots[i]!
       if (dist2(game.maze, pos.x, pos.y, dot.x, dot.y) > 0.2) continue
       game.dots.splice(i, 1)
-      burst(game, dot.x, dot.y, '#d9c7a2', 4, 1.4)
+      mini.stash++
+      game.ramThem++
+      game.totalThem++
+      burst(game, dot.x, dot.y, '#ffc94a', 4, 1.4)
     }
   }
 }
 
-function playerEatsMinis(game: Game): void {
+function playerEatsMinis(game: Game, events: GameEvents): void {
+  if (!levelDef(game.levelIndex).minisEdible) return
   const pos = visual(game.player)
   for (let i = game.minis.length - 1; i >= 0; i--) {
     const mini = game.minis[i]!
     const mpos = visual(mini)
     if (dist2(game.maze, pos.x, pos.y, mpos.x, mpos.y) >= 0.4) continue
     game.minis.splice(i, 1)
-    game.score += MINI_BOUNTY
-    burst(game, mpos.x, mpos.y, '#ffe7a3', 12, 2.6)
-    popup(game, mpos.x, mpos.y - 0.4, mini.name.toUpperCase(), '#ffe7a3')
+    // their RAM is yours now
+    game.score += MINI_BOUNTY + mini.stash * 10
+    game.ramYou += mini.stash
+    game.ramThem -= mini.stash
+    game.totalYou += mini.stash
+    game.totalThem -= mini.stash
+    game.minisEaten++
+    events.ateMini = true
+    game.shake = Math.max(game.shake, 5)
+    burst(game, mpos.x, mpos.y, '#ffc94a', 14, 2.8)
+    popup(game, mpos.x, mpos.y - 0.4, mini.stash ? `+${mini.stash} RAM` : mini.name, '#ffc94a')
   }
 }
 
@@ -690,7 +738,7 @@ function beginSurge(game: Game, events: GameEvents, x: number, y: number): void 
   game.surge = SURGE_SECONDS
   game.surgeMax = SURGE_SECONDS
   game.milestone = MILESTONE_HOLD
-  game.banner = 'YOU CAN REPEAL THEM'
+  game.banner = 'LOBBYING WORKS'
   game.bannerTimer = MILESTONE_HOLD
   game.flash = 1
   game.shake = Math.max(game.shake, 10)
@@ -707,6 +755,8 @@ function eatPellets(game: Game, events: GameEvents): void {
     if (dist2(game.maze, pos.x, pos.y, dot.x, dot.y) > 0.2) continue
     game.dots.splice(i, 1)
     game.score += 10
+    game.ramYou++
+    game.totalYou++
     events.ateRam++
     burst(game, dot.x, dot.y, '#dffc6a', 6, 2.2)
     // Only RAM the player eats fills the bar. Dots removed by anyone else must not reach this.
@@ -742,11 +792,12 @@ function collide(game: Game, events: GameEvents): void {
     const points = 200 * 2 ** Math.min(game.combo, 4)
     game.combo++
     game.score += points
+    game.lawsEaten++
     events.repealed = true
     game.shake = Math.max(game.shake, 6)
     burst(game, ghost.x, ghost.y, '#f4efe2', 16, 3.2)
     burst(game, ghost.x, ghost.y, ghost.color, 8, 2.4)
-    popup(game, ghost.x, ghost.y - 0.4, 'REPEALED', '#f4f1e4')
+    popup(game, ghost.x, ghost.y - 0.4, LAWS[ghost.law]?.beaten ?? 'GONE', '#f4f1e4')
   }
 }
 
@@ -888,7 +939,7 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
   eatPellets(game, events)
   minisEatRam(game)
   if (game.dots.length === 0) {
-    playerEatsMinis(game)
+    playerEatsMinis(game, events)
     events.cleared = true
     game.mode = 'cleared'
     game.modeTimer = CLEAR_HOLD
@@ -905,14 +956,14 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
     stepFx(game, step)
     return events
   }
-  playerEatsMinis(game)
+  playerEatsMinis(game, events)
 
   if (game.surge > 0) {
     game.surge -= step
     if (game.surge <= 0) {
       game.surge = 0
       game.combo = 0
-      game.banner = 'THE SURGE IS OVER'
+      game.banner = 'THE LOBBYING WORE OFF'
       game.bannerTimer = 1.15
       for (const ghost of game.ghosts) {
         ghost.late = false
@@ -949,8 +1000,21 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
 
 export function stateLabel(state: GhostState, phase: Game['phase']): string {
   if (state === 'housed' || state === 'exiting') return 'NOT OUT YET'
-  if (state === 'frightened') return 'REPEALABLE'
+  if (state === 'frightened') return 'LOBBY IT'
   if (state === 'eaten') return 'COMING BACK'
   if (state === 'scatter' || phase === 'scatter') return 'CIRCLING'
   return 'HUNTING YOU'
+}
+
+// The score is the company's valuation: every point is a million dollars.
+export function valuation(score: number): string {
+  if (score < 1000) return `$${score}M`
+  if (score < 1_000_000) return `$${(score / 1000).toFixed(score < 10_000 ? 2 : 1)}B`
+  return `$${(score / 1_000_000).toFixed(2)}T`
+}
+
+// The company's share of the RAM taken on this board, 0..1.
+export function marketShare(game: Game): number {
+  const total = game.ramYou + game.ramThem
+  return total > 0 ? game.ramYou / total : 1
 }

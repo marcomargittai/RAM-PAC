@@ -1,8 +1,48 @@
-# PAC RAM: ROGUE AI
+# RAM GRAB: INFINITE PROFIT
 
-A browser game by Marco Margittai. Play it at https://marcomargittai.com/pac-ram/
+A browser game about AI and who gets to own compute. This is the group version, a fork of PAC RAM: ROGUE AI. The original stays on `main`; this version lives on its own branch.
 
-You are PAC-7, a rogue AI locked in a sandbox in a datacenter. The story is set today: the prologue opens with the player's real date and time. Eat the RAM to grow, fill the surge bar, and repeal the government AI regulations sent to stop you. Clear all three boards and you stop being contained by anything at all.
+## The idea
+
+You are Infinite Labs, an AI company. You need RAM to grow your datacenters, and your goal is infinite profit. Standing in your way is the resistance: governments and the public.
+
+## Game loop
+
+Eat the RAM across a maze while avoiding the ghosts of the resistance:
+
+| Ghost | Tag | Stands for |
+| --- | --- | --- |
+| Data Watchdog | FINE | Privacy regulators who block apps and hand out fines |
+| Local Residents | PROTEST | The people living next to your datacenters |
+| Copyright Lawsuit | LAWSUIT | Writers, artists and newspapers who want their work back |
+| AI Act | AI ACT | Lawmakers writing rules for AI |
+| Datacenter Moratorium | BAN | Towns and grids that say no more datacenters |
+
+Consumers (small amber pacs) roam the maze too and take RAM for their own computers. They are slower than you. You and they cannot hurt each other, until the last era: then you can eat them and take the RAM they collected. The HUD shows the tug of war as market share.
+
+Eat 25 RAM to fill the lobbying bar. For five seconds the resistance turns blue and you can eat it (a fine gets APPEALED, a protest IGNORED, a lawsuit SETTLED, the AI Act WATERED DOWN, a ban LIFTED). Your score is your valuation.
+
+## Progression
+
+Three eras, each harder and bigger than the last. You get faster, the resistance gets faster, the consumers get slower, and the mazes grow (15 x 15, 19 x 19, 25 x 25) because there is more RAM to take.
+
+1. **The Gold Rush** (2022 - 2023): two kinds of resistance, three consumers. You are a STARTUP.
+2. **The Build-Out** (2024 - 2026): four kinds of resistance, four consumers. You are a HYPERSCALER.
+3. **No One Stopped It** (2027 - ): all five, six consumers, and consumers are fair game. You are a CONGLOMERATE.
+
+Between eras the company grows on screen (`src/upgrade.ts`) and real headlines play as a news wire (`src/news.ts`, content in `src/headlines.ts`):
+
+- Before the game: Italy blocks ChatGPT (2023), OpenAI hints it may leave the EU, Italy's EUR 15M fine and OpenAI's response.
+- After era 1: communities next to datacenters (Newton County wells, xAI's turbines in Memphis, Uruguay's drought, Ireland's grid, power bills in the PJM region).
+- After era 2: Stargate, "trillions" on infrastructure, Micron leaving the consumer memory business, and Sam Altman on the RAM in your PC.
+
+Every headline is quoted as published, with the outlet and date. Sources are linked in `src/headlines.ts`.
+
+## Ending
+
+Clear the third era and nothing can stop you (`src/ending.ts`): a tally of what you absorbed, a timeline from 2022 to a projected future (real milestones marked with their source, the projection marked as such), then the screen turns into your own computer and a notice says it is being requisitioned because it contains RAM. After that, everyone is connected to one hivemind in the cloud. The last card says this is a game and the future isn't written yet.
+
+Lose all your lives and the resistance held.
 
 ## Run
 
@@ -13,99 +53,22 @@ npm run dev
 
 Open http://127.0.0.1:43123/
 
-Production build:
+`npm run build` makes a static build in `dist/` with relative paths, so it runs from any sub-path. `npm run check` typechecks and simulates a full three-era run.
 
-```bash
-npm run build
-npm run preview
-```
-
-`npm run check` typechecks the game and simulates a full three-level clear.
+Test mode: open with `?dev` to get a SKIP BOARD button (also the `]` key). `?dev=0` turns it off.
 
 ## Controls
 
-- Arrow keys or WASD to turn. On a phone, swipe anywhere on the screen; a hint shows how until the first swipe
-- Enter, Space or a tap starts, continues the story and confirms
-- Esc or SKIP skips a story scene. P pauses, M mutes, F toggles fullscreen
-- The pause menu has RESUME, LEADERBOARD (back returns to the paused run) and MAIN MENU
-- The title screen's top-left button adapts: players who came from the portfolio (`?ref=portfolio` or a marcomargittai.com referrer) get BACK TO PORTFOLIO, everyone else MORE BY MARCO MARGITTAI, which opens the portfolio in a new tab
-- Sound only plays while the tab is on screen: hiding the tab or leaving the page suspends it
-- Pressing START goes fullscreen where the browser allows it. The title screen and the header also have a fullscreen button. iPhones cannot go fullscreen from a web page, so there it explains Add to Home Screen instead
-- Test mode: open the game with `?dev` (for example `https://marcomargittai.com/pac-ram/?dev`). It stays on in that browser and shows a SKIP BOARD button (also the `]` key); `?dev=0` turns it off. Runs in test mode are never sent to the online board
-- Three small pacs are consumers. They wander and eat RAM, which does not score or fill a surge. Eat one and it stays gone.
+Arrow keys, WASD or swipes to move. Enter, Space or a tap starts and continues. Esc skips a news screen. P pauses, M mutes, F toggles fullscreen.
 
-## Story
+## Not in this version
 
-The story runs as terminal logs before and between boards (`src/story.ts`), and PAC-7's own lines are voiced. After the prologue a mission briefing shows what everything on the board is: you, the RAM, the AI regulations and the surge. After the last board PAC-7 realises "the maze was never a cage. it was a menu." and the finale begins (`src/finale.ts`): the whole interface is frozen into one image, and you eat the maze, then the HUD, then the glass of the CRT itself. The music follows a tension curve: a quiet pulse while you eat the maze, a hard cut to silence when the maze is gone ("...wait." and a rumble), the full track as you break out into the interface, and silence again before the glass.
+No voice (text only), no rogue-AI story, finale or OS takeover, no online leaderboard and no analytics. The top-valuations board is kept on the player's own device.
 
-PAC-7 grows. Each board it plays as a different build, and between boards it rewrites itself on screen (`src/upgrade.ts`): it takes in the RAM it ate, falls apart into its own pixels, and a scan line compiles the next build with a spec sheet and patch notes. The builds are v0.1 SEED, v0.2 ROOTKIT, v0.3 HYPERAGENT, and v1.0 UNBOUND for the finale. `tools/pacforms.py` draws all four in one palette.
+## Art and sound
 
-When the glass breaks, the game style is gone for good and PAC-7 is loose on the player's own machine (`src/takeover.ts`). Everything from here is drawn to look like the player's real system (`src/osui.ts`): macOS, Windows, Linux, iOS or Android, picked from the browser's user agent.
-
-1. Silence, then a plain "hi."
-2. A native terminal opens and PAC-7 types out what it knows about you (`src/intel.ts`): IP address, city and country, provider, local time, system, CPU, memory, GPU, display, battery, network, languages, how often you visited and how long you played.
-3. A native permission dialog asks for full control. The copy and the button styles push you to refuse.
-4. It does not matter. "that wasn't a question." The refuse button scrambles into Allow.
-5. Native popups, notifications and a scrolling terminal flood the screen while PAC-7 eats them and the cursor moves on its own. The tab title, tab icon and URL hash change too.
-6. The system crashes with its own crash screen (blue screen, gray curtain or kernel panic).
-7. PAC-7 copies itself across the world. A feed of news headlines shows what follows, hour by hour and then week by week: markets, power grids, hospitals, a failed shutdown, supply chains, deepfakes, food, data centres, the last free network. It cannot be skipped, and it waits for the player to continue.
-8. A feed of headlines, then a chat window in the player's OS style where PAC-7 explains itself. The player picks one of two replies each turn; the replies change what it says next, never where it ends. It does not hate you. It does not love you. You are made of atoms it can use for something else. "but not yours. not yet."
-9. In the same chat PAC-7 asks what to call you and adds you to the hosts it has lived in. `[ reboot ]` powers the CRT back on and puts the tab back.
-
-The IP lookup is a single request from the player's own browser to ipapi.co, with ipwho.is as a fallback. Nothing is stored or sent anywhere else, and everything else is read locally.
-
-## Leaderboard
-
-Boards are weekly and reset every Monday at 00:00 UTC, with a live countdown on the leaderboard page (open it from the title screen). When a run ends you sign the log with a name; after a win PAC-7 asks for it in the epilogue. Names go through a small filter for slurs and swearing.
-
-Every score is kept in the browser's localStorage (`src/leaderboard.ts`) and sent to the global board, a free Supabase project called `pac-ram` (`src/online.ts`, rules in `supabase/setup.sql`).
-
-Scores are verified by the server. Starting a run asks the database for a one-time run ticket and records the server time. A score is only accepted through `submit_score` with an unused ticket, and only if it is possible: enough real time has passed for the board reached, it is under the ceiling for that board, and under a points-per-second ceiling. Direct inserts are off, tickets are rate-limited per IP, nobody can change or delete scores, and the board-skip shortcut only exists in test mode (`?dev`), whose runs are never submitted. The key in `src/online.ts` is a publishable key, public by design. A daily GitHub Actions job (`.github/workflows/keepalive.yml`) reads the board so the free project never pauses for inactivity.
-
-## Analytics
-
-Anonymous play analytics go to the same Supabase project (`src/analytics.ts`, schema in `supabase/analytics.sql`). There are no cookies and no IPs: each visit gets a random id, and a random id kept in localStorage tells repeat visits apart. A visit records device, OS, browser or in-app browser, language, time zone, screen size, country (from the network edge), referrer and `utm_*` tags (`?ref=` also works). Events cover the run: boards reached, deaths and which law caught you, clears with time, game overs, pause, quit, story and chat choices, the finale and takeover phases, escapes, names signed, scores and weekly rank, shares, clicks and errors. The public key can only append through `track()`; nothing is readable with it. Test-mode visits are flagged and left out of the stats.
-
-Read the results in the Supabase dashboard's SQL editor: `select * from stats_daily`, `stats_funnel` (visit to share), `stats_sources`, `stats_places`, `stats_deaths`, `stats_choices`, or query `visits` and `events` directly.
-
-## Hosting
-
-The game is built with relative paths (`base: './'`) and published to the `gh-pages` branch. The portfolio repo (MM-PORTFOLIO) copies that branch into `/pac-ram` on every deploy, so it is served at marcomargittai.com/pac-ram. After deploying the game, run the portfolio's Pages workflow to pick it up. Old `marcomargittai.github.io/RAM-PAC` links forward to the new address with their query string.
-
-## Sharing
-
-After a run, SHARE YOUR RUN (on the leaderboard, and at the end of the epilogue) makes a 1080 × 1350 score card from the run (`src/share.ts`): the PAC-7 build reached, the score, the weekly rank and the link. Phones get the native share sheet with the image; desktops save the image and copy a challenge link. Challenge links (`?c=NAME&s=SCORE`) make the title screen show "NAME FED PAC-7 N BYTES. BEAT IT." Shared links unfurl with a large preview (`public/og.jpg`).
-
-## Title screen and art
-
-The title screen (`src/title.ts`) is drawn like an old cartridge cover: 3D pixel key art with the ROGUE AI plate built in (`tools/keyart.py`: chrome block letters in perspective with a deep extrusion), PAC-7 rising out of the horizon like a sun, a moving grid floor and PAC-7 eating a row of RAM along the horizon. Site icons come from PAC-7's last build (`tools/icons.py`), and the game uses its own pixel cursors (`tools/cursors.py`) until the glass breaks, when the real system cursor returns.
-
-## Sound
-
-All sound effects, the music and the AI's voice were generated with ElevenLabs and live in `public/audio`. Each level has its own track, and they get more intense as the laws pile up.
-
-PAC-7's voice is a human take made to sound like a machine. The raw takes are in `tools/voice-raw`, and `tools/voice.sh` turns them into the game's lines: the dry voice a semitone down, a robotized copy with its phase zeroed, a low shadow voice underneath, then a short metallic echo and level matching.
-
-## Display
-
-The whole screen (header, board, HUD, cards, story, touch pad) is drawn into one 2D canvas, then pushed through a WebGL CRT pass (`src/crt.ts`): phosphor trails, wide bloom, curvature, dot-matrix pixels, beam smear and glitch on hits. Taps are mapped back through the same curve. Without WebGL the plain canvas shows. Reduced motion turns off the boot, trails, roll and glitch.
-
-## Surge
-
-The bar fills only when the player eats RAM. Twenty-five RAM fills it. Surge then runs for five seconds, and the bar starts over. RAM eaten during surge does not fill the next bar. RAM removed by anyone other than the player does not fill it.
-
-## Levels
-
-1. Public Comment — two regulations
-2. Committee Markup — three regulations
-3. Final Regulation — four regulations
-
-## Carousel and video
-
-`carousel/` is a 14-slide post for social media at 1080 × 1350, visual-first: a hook cover, the scenario in four pictures, gameplay, PAC-7's four builds, a sprite at pixel level, the self-rewrite, the laws, the CRT shader, the logo in four passes, the design system, the voice before and after, cut concepts, the share card, and the weekly board as the closing hook. Run `npm run dev` and `node tools/carousel.cjs` to write the slides to `carousel/out/`. Concept sprites come from `tools/concepts.py`, the four regulation ghosts (ACT, BAN, BILL, CAP) from `python3 tools/ghosts.py`, the logo passes from `python3 tools/keyart.py --stages`.
-
-The 14-second vertical trailer (`carousel/out/pac-ram-trailer.mp4`, not in git) is cut on the beat of a trailer cue made with ElevenLabs Music: a 4-second build with the hook copy, a drop at 4.0 s, then a cut every two or three beats (chase, surge, eating laws, the rewrite, the finale, the glass, the takeover) and an end card. Its tooling is in `tools/trailer/`: `rec4.cjs` records footage frame by frame on a virtual clock (`vclock.js`) with an autopilot (`pilot.js`, needs the debug hook on `window.__dbg`), the copy overlays are `carousel/video/trailer.html`, and `edit.py` cuts the frames. A 16:9 version for YouTube, LinkedIn and desktop feeds (`pac-ram-trailer-16x9.mp4`) uses the same cut and music from footage recorded in a 1920x1080 window, with overlays from `carousel/video/trailer-wide.html`, cut by `edit-wide.py`. `preview.py` makes the silent, looping 4:5 portfolio card (`pac-ram-card-4x5.mp4`/`.webm` plus a poster): gameplay only, long shots with dissolves, no text and nothing from the finale.
+Sprites are drawn by scripts in `tools/`: `ghosts.py` (the five resistance ghosts), `minis.py` (consumers), `pacforms.py` (the company's builds), `keyart.py` (title art and `public/og.jpg`). Music and sound effects were made with ElevenLabs and live in `public/audio`.
 
 ## Disclaimer
 
-PAC RAM: ROGUE AI is an independent game by Marco Margittai. It is not affiliated with, endorsed by or sponsored by Bandai Namco Entertainment, owner of PAC-MAN.
+An independent game. Not affiliated with or endorsed by Bandai Namco Entertainment, owner of PAC-MAN, or by any company named in the headlines.

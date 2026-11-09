@@ -1,6 +1,5 @@
-// Saved records. Every score is kept in this browser's localStorage, and also
-// sent to the global board when one is configured (src/online.ts). Boards are
-// weekly: they reset every Monday at 00:00 UTC.
+// Saved records, kept in this browser's localStorage only. Boards are weekly:
+// they reset every Monday at 00:00 UTC.
 
 export interface Entry {
   name: string
@@ -10,7 +9,7 @@ export interface Entry {
   at: number
 }
 
-const KEY = 'pacram.board.v1'
+const KEY = 'ramgrab.board.v1'
 const LIMIT = 50
 
 export function loadBoard(): Entry[] {

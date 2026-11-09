@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-"""The four regulations that hunt PAC-7, as 32x32 sprites.
+"""RAM GRAB: the five arms of the resistance that hunt Infinite Labs, as 32x32 sprites.
 
 Each keeps the ghost silhouette (dome, wavy hem) so it reads at a glance, and
-wears one sign of what it does to an AI:
-  ACT   Compute Act   red      a judge's visor and a seal on the chest
-  BAN   Export Ban    yellow   hazard stripes and a no-entry mark
-  BILL  Safety Bill   violet   a sheet of legislation with a wax seal
-  CAP   Model Cap     pink     a padlock: shackle over the head, keyhole below
+wears one sign of how it slows the RAM grab down:
+  act      Courts / LAWSUIT                   red     a judge's visor and a section mark
+  ban      Data Watchdog / FINE               yellow  hazard stripes and a no-entry mark
+  bill     AI Act / AI ACT                    violet  a sheet of legislation with a wax seal
+  cap      Datacenter Moratorium / BAN        pink    a padlock: shackle over the head, keyhole below
+  protest  Local Residents / PROTEST          teal    a cardboard NO placard held up on a stick
 
 Only the eye whites are near white, so the game can lift them out for the
 'eaten' state. Writes public/sprites/ghost-*.png.
@@ -187,6 +188,41 @@ def cap():
     return outline(px)
 
 
+def protest():
+    base = (56, 224, 168)
+    m = body_mask(8)
+    px = shade(m, base)
+    eyes(px, 15, gap=6, look=1)
+    # open mouth: chanting
+    mouth = (16, 40, 34)
+    rect(px, 14, 21, 17, 22, mouth)
+    rect(px, 15, 23, 16, 23, mouth)
+    # wooden stick held up from the right shoulder
+    wood, wood_lo = (176, 120, 60), (120, 76, 36)
+    for y in range(8, 14):
+        px[(24, y)] = wood
+        px[(25, y)] = wood_lo
+    # fist gripping it: darker teal knuckles over the stick
+    fist, fist_lo = mix(base, INK, 0.2), mix(base, INK, 0.5)
+    rect(px, 22, 11, 26, 13, fist)
+    for x in (23, 25):
+        px[(x, 12)] = fist_lo
+    for x in range(22, 27):
+        px[(x, 14)] = fist_lo
+    # cardboard placard with a red NO
+    card, card_lo = (226, 190, 120), (170, 130, 70)
+    rect(px, 16, 1, 29, 7, card)
+    rect(px, 16, 7, 29, 7, card_lo)
+    rect(px, 29, 1, 29, 7, card_lo)
+    red = (210, 30, 40)
+    glyph = ['1..1.111', '11.1.1.1', '1.11.1.1', '1..1.111']
+    for gy, row in enumerate(glyph):
+        for gx, c in enumerate(row):
+            if c == '1':
+                px[(19 + gx, 2 + gy)] = red
+    return outline(px)
+
+
 def save(px, name):
     im = Image.new('RGBA', (S, S), (0, 0, 0, 0))
     for (x, y), c in px.items():
@@ -200,7 +236,7 @@ def save(px, name):
 
 
 def main():
-    ims = [save(f(), f'ghost-{n}.png') for f, n in ((act, 'act'), (ban, 'ban'), (bill, 'bill'), (cap, 'cap'))]
+    ims = [save(f(), f'ghost-{n}.png') for f, n in ((act, 'act'), (ban, 'ban'), (bill, 'bill'), (cap, 'cap'), (protest, 'protest'))]
     if len(sys.argv) > 1:
         sheet = Image.new('RGBA', (len(ims) * 300 + 20, 300), (1, 4, 11, 255))
         for i, im in enumerate(ims):

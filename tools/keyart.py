@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""The PAC RAM: ROGUE AI title logo.
+"""The RAM GRAB: INFINITE PROFIT title logo.
 
 Heavy upright block letters with a chrome face and bevelled edges, warped
 into perspective (narrower at the top, as if leaning back), with a deep
-extrusion running down to a vanishing point. The ROGUE AI plate sits under it
+extrusion running down to a vanishing point. The INFINITE PROFIT plate sits
+under it
 as part of the same piece. Writes public/art/title.png at native pixel size;
-the game scales it up without smoothing.
+the game scales it up without smoothing. Also writes the public/og.jpg share card
+from it (run tools/ghosts.py and tools/minis.py first).
 
 Run from the repo root: python3 tools/keyart.py [preview.png]
 """
@@ -16,10 +18,13 @@ import sys
 from PIL import Image
 
 OUT = os.path.join(os.path.dirname(__file__), '..', 'public', 'art')
+LOGO = 'RAM GRAB'
+PLATE = 'INFINITE PROFIT'
+KEY_SIZE = (261, 88)  # KEY_W, KEY_H in src/title.ts
 
 H = 44  # letter height
-T = 10  # stroke
-LW = 36  # letter width
+T = 9  # stroke
+LW = 31  # letter width (sized so the logo stays 261 px wide, see KEY_W in src/title.ts)
 GAP = 5
 CH = 4  # chamfer
 
@@ -70,14 +75,39 @@ def glyph(ch):
         box(W - T, mid + T, W - 1, Hh - 1)
         chamfer(W - 1, 0, -1, 1, CH + 3)
         # a notch so R never reads as A
-        for y in range(mid + T, mid + T + 4):
-            for x in range(W - T, W - T + 4 - (y - mid - T)):
+        for y in range(mid + T, mid + T + 7):
+            for x in range(W - T, W - T + 7 - (y - mid - T)):
+                px.discard((x, y))
+    elif ch == 'G':
+        box(0, 0, T - 1, Hh - 1)
+        box(0, 0, W - 1, T - 1)
+        box(0, Hh - T, W - 1, Hh - 1)
+        box(W - T, 0, W - 1, T + 2)
+        box(W - T, mid, W - 1, Hh - 1)
+        box(W // 2 - 1, mid, W - 1, mid + T - 2)
+        chamfer(0, 0, 1, 1, CH + 5)
+        chamfer(0, Hh - 1, 1, -1, CH + 5)
+        chamfer(W - 1, Hh - 1, -1, -1, CH + 3)
+    elif ch == 'B':
+        box(0, 0, T - 1, Hh - 1)
+        box(0, 0, W - 3, T - 1)
+        box(0, mid, W - 1, mid + T - 1)
+        box(0, Hh - T, W - 1, Hh - 1)
+        box(W - T - 2, 0, W - 3, mid + T - 1)
+        box(W - T, mid, W - 1, Hh - 1)
+        chamfer(W - 3, 0, -1, 1, CH + 3)
+        chamfer(W - 1, mid, -1, 1, CH)
+        chamfer(W - 1, Hh - 1, -1, -1, CH + 3)
+        # a notch at the waist so B never reads as 8 or R
+        for y in range(mid - 3, mid + 1):
+            for x in range(W - 2 - (y - mid + 4), W):
                 px.discard((x, y))
     elif ch == 'M':
         box(0, 0, T - 1, Hh - 1)
         box(W - T, 0, W - 1, Hh - 1)
         box(0, 0, W - 1, T - 1)
-        box(W // 2 - T // 2 + 1, 0, W // 2 + T // 2 - 1, Hh - 12)
+        sw = T - 3  # centre stem, thinner than the legs so the gaps stay open
+        box((W - sw) // 2, 0, (W - sw) // 2 + sw - 1, Hh - 12)
         chamfer(0, 0, 1, 1, CH + 5)
         chamfer(W - 1, 0, -1, 1, CH + 5)
     return px
@@ -160,11 +190,15 @@ GLYPHS5 = {
     'E': ['11111', '1....', '1....', '1111.', '1....', '1....', '11111'],
     'A': ['.111.', '1...1', '1...1', '11111', '1...1', '1...1', '1...1'],
     'I': ['111', '.1.', '.1.', '.1.', '.1.', '.1.', '111'],
+    'N': ['1...1', '11..1', '1.1.1', '1..11', '1...1', '1...1', '1...1'],
+    'F': ['11111', '1....', '1....', '1111.', '1....', '1....', '1....'],
+    'T': ['11111', '..1..', '..1..', '..1..', '..1..', '..1..', '..1..'],
+    'P': ['1111.', '1...1', '1...1', '1111.', '1....', '1....', '1....'],
 }
 
 
 def plate(text):
-    """ROGUE AI on a slanted steel-and-pink plate."""
+    """The tagline on a slanted steel-and-pink plate."""
     cell = 2
     letters = {}
     x = 0
@@ -204,7 +238,7 @@ def plate(text):
 
 
 def main():
-    mask, width = word('PAC RAM')
+    mask, width = word(LOGO)
     face = warp(shade_face(mask), width)
     shape = set(face)
 
@@ -226,7 +260,7 @@ def main():
         if (x, y - 1) in shape:
             depth[p] = (0, 0, 0)
 
-    pl, pw, ph = plate('ROGUE AI')
+    pl, pw, ph = plate(PLATE)
     margin = 4
     canvas_w = width + margin * 2
     plate_y = H + 14
@@ -266,9 +300,17 @@ def main():
         if 0 <= x < W2 and 0 <= y < H2:
             im.putpixel((x, y), c + (255,))
     im = im.crop(im.getbbox())
+    # src/title.ts draws the art at a fixed KEY_W x KEY_H; pad up to it, centred
+    if im.width <= KEY_SIZE[0] and im.height <= KEY_SIZE[1]:
+        padded = Image.new('RGBA', KEY_SIZE, (0, 0, 0, 0))
+        padded.paste(im, ((KEY_SIZE[0] - im.width) // 2, (KEY_SIZE[1] - im.height) // 2))
+        im = padded
+    else:
+        print('warning: title is larger than KEY_SIZE, update KEY_W/KEY_H in src/title.ts')
     os.makedirs(OUT, exist_ok=True)
     im.save(os.path.join(OUT, 'title.png'))
     print('title', im.size)
+    og()
     if len(sys.argv) > 1:
         big = im.resize((im.width * 4, im.height * 4), Image.NEAREST)
         bg = Image.new('RGBA', (big.width + 80, big.height + 80), (1, 4, 11, 255))
@@ -276,10 +318,33 @@ def main():
         bg.save(sys.argv[1])
 
 
+def og():
+    """public/og.jpg: the 1200x630 share card. Title art on black, cast below."""
+    from PIL import ImageFilter
+    root = os.path.join(os.path.dirname(__file__), '..', 'public')
+    W, H = 1200, 630
+    card = Image.new('RGBA', (W, H), (0, 0, 0, 255))
+    title = Image.open(os.path.join(OUT, 'title.png')).convert('RGBA')
+    big = title.resize((title.width * 4, title.height * 4), Image.NEAREST)
+    tx, ty = (W - big.width) // 2, 70
+    glow = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    glow.paste(Image.new('RGBA', big.size, (255, 45, 111, 150)), (tx, ty), big.split()[3])
+    card = Image.alpha_composite(card, glow.filter(ImageFilter.GaussianBlur(28)))
+    card.alpha_composite(big, (tx, ty))
+    sprites = os.path.join(root, 'sprites')
+    cast = ['pac4-open', 'mini-open', 'ghost-act', 'ghost-ban', 'ghost-bill', 'ghost-cap', 'ghost-protest']
+    ims = [Image.open(os.path.join(sprites, n + '.png')).convert('RGBA') for n in cast if os.path.exists(os.path.join(sprites, n + '.png'))]
+    step = 120
+    x0 = (W - (len(ims) - 1) * step - 96) // 2
+    for i, im in enumerate(ims):
+        card.alpha_composite(im.resize((96, 96), Image.NEAREST), (x0 + i * step, 474))
+    card.convert('RGB').save(os.path.join(root, 'og.jpg'), quality=90)
+
+
 def stages():
     """The logo in the order it is built, for the breakdown carousel."""
     out = os.path.join(os.path.dirname(__file__), '..', 'carousel', 'art')
-    mask, width = word('PAC RAM')
+    mask, width = word(LOGO)
     flat = {p: (226, 245, 255) for p in mask}
     steps = [flat, shade_face(mask), warp(shade_face(mask), width)]
     final = Image.open(os.path.join(OUT, 'title.png'))

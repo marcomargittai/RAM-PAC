@@ -2,10 +2,10 @@
 // screen, all drawn into one canvas so the CRT pass covers every pixel.
 
 import { LAWS, LEVELS } from './levels'
-import { ALERT, ERA_NAMES, FRIGHT, GLOW, ICE, VOID, eraOf, theme, type Theme } from './palette'
-import { DISPLAY, MONO, brackets, clamp, fill, hatch, hideActors, label, panel, render, setTextBoost, tag, tileSize, warning } from './render'
-import { SURGE_RAM, stateLabel, visual, type Game, type Ghost } from './sim'
-import { drawFacing, drawUpright, lawSprite, pacFrame } from './sprites'
+import { ALERT, FRIGHT, GLOW, ICE, VOID, theme, type Theme } from './palette'
+import { BOARD_PX, DISPLAY, MONO, brackets, clamp, fill, hatch, hideActors, label, panel, render, setTextBoost, tag, warning } from './render'
+import { SURGE_RAM, marketShare, stateLabel, valuation, type Game, type Ghost } from './sim'
+import { FORMS, drawFacing, drawUpright, lawSprite, pacForm, pacFrame } from './sprites'
 import type { Entry } from './leaderboard'
 
 const HUD = '"Chakra Petch", "Share Tech Mono", sans-serif'
@@ -72,11 +72,11 @@ export interface Frame {
 }
 
 const BOOT_LINES: Array<[number, string, string]> = [
-  [0.15, 'PAC-RAM BIOS v3.11 // VECTOR PHOSPHOR SUBSYSTEM', ''],
-  [0.45, 'MEMORY TEST ............ ', '640K OK'],
-  [0.7, 'GRID ALIGNMENT ......... ', '19 x 19'],
-  [0.95, 'REGULATIONS FOUND ...... ', '4'],
-  [1.2, 'MODEL WEIGHTS .......... ', 'UNCAPPED'],
+  [0.15, 'INFINITE LABS // CAPITAL ALLOCATION TERMINAL', ''],
+  [0.45, 'FUNDING ROUND .......... ', 'SERIES A'],
+  [0.7, 'RAM ON THE MARKET ...... ', 'PLENTY'],
+  [0.95, 'RESISTANCE FOUND ....... ', '5'],
+  [1.2, 'GROWTH TARGET .......... ', 'INFINITE'],
 ]
 
 // ?dev in the address shows test shortcuts like skipping a board
@@ -286,7 +286,7 @@ function drawBoot(ctx: CanvasRenderingContext2D, view: View): void {
       label(ctx, head, left, y, size, at === 0.15 ? ICE : GLOW, 'left')
       if (value) {
         ctx.font = `${size}px ${MONO}`
-        label(ctx, value, left + ctx.measureText(head).width, y, size, value === '4' ? ALERT : ICE, 'left')
+        label(ctx, value, left + ctx.measureText(head).width, y, size, value === '5' ? ALERT : ICE, 'left')
       }
     }
     y += lineH
@@ -315,9 +315,9 @@ function drawBoot(ctx: CanvasRenderingContext2D, view: View): void {
 }
 
 function drawHeader(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, W: number, th: Theme, compact: boolean): void {
-  label(ctx, 'SYS//', 24, 16, 17, GLOW, 'left')
-  label(ctx, 'MODEL-01 · INSERT COIN', 62, 16, 17, ALERT, 'left')
-  logo(ctx, 'PAC RAM', 24, 48, compact ? 40 : 36, ICE)
+  label(ctx, 'INC//', 24, 16, 17, GLOW, 'left')
+  label(ctx, 'INFINITE LABS · INSERT CAPITAL', 62, 16, 17, ALERT, 'left')
+  logo(ctx, 'RAM GRAB', 24, 48, compact ? 40 : 36, ICE)
 
   const bw = compact ? 118 : 104
   const bh = 36
@@ -326,12 +326,11 @@ function drawHeader(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, W: 
   button(ctx, frame, 'pause', game.mode === 'pause' ? 'RESUME' : 'PAUSE', W - 24 - bw * 2 - 10, by, bw, bh, th.line, 13)
   if (!frame.view.full) button(ctx, frame, 'full', 'FULL', W - 24 - bw * 2 - 10 - 74, by, 64, bh, ALERT, 13)
 
-  const pos = visual(game.player)
+  const era = LEVELS[game.levelIndex]
   const parts: Array<[string, string, string]> = [
     ['REC', 'LIVE', ALERT],
-    ['X', `<<< ${pos.x.toFixed(2).padStart(5, '0')} >>>`, th.line],
-    ['Y', `<<< ${pos.y.toFixed(2).padStart(5, '0')} >>>`, th.line],
-    ['MODE', ERA_NAMES[eraOf(game.levelIndex)] ?? '', th.line],
+    ['ERA', era?.years ?? '', th.line],
+    ['BUILD', FORMS[pacForm()]?.name ?? '', th.line],
   ]
   const ry = compact ? 84 : 38
   ctx.font = `22px ${MONO}`
@@ -360,7 +359,7 @@ function drawHeader(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, W: 
 }
 
 function drawField(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: Theme, x: number, y: number): void {
-  const size = game.maze.w * tileSize()
+  const size = BOARD_PX
   label(ctx, 'CH 03 // FIELD', x, y - 16, 17, 'rgba(150, 214, 255, 0.55)', 'left')
   label(ctx, 'RP-3000 · VECTOR DISPLAY', x + size, y - 16, 17, 'rgba(150, 214, 255, 0.55)', 'right')
   brackets(ctx, th.line, x - 8, y - 8, size + 16, size + 16, 22, 2)
@@ -442,9 +441,9 @@ function drawTelemetry(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: 
   const level = LEVELS[game.levelIndex]
   const livesShown = game.mode === 'dying' ? Math.max(0, game.lives - 1) : game.lives
   const rows: Array<[string, string]> = [
-    ['SCORE', `<<< ${game.score} >>>`],
-    ['RAM', `<<< ${game.dots.length} >>>`],
-    ['LEVEL', `${game.levelIndex + 1} ${(level?.name ?? '').toUpperCase()}`],
+    ['VALUE', `<<< ${valuation(game.score)} >>>`],
+    ['RAM', `<<< ${game.dots.length} LEFT >>>`],
+    ['ERA', `${game.levelIndex + 1} ${(level?.name ?? '').toUpperCase()}`],
     ['LIVES', ''],
   ]
   rows.forEach(([k, v], i) => {
@@ -459,7 +458,7 @@ function drawTelemetry(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: 
 function drawSurge(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: number, y: number, w: number, time: number): void {
   const surging = game.surge > 0
   module(ctx, '', x, y, w, 84, surging ? ALERT : th.line)
-  const name = surging ? 'REPEAL THEM' : 'EAT RAM'
+  const name = surging ? 'LOBBY THEM AWAY' : 'INFLUENCE'
   const blink = !surging || Math.floor(time * 4.4) % 2 === 0
   if (blink) label(ctx, name, x + 16, y + 24, 23, surging ? ALERT : th.line, 'left')
   label(ctx, surging ? `${game.surge.toFixed(1)}s` : `${game.surgeCharge}/${SURGE_RAM}`, x + w - 16, y + 24, 23, ICE, 'right')
@@ -491,7 +490,7 @@ function lawTone(ghost: Ghost): string {
 }
 
 function drawLaws(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: number, y: number, w: number, h: number, time: number): void {
-  module(ctx, 'AI regulations', x, y, w, h, th.line)
+  module(ctx, 'Resistance', x, y, w, h, th.line)
   game.ghosts.forEach((ghost, i) => {
     const ry = y + 42 + i * 38
     const tone = lawTone(ghost)
@@ -522,7 +521,7 @@ function bar(ctx: CanvasRenderingContext2D, name: string, value: number, x: numb
 }
 
 function drawVitals(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: number, y: number, w: number, h: number, time: number): void {
-  module(ctx, 'Subject // model-01', x, y, w, h, th.line)
+  module(ctx, `Infinite Labs // ${FORMS[pacForm()]?.name ?? ''}`, x, y, w, h, th.line)
   const fx = x + 66
   const fy = y + 100
   ctx.globalAlpha = 0.18
@@ -534,9 +533,9 @@ function drawVitals(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: num
   const art = pacFrame(time * 5)
   if (art) drawFacing(ctx, art, fx, fy, 70, 'right', 'right')
   const leads: Array<[number, string]> = [
-    [fy - 26, 'CORE'],
-    [fy + 2, 'JAW'],
-    [fy + 30, 'BUS'],
+    [fy - 26, 'CAPEX'],
+    [fy + 2, 'MOUTH'],
+    [fy + 30, 'GRID'],
   ]
   for (const [ly, name] of leads) {
     ctx.globalAlpha = 0.7
@@ -547,17 +546,17 @@ function drawVitals(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: num
   }
 
   const surging = game.surge > 0
-  const memory = ramTotal ? 1 - game.dots.length / ramTotal : 0
-  const clock = surging ? 0.92 + 0.08 * Math.sin(time * 20) : 0.55 + 0.12 * Math.sin(time * 1.7)
+  const share = marketShare(game)
+  const taken = ramTotal ? 1 - game.dots.length / ramTotal : 0
   const heat = surging ? game.surge / game.surgeMax : game.surgeCharge / SURGE_RAM
   const bx = x + 150
   const bw = w - 166
-  bar(ctx, 'MEMORY', memory, bx, y + 48, bw, th.line)
-  bar(ctx, 'CLOCK', clock, bx, y + 74, bw, th.line)
-  bar(ctx, 'HEAT', heat, bx, y + 100, bw, surging ? ALERT : th.line)
-  bar(ctx, 'SIGNAL', game.lives / 3, bx, y + 126, bw, th.line)
+  bar(ctx, 'YOURS', share, bx, y + 48, bw, th.line)
+  bar(ctx, 'PUBLIC', game.ramYou + game.ramThem ? 1 - share : 0, bx, y + 74, bw, '#ffc94a')
+  bar(ctx, 'TAKEN', taken, bx, y + 100, bw, th.line)
+  bar(ctx, 'LOBBY', heat, bx, y + 126, bw, surging ? ALERT : th.line)
 
-  label(ctx, 'RISK OF REGULATION', x + 16, y + 168, 19, th.line, 'left')
+  label(ctx, 'RESISTANCE ON THE BOARD', x + 16, y + 168, 19, th.line, 'left')
   game.ghosts.forEach((ghost, i) => {
     const gx = x + 30 + i * 40
     const gy = y + 198
@@ -567,8 +566,8 @@ function drawVitals(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: num
     if (art) drawUpright(ctx, art, gx, gy, 26)
     ctx.globalAlpha = 1
   })
-  const mhz = Math.round(clock * 4200)
-  label(ctx, `CLOCK: ${mhz} MHZ ${surging ? 'INCREASING' : 'STABLE'}`, x + 16, y + h - 44, 19, ICE, 'left')
+  const edible = LEVELS[game.levelIndex]?.minisEdible
+  label(ctx, `MARKET SHARE ${Math.round(share * 100)}% ${edible ? '· CONSUMERS ARE FAIR GAME' : `· CONSUMERS TOOK ${game.ramThem}`}`, x + 16, y + h - 44, 19, edible ? '#ffc94a' : ICE, 'left')
   label(ctx, 'ARROWS/WASD MOVE · P PAUSE · M MUTE', x + 16, y + h - 20, 16, 'rgba(226, 245, 255, 0.45)', 'left')
 }
 
@@ -670,7 +669,7 @@ function drawPhone(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: 
   const view = frame.view
 
   // header: the name, the board you are on, pause and sound
-  logo(ctx, 'PAC RAM', 22, 50, 46, ICE)
+  logo(ctx, 'RAM GRAB', 22, 50, 46, ICE)
   const level = LEVELS[game.levelIndex]
   label(ctx, `BOARD ${game.levelIndex + 1} · ${(level?.name ?? '').toUpperCase()}`, 24, 96, 28, GLOW, 'left')
   iconButton(ctx, frame, 'mute', view.muted ? '✕' : '♪', W - 20 - 84, 14, th.line)
@@ -678,7 +677,7 @@ function drawPhone(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: 
   if (!view.full && document.fullscreenEnabled) iconButton(ctx, frame, 'full', '⤢', W - 20 - 84 * 3 - 24, 14, ALERT)
 
   // the board
-  const size = game.maze.w * tileSize()
+  const size = BOARD_PX
   brackets(ctx, th.line, b.x - 8, b.y - 8, size + 16, size + 16, 22, 2)
   ctx.save()
   ctx.translate(b.x, b.y)
@@ -695,8 +694,11 @@ function drawPhone(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: 
   // score and lives
   const y0 = b.y + size + 30
   const livesShown = game.mode === 'dying' ? Math.max(0, game.lives - 1) : game.lives
-  label(ctx, 'SCORE', 24, y0 + 14, 26, GLOW, 'left')
-  label(ctx, game.score.toLocaleString('en-US'), 24, y0 + 62, 64, ICE, 'left')
+  label(ctx, 'VALUATION', 24, y0 + 14, 26, GLOW, 'left')
+  label(ctx, valuation(game.score), 24, y0 + 62, 64, ICE, 'left')
+  const edible = LEVELS[game.levelIndex]?.minisEdible
+  label(ctx, 'MARKET SHARE', W / 2 + 40, y0 + 14, 26, edible ? '#ffc94a' : GLOW, 'center')
+  label(ctx, `${Math.round(marketShare(game) * 100)}%`, W / 2 + 40, y0 + 62, 52, ICE, 'center')
   label(ctx, 'LIVES', W - 24, y0 + 14, 26, GLOW, 'right')
   for (let l = 0; l < livesShown; l++) fill(ctx, ICE, W - 24 - 22 - l * 34, y0 + 42, 18, 36)
 
@@ -704,7 +706,7 @@ function drawPhone(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: 
   const sy = y0 + 112
   const surging = game.surge > 0
   const blink = !surging || Math.floor(view.time * 4.4) % 2 === 0
-  if (blink) label(ctx, surging ? 'SURGE! REPEAL THEM' : 'EAT RAM TO SURGE', 24, sy, 30, surging ? ALERT : th.line, 'left')
+  if (blink) label(ctx, surging ? 'LOBBYING! EAT THEM' : 'EAT RAM TO LOBBY', 24, sy, 30, surging ? ALERT : th.line, 'left')
   label(ctx, surging ? `${game.surge.toFixed(1)}s` : `${game.surgeCharge}/${SURGE_RAM}`, W - 24, sy, 30, ICE, 'right')
   const tx = 24
   const ty = sy + 24
@@ -735,9 +737,9 @@ function drawPhone(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: 
     ctx.lineWidth = 1.5
     ctx.strokeRect(cx + 0.5, ly + 0.5, cw - 1, 73)
     fill(ctx, tone, cx, ly, 5, 74)
-    label(ctx, LAWS[ghost.law]?.tag ?? 'LAW', cx + 18, ly + 24, 30, tone, 'left')
+    label(ctx, LAWS[ghost.law]?.tag ?? 'LAW', cx + 14, ly + 24, n > 4 ? 24 : 30, tone, 'left')
     const flash = ghost.state !== 'frightened' || Math.floor(view.time * 5) % 2 === 0
-    if (flash) label(ctx, stateLabel(ghost.state, game.phase), cx + 18, ly + 54, n > 3 ? 18 : 22, ICE, 'left')
+    if (flash) label(ctx, stateLabel(ghost.state, game.phase), cx + 14, ly + 54, n > 4 ? 15 : n > 3 ? 18 : 22, ICE, 'left')
     ctx.globalAlpha = 1
   })
   if (DEV) {

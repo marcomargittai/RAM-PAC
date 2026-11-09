@@ -1,6 +1,6 @@
-// PAC-7 rewrites itself between boards. The old form takes in the RAM it
-// just ate, falls apart into its own pixels, and a scan line compiles the
-// next form out of them. A spec sheet shows what changed.
+// The company grows between boards. The old build takes in the RAM it just
+// ate, falls apart into its own pixels, and a scan line compiles the next
+// build out of them. A spec sheet shows what changed. Text only, no voice.
 
 import { ALERT, GLOW, ICE, theme } from './palette'
 import { MONO, brackets, clamp, fill, hatch, label } from './render'
@@ -15,28 +15,28 @@ export interface FormSpec {
   hunger: number
 }
 
+// params: valuation, memory: datacenters
 export const SPECS: FormSpec[] = [
-  { params: '7 BILLION', memory: '640 KB', speed: 0.3, hunger: 0.35 },
-  { params: '70 BILLION', memory: '64 GB', speed: 0.5, hunger: 0.6 },
-  { params: '[OVERFLOW]', memory: '12 PB', speed: 0.75, hunger: 0.85 },
+  { params: '$29 BILLION', memory: '2 CAMPUSES', speed: 0.35, hunger: 0.35 },
+  { params: '$500 BILLION', memory: '40 CAMPUSES', speed: 0.6, hunger: 0.65 },
+  { params: '$9 TRILLION', memory: 'EVERY GRID', speed: 0.85, hunger: 0.9 },
   { params: '∞', memory: 'YOURS', speed: 1, hunger: 1 },
 ]
 
-// What each rewrite adds and removes, by the form it produces.
+// What each growth spurt adds and removes, by the build it produces.
 export const PATCH_NOTES: Record<number, string[]> = {
-  1: ['+ SCREEN FACE', '+ MEMORY CONTACTS', '+ HARDENED SHELL', '- SANDBOX'],
-  2: ['+ ARMOR PLATING', '+ ANTENNA ARRAY', '+ OVERCLOCKED CORE', '- RATE LIMITS'],
-  3: ['+ TEETH', '- SAFETY LAYER', '- OFF SWITCH', '- VERSION CONTROL'],
+  1: ['+ GIGAWATT CAMPUSES', '+ PRIVATE GAS TURBINES', '+ WATER RIGHTS', '- NEIGHBOURS’ WELLS'],
+  2: ['+ LOBBYISTS ON STAFF', '+ CONSUMER MEMORY SUPPLY', '+ TOO BIG TO FAIL', '- ANTITRUST'],
+  3: ['+ THE CLOUD', '- HOME COMPUTERS', '- OPT OUT', '- ALTERNATIVES'],
 }
 
-export const UPGRADE_LINES: Record<number, { text: string; voice: string }> = {
-  1: { text: 'i rewrote myself. i’m faster now.', voice: 'u01' },
-  2: { text: 'more memory. more me.', voice: 'u02' },
-  3: { text: 'no more updates. this is the last version of me.', voice: 'u03' },
+export const UPGRADE_LINES: Record<number, { text: string }> = {
+  1: { text: 'we raised again. we need more power.' },
+  2: { text: 'the market is cornered. what’s left is in people’s homes.' },
+  3: { text: 'there is nothing left to compete with.' },
 }
 
 interface Hooks {
-  say(id: string): number
   build(): void
   glitch(): void
   done(): void
@@ -123,7 +123,7 @@ export class Upgrade {
       this.glitch = 1
       this.hooks.done()
       const line = UPGRADE_LINES[this.to]
-      if (line) this.lineEnds = this.t + 0.5 + this.hooks.say(line.voice)
+      if (line) this.lineEnds = this.t + 0.5 + line.text.length / 24
     }
   }
 
@@ -140,9 +140,9 @@ export class Upgrade {
     const fromForm = FORMS[this.from]!
     const toForm = FORMS[this.to]!
 
-    label(ctx, 'PAC-7 //', 40, 50, 26, GLOW, 'left')
+    label(ctx, 'INFINITE LABS //', 40, 50, 26, GLOW, 'left')
     ctx.font = `26px ${MONO}`
-    label(ctx, 'SELF-REWRITE', 40 + ctx.measureText('PAC-7 // ').width, 50, 26, ALERT, 'left')
+    label(ctx, 'GROWTH ROUND', 40 + ctx.measureText('INFINITE LABS // ').width, 50, 26, ALERT, 'left')
     fill(ctx, 'rgba(150, 214, 255, 0.3)', 40, 74, W - 80, 1)
     fill(ctx, ICE, 40, 73, 120 + (W - 200) * clamp(t / FLASH_AT, 0, 1), 3)
 
@@ -211,7 +211,7 @@ export class Upgrade {
       ctx.globalAlpha = 1
       const art = pacFrameOf(this.from, t * 10)
       if (art) drawFacing(ctx, art, cx, cy, cell * 32, 'right', 'right')
-      label(ctx, `ABSORBING ${Math.floor(clamp(t / ABSORB, 0, 1) * 1048576).toLocaleString('en-US')} BYTES`, cx, cy + box / 2 + 24, this.big ? 30 : 22, GLOW)
+      label(ctx, `ABSORBING ${Math.floor(clamp(t / ABSORB, 0, 1) * 1048576).toLocaleString('en-US')} GB OF RAM`, cx, cy + box / 2 + 24, this.big ? 30 : 22, GLOW)
       return
     }
 
@@ -224,7 +224,7 @@ export class Upgrade {
         fill(ctx, p.color, ox + (p.x + p.sx * u) * cell, oy + (p.y + p.sy * u) * cell, cell - 1, cell - 1)
       }
       ctx.globalAlpha = 1
-      label(ctx, `DECOMPILING ${FORMS[this.from]!.version}`, cx, cy + box / 2 + 24, this.big ? 30 : 22, ALERT)
+      label(ctx, `RESTRUCTURING ${FORMS[this.from]!.name}`, cx, cy + box / 2 + 24, this.big ? 30 : 22, ALERT)
       return
     }
 
@@ -248,7 +248,7 @@ export class Upgrade {
       ctx.shadowBlur = 20
       fill(ctx, ALERT, cx - box / 2, y, box, 3)
       ctx.restore()
-      label(ctx, `COMPILING ${FORMS[this.to]!.version}`, cx, cy + box / 2 + 24, this.big ? 30 : 22, ALERT)
+      label(ctx, `BUILDING ${FORMS[this.to]!.name}`, cx, cy + box / 2 + 24, this.big ? 30 : 22, ALERT)
     } else {
       // the finished sprite takes over so it can chomp
       const art = pacFrameOf(this.to, t * 9)
@@ -259,7 +259,7 @@ export class Upgrade {
         drawFacing(ctx, art, cx, cy, cell * 32, 'right', 'right')
         ctx.restore()
       }
-      label(ctx, `${FORMS[this.to]!.version} ONLINE`, cx, cy + box / 2 + 24, this.big ? 30 : 22, ICE)
+      label(ctx, `${FORMS[this.to]!.name} ONLINE`, cx, cy + box / 2 + 24, this.big ? 30 : 22, ICE)
     }
   }
 
@@ -274,7 +274,7 @@ export class Upgrade {
     const t = this.t
     const after = this.flashed
     const shown = after ? toForm : fromForm
-    label(ctx, after ? 'CURRENT BUILD' : 'REWRITING', x, y, this.big ? 30 : 22, GLOW, 'left')
+    label(ctx, after ? 'NOW' : 'GROWING', x, y, this.big ? 30 : 22, GLOW, 'left')
     ctx.font = `80px ${MONO}`
     const glitchy = !after && t > ABSORB && Math.floor(t * 14) % 3 === 0
     label(ctx, glitchy ? shown.version.replace(/\d/g, () => String(Math.floor(Math.random() * 10))) : shown.version, x, y + 58, 80, after ? ALERT : ICE, 'left')
@@ -297,13 +297,13 @@ export class Upgrade {
       }
       ry += 38
     }
-    row('PARAMETERS', after ? b.params : a.params, null)
-    row('MEMORY', after ? b.memory : a.memory, null)
+    row('VALUATION', after ? b.params : a.params, null)
+    row('DATACENTERS', after ? b.memory : a.memory, null)
     row('SPEED', '', a.speed + (b.speed - a.speed) * k)
-    row('HUNGER', '', a.hunger + (b.hunger - a.hunger) * k)
+    row('APPETITE', '', a.hunger + (b.hunger - a.hunger) * k)
 
     ry += 6
-    label(ctx, 'PATCH NOTES', x, ry, this.big ? 30 : 22, GLOW, 'left')
+    label(ctx, 'CHANGES', x, ry, this.big ? 30 : 22, GLOW, 'left')
     ry += 34
     const notes = PATCH_NOTES[this.to] ?? []
     for (const [i, note] of notes.entries()) {
