@@ -131,7 +131,7 @@ export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
   const t = view.time
   panel(ctx, GLOW, 30, 30, W - 60, H - 60)
   tag(ctx, 'MISSION BRIEFING', W / 2, 78, 26, 'rgba(1, 4, 11, 0.95)', ICE, ALERT)
-  logo(ctx, 'HOW TO PLAY RAM GRAB', W / 2, 140, portrait ? 40 : 44, ICE, 'center')
+  logo(ctx, 'HOW TO PLAY PAC RAM', W / 2, 140, portrait ? 40 : 44, ICE, 'center')
 
   const rows: Array<[string, string, (x: number, y: number) => void]> = [
     ['YOU · INFINITE LABS', 'An AI company. You need RAM for your datacenters. Your goal: infinite profit.', (x, y) => {
@@ -139,38 +139,30 @@ export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
       if (art) drawFacing(ctx, art, x, y, 64, 'right', 'right')
     }],
     ['RAM', 'Memory sticks. Eat them and your share price climbs. When the board runs out of RAM, the next era begins.', (x, y) => {
-      ctx.fillStyle = '#1c8f4e'
+      ctx.fillStyle = '#cfe9ff'
       ctx.fillRect(x - 33, y - 10, 66, 18)
-      ctx.fillStyle = '#0b0f14'
+      ctx.fillStyle = '#1b3c5c'
       for (const dx of [-27, -9, 9]) ctx.fillRect(x + dx, y - 6, 16, 10)
-      ctx.fillStyle = '#e8c54a'
+      ctx.fillStyle = '#96d6ff'
       for (let dx = -31; dx < 32; dx += 5) ctx.fillRect(x + dx, y + 8, 3, 5)
     }],
-    ['CONSUMERS', 'Ordinary people who want RAM too. Slower than you, and safe from you. Until the last era.', (x, y) => {
+    ['CONSUMERS', 'Ordinary people who want RAM too. Slower than you, and safe from you, except during a surge. In the last era they are always fair game.', (x, y) => {
       for (let i = 0; i < 3; i++) {
         const art = miniFrame(t * 7 + i)
         if (art) drawFacing(ctx, art, x - 28 + i * 28, y, 24, 'right', 'right')
       }
     }],
-    ['THE RESISTANCE', 'Regulators, residents, courts and lawmakers. They chase you. If one touches you, you lose a life.', (x, y) => {
+    ['THE RESISTANCE', 'Regulators, residents, courts and lawmakers. If one touches you, you lose a life.', (x, y) => {
       for (let i = 0; i < 3; i++) {
         const art = lawSprite(i, 'body')
         if (art) drawUpright(ctx, art, x - 30 + i * 30, y + Math.sin(t * 6 + i) * 2, 30)
       }
     }],
-    ['ELECTRICITY', 'Grab a lightning bolt and the power goes out: for a few seconds you can switch the resistance off. You can never get rid of it.', (x, y) => {
-      ctx.fillStyle = '#ffe14a'
-      ctx.globalAlpha = 0.6 + 0.4 * Math.sin(t * 6)
-      ctx.beginPath()
-      ctx.moveTo(x + 4, y - 22)
-      ctx.lineTo(x - 12, y + 2)
-      ctx.lineTo(x - 1, y + 2)
-      ctx.lineTo(x - 4, y + 22)
-      ctx.lineTo(x + 12, y - 4)
-      ctx.lineTo(x + 1, y - 4)
-      ctx.closePath()
-      ctx.fill()
-      ctx.globalAlpha = 1
+    ['SURGE', 'Eat 25 RAM to fill the surge bar. For a few seconds the resistance turns blue: eat it and it is sent back to base. You can eat consumers then too.', (x, y) => {
+      ctx.strokeStyle = GLOW
+      ctx.strokeRect(x - 44.5, y - 9.5, 88, 18)
+      ctx.fillStyle = ICE
+      ctx.fillRect(x - 42, y - 7, 84 * ((t * 0.4) % 1), 14)
     }],
   ]
   const iconX = portrait ? 110 : 150

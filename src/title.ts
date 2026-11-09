@@ -221,7 +221,7 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
   }
   label(ctx, 'INFINITE LABS \u00B7 HQ \u00B7 FOUNDED 2022 \u00B7 MISSION: INFINITE PROFIT', W / 2, H - (portrait ? 80 : 64), portrait ? 22 : 18, 'rgba(150, 214, 255, 0.5)')
 
-  label(ctx, 'RAM GRAB \u00B7 A GAME ABOUT AI AND WHO OWNS COMPUTE', W / 2, H - 32, portrait ? 24 : 22, ICE)
+  label(ctx, 'PAC RAM \u00B7 A GAME ABOUT AI AND WHO OWNS COMPUTE', W / 2, H - 32, portrait ? 24 : 22, ICE)
   label(ctx, 'An independent game. Not affiliated with or endorsed by Bandai Namco.', W / 2, H - 9, portrait ? 16 : 14, 'rgba(150, 214, 255, 0.55)')
   ctx.restore()
   return frame.hits

@@ -1,5 +1,7 @@
 import { LAWS, LEVELS, validateLevel } from '../src/levels'
 import {
+  SURGE_RAM,
+  SURGE_SECONDS,
   ahead,
   canStep,
   createGame,
@@ -10,9 +12,6 @@ import {
   walkable,
   type Dir,
   type Game,
-  type GameEvents,
-  type Ghost,
-  type GhostState,
   type Who,
 } from '../src/sim'
 
@@ -253,7 +252,7 @@ LEVELS.forEach((def, i) => {
   if (def.minisEdible !== (i === LEVELS.length - 1)) fail(`level ${i} minisEdible should be ${i === LEVELS.length - 1}`)
   for (const spot of def.minis) {
     const tile = def.rows[spot.y]?.[spot.x]
-    if (tile !== '.' && tile !== 'o' && tile !== ' ' && tile !== 'P') fail(`level ${i} consumer spawns on "${tile}" at ${spot.x},${spot.y}`)
+    if (tile !== '.' && tile !== ' ' && tile !== 'P') fail(`level ${i} consumer spawns on "${tile}" at ${spot.x},${spot.y}`)
   }
   if (i > 0) {
     const prev = LEVELS[i - 1]!
@@ -285,7 +284,7 @@ for (let level = 0; level < 3; level++) {
     if (mini.stash !== 0) fail(`level ${level} ${mini.name} starts with RAM`)
   }
   if (game.ramYou !== 0 || game.ramThem !== 0) fail(`level ${level} did not reset the RAM count`)
-  if (game.powers.length !== 4) fail(`level ${level} spawned ${game.powers.length} power-ups`)
+  if (game.maze.rows.some((row) => row.includes('o'))) fail(`level ${level} still has a surge pickup`)
 }
 
 // ---- helpers ----
@@ -352,139 +351,106 @@ for (let level = 0; level < 3; level++) {
   assertWalls(walls)
 }
 
-// ---- electricity power-ups and the surge ----
+// ---- surge ----
 
-const FRAME = 1 / 60
-
-// Keep every law but `keep` locked in the house.
-function holdOthers(game: Game, keep: Ghost[]): void {
-  for (const ghost of game.ghosts) {
-    if (keep.includes(ghost)) continue
-    ghost.state = 'housed'
-    ghost.release = 1e9
-    ghost.progress = 0
-    ghost.speed = 0
-  }
-}
-
-function putPlayer(game: Game, x: number, y: number): void {
-  game.player.x = x
-  game.player.y = y
+function eatOneRam(game: Game) {
+  park(game)
+  const dot = game.dots[0]
+  if (!dot) fail('no ram')
+  game.player.x = dot.x
+  game.player.y = dot.y
   game.player.progress = 0
   game.player.dir = 'left'
   game.player.queued = null
   game.mode = 'play'
+  return update(game, 1 / 60, IDLE)
 }
 
-function putGhost(ghost: Ghost, x: number, y: number, state: GhostState): void {
-  ghost.x = x
-  ghost.y = y
-  ghost.progress = 0
-  ghost.dir = 'left'
-  ghost.state = state
-}
-
-// Step the player onto an electricity tile.
-function grabPower(game: Game, index = 0): GameEvents {
-  const cell = game.powers[index]
-  if (!cell) fail(`level ${game.levelIndex} has no power-up left to grab`)
-  putPlayer(game, cell.x, cell.y)
-  return update(game, FRAME, IDLE)
-}
-
-function assertNeverEaten(game: Game, where: string): void {
-  for (const ghost of game.ghosts) {
-    if (ghost.state === 'eaten') fail(`${where}: ${ghost.name} went to the old 'eaten' state`)
-  }
-}
-
-// Every board has four reachable power-ups, and they are not RAM.
-for (let level = 0; level < 3; level++) {
-  const def = LEVELS[level]!
-  const game = reachLevel(level)
-  const tiles = def.rows.join('').split('').filter((ch) => ch === 'o').length
-  if (tiles !== 4 || game.powers.length !== 4) fail(`level ${level} should have 4 power-ups (tiles ${tiles}, parsed ${game.powers.length})`)
-  if (!(def.power > 0)) fail(`level ${level} power lasts ${def.power}s`)
-  if (level > 0 && !(def.power < LEVELS[level - 1]!.power)) fail(`power should get shorter on level ${level}`)
-  if (game.ramsTotal !== game.dots.length) fail(`level ${level} ramsTotal ${game.ramsTotal} != ${game.dots.length} RAM`)
-  for (const cell of game.powers) {
-    if (def.rows[cell.y]![cell.x] !== 'o') fail(`level ${level} power-up at ${cell.x},${cell.y} is not an 'o' tile`)
-    if (game.dots.some((dot) => dot.x === cell.x && dot.y === cell.y)) fail(`level ${level} power-up at ${cell.x},${cell.y} is also RAM`)
-    if (!pathDirs(game, cell.x, cell.y)) fail(`level ${level} power-up at ${cell.x},${cell.y} is unreachable`)
-  }
-}
-
-// validateLevel insists power-ups be reachable: wall in the one at 1,2 on the first board.
 {
-  const sealed = [...LEVELS[0]!.rows]
-  if (sealed[2]![1] !== 'o') fail('expected a power-up at 1,2 on the first board')
-  const wall = (x: number, y: number) => {
-    sealed[y] = sealed[y]!.slice(0, x) + '#' + sealed[y]!.slice(x + 1)
+  const meter = createGame()
+  startRun(meter)
+  meter.mode = 'play'
+  noMinis(meter)
+  park(meter)
+  pinInWall(meter)
+  meter.dots.pop()
+  update(meter, 1 / 60, IDLE)
+  if (meter.surgeCharge !== 0 || meter.surge > 0) fail('RAM removed off the player filled the surge bar')
+  if (meter.dots.length < SURGE_RAM + 2) fail('level 0 has too little RAM for a surge')
+  for (let i = 0; i < SURGE_RAM - 1; i++) {
+    const before = meter.ramYou
+    const events = eatOneRam(meter)
+    if (events.surgeStarted || meter.surge > 0) fail(`surge started after ${i + 1} RAM`)
+    if (meter.surgeCharge !== i + 1) fail(`surge charge is ${meter.surgeCharge} after ${i + 1} RAM`)
+    if (meter.ramYou !== before + 1 || meter.totalYou !== meter.ramYou) fail('eaten RAM was not counted for the player')
   }
-  wall(1, 1)
-  wall(1, 3)
-  wall(2, 2)
-  let threw = false
-  try {
-    validateLevel(sealed)
-  } catch (err) {
-    threw = /Unreachable RAM at 1,2/.test((err as Error).message)
+  const filled = eatOneRam(meter)
+  if (!filled.surgeStarted || meter.surge <= 0) fail('a full surge bar did not start surge')
+  if (meter.surgeCharge !== 0) fail('the surge bar did not empty when it filled')
+  if (meter.surge > SURGE_SECONDS || meter.surge < SURGE_SECONDS - 0.05) fail(`surge ran ${meter.surge}s`)
+  const during = eatOneRam(meter)
+  if (during.surgeStarted || meter.surgeCharge !== 0) fail('RAM eaten during surge filled the bar')
+  let surgeElapsed = 1 / 60
+  while (meter.surge > 0 && surgeElapsed < 8) {
+    park(meter)
+    pinInWall(meter)
+    update(meter, 1 / 60, IDLE)
+    surgeElapsed += 1 / 60
   }
-  if (!threw) fail('validateLevel accepted a walled-in power-up')
+  if (meter.surge !== 0 || surgeElapsed < 4.8 || surgeElapsed > 5.2) fail(`surge lasted ${surgeElapsed.toFixed(2)}s`)
 }
 
-// Picking one up: +50, starts the surge for def.power seconds, eats no RAM.
-for (let level = 0; level < 3; level++) {
-  const def = LEVELS[level]!
-  const game = reachLevel(level)
-  noMinis(game)
-  park(game)
-  const score = game.score
-  const dots = game.dots.length
-  const got = grabPower(game)
-  if (!got.surgeStarted) fail(`level ${level} power-up did not start the surge`)
-  if (game.powers.length !== 3) fail(`level ${level} power-up was not removed (${game.powers.length} left)`)
-  if (game.surgeMax !== def.power) fail(`level ${level} surgeMax ${game.surgeMax}, expected ${def.power}`)
-  if (game.surge > def.power || game.surge < def.power - 0.05) fail(`level ${level} surge set to ${game.surge}, expected ${def.power}`)
-  if (game.score - score - got.ateRam * 10 !== 50) fail(`level ${level} power-up scored ${game.score - score}`)
-  if (got.ateRam !== 0 || game.dots.length !== dots || game.ramYou !== 0) fail(`level ${level} power-up counted as RAM`)
-  let elapsed = FRAME
-  while (game.surge > 0 && elapsed < def.power + 3) {
-    park(game)
-    pinInWall(game)
-    update(game, FRAME, IDLE)
-    elapsed += FRAME
-  }
-  if (game.surge !== 0 || Math.abs(elapsed - def.power) > 0.1) fail(`level ${level} surge lasted ${elapsed.toFixed(2)}s, expected ${def.power}`)
-}
-
-// Laws already out turn frightened when the power is picked up; housed ones come out frightened.
 {
-  const game = reachLevel(1)
-  noMinis(game)
-  for (let f = 0; f < 60 * 7; f++) {
-    pinInWall(game)
-    game.phase = 'scatter'
-    game.phaseTimer = 999
-    update(game, FRAME, IDLE)
+  const edibleRun = createGame()
+  startRun(edibleRun)
+  edibleRun.mode = 'play'
+  noMinis(edibleRun)
+  edibleRun.surgeCharge = SURGE_RAM - 1
+  park(edibleRun)
+  const armed = edibleRun.ghosts[0]!
+  const spot = nearestOpen(edibleRun, 4, 2, 'ghost')
+  armed.state = 'chase'
+  armed.x = spot.x
+  armed.y = spot.y
+  armed.progress = 0
+  const ram = edibleRun.dots.reduce((best, dot) =>
+    (dot.x - spot.x) ** 2 + (dot.y - spot.y) ** 2 > (best.x - spot.x) ** 2 + (best.y - spot.y) ** 2 ? dot : best,
+  )
+  edibleRun.player.x = ram.x
+  edibleRun.player.y = ram.y
+  edibleRun.player.progress = 0
+  edibleRun.player.queued = null
+  update(edibleRun, 1 / 60, IDLE)
+  const armedState: string = armed.state
+  if (edibleRun.surge <= 0) fail('milestone did not arm surge')
+  if (armedState !== 'frightened') fail(`legislation stayed ${armedState}`)
+  armed.x = edibleRun.player.x
+  armed.y = edibleRun.player.y
+  armed.progress = 0
+  armed.state = 'frightened'
+  const repealed = update(edibleRun, 1 / 60, IDLE)
+  const afterEat: string = armed.state
+  if (!repealed.repealed || afterEat !== 'eaten') fail(`surge did not let the law be eaten (${afterEat})`)
+  if (edibleRun.lawsEaten !== 1) fail(`lawsEaten is ${edibleRun.lawsEaten} after one repeal`)
+  let housed = false
+  let back = false
+  for (let f = 0; f < 60 * 14 && !back; f++) {
+    pinInWall(edibleRun)
+    edibleRun.surge = 0
+    for (const other of edibleRun.ghosts) {
+      if (other !== armed) {
+        other.state = 'housed'
+        other.release = 1e9
+      }
+    }
+    update(edibleRun, 1 / 60, IDLE)
+    const state: string = armed.state
+    if (!housed && state === 'housed') housed = true
+    if (housed && state !== 'housed' && state !== 'eaten' && !isHouse(edibleRun, armed.x, armed.y)) back = true
   }
-  if (game.ghosts.some((ghost) => ghost.state !== 'scatter')) fail(`laws not all out before the power test: ${game.ghosts.map((g) => g.state).join(',')}`)
-  // keep the laws well away from the power-up tile
-  for (const ghost of game.ghosts) putGhost(ghost, game.maze.exit.x, game.maze.exit.y, 'scatter')
-  grabPower(game)
-  const states = game.ghosts.map((ghost) => ghost.state as string)
-  if (states.some((state) => state !== 'frightened')) fail(`power-up left laws ${states.join(',')}`)
-  const late = reachLevel(1)
-  noMinis(late)
-  grabPower(late)
-  for (let f = 0; f < 60 && late.ghosts.some((ghost) => ghost.state !== 'frightened'); f++) {
-    pinInWall(late)
-    update(late, FRAME, IDLE)
-  }
-  if (late.ghosts.some((ghost) => ghost.state !== 'frightened')) fail(`housed laws did not come out frightened: ${late.ghosts.map((g) => g.state).join(',')}`)
+  if (!housed || !back) fail(`repealed law did not respawn (${armed.state}@${armed.x},${armed.y})`)
 }
 
-// Contact without power is fatal.
 {
   const death = createGame()
   startRun(death)
@@ -503,123 +469,26 @@ for (let level = 0; level < 3; level++) {
   if (death.caughtName !== statute.name) fail(`caught by ${death.caughtName}, expected ${statute.name}`)
 }
 
-// Touching a frightened law switches it off where it stands. It is never removed or sent
-// home, it cannot hurt you, and when the power runs out it hunts again.
-for (let level = 0; level < 3; level++) {
-  const def = LEVELS[level]!
-  const probe = reachLevel(level)
-  const { w, h } = probe.maze
-  const spots = [
-    nearestOpen(probe, 1, h - 1, 'ghost'),
-    nearestOpen(probe, w - 2, h - 1, 'ghost'),
-    nearestOpen(probe, Math.floor(w / 2), h - 2, 'ghost'),
-  ].filter((spot) => !probe.powers.some((cell) => cell.x === spot.x && cell.y === spot.y))
-  for (let law = 0; law < def.laws.length; law++) {
-    const { x, y } = spots[law % spots.length]!
-    const game = reachLevel(level)
-    noMinis(game)
-    const ghost = game.ghosts[law]!
-    holdOthers(game, [ghost])
-    putGhost(ghost, game.maze.exit.x, game.maze.exit.y, 'chase')
-    const where = `level ${level} ${ghost.name}`
-    grabPower(game)
-    if ((ghost.state as string) !== 'frightened') fail(`${where} is ${ghost.state} after the power-up`)
-
-    // switch it off
-    putGhost(ghost, x, y, 'frightened')
-    putPlayer(game, x, y)
-    const score = game.score
-    const hit = update(game, FRAME, IDLE)
-    const after: string = ghost.state
-    if (after !== 'disabled') fail(`${where} touched while frightened became ${after}`)
-    if (!hit.repealed) fail(`${where} switching off did not set events.repealed`)
-    if (hit.died || mode(game) !== 'play') fail(`${where} frightened law hurt the player`)
-    if (game.lawsDisabled !== 1) fail(`${where} lawsDisabled ${game.lawsDisabled}`)
-    if (game.score - score - hit.ateRam * 10 !== 200) fail(`${where} switching off scored ${game.score - score}`)
-    if (!game.ghosts.includes(ghost)) fail(`${where} was removed from the board`)
-    const stopX = ghost.x
-    const stopY = ghost.y
-    const stopP = ghost.progress
-
-    // it stays put and harmless, and cannot be switched off twice
-    for (let f = 0; f < 45; f++) {
-      if (f < 30) putPlayer(game, stopX, stopY)
-      else pinInWall(game)
-      const events = update(game, FRAME, IDLE)
-      if (events.died || mode(game) !== 'play') fail(`${where} hurt the player while switched off`)
-      if (events.repealed || game.lawsDisabled !== 1) fail(`${where} was switched off twice in one surge`)
-      if (ghost.state !== 'disabled' || ghost.speed !== 0) fail(`${where} woke early (${ghost.state}, speed ${ghost.speed})`)
-      if (ghost.x !== stopX || ghost.y !== stopY || ghost.progress !== stopP) fail(`${where} moved while switched off`)
-      assertNeverEaten(game, where)
-    }
-
-    // the power runs out: it is back in the hunt
-    let guard = 0
-    while (game.surge > 0) {
-      if (guard++ > 60 * 10) fail(`${where} surge never ended`)
-      pinInWall(game)
-      update(game, FRAME, IDLE)
-      if (game.surge > 0 && (ghost.state !== 'disabled' || ghost.x !== stopX || ghost.y !== stopY)) fail(`${where} moved before the surge ended`)
-      assertNeverEaten(game, where)
-    }
-    const woke: string = ghost.state
-    if (woke !== game.phase) fail(`${where} after the surge is ${woke}, expected ${game.phase}`)
-    let moved = false
-    for (let f = 0; f < 60 * 2 && !moved; f++) {
-      pinInWall(game)
-      update(game, FRAME, IDLE)
-      assertNeverEaten(game, where)
-      moved = ghost.x !== stopX || ghost.y !== stopY
-    }
-    if (!moved) fail(`${where} stayed switched off after the surge (${ghost.state}@${ghost.x},${ghost.y})`)
-    if (ghost.state !== 'scatter' && ghost.state !== 'chase') fail(`${where} is ${ghost.state} after the surge`)
-    putGhost(ghost, ghost.x, ghost.y, ghost.state)
-    putPlayer(game, ghost.x, ghost.y)
-    const bite = update(game, FRAME, IDLE)
-    if (!bite.died && mode(game) !== 'dying') fail(`${where} was harmless after the surge`)
-  }
-}
-
-// Combo: each law switched off in one surge is worth double the last; all are counted.
 {
-  const game = reachLevel(1)
-  noMinis(game)
-  const [a, b] = game.ghosts
-  holdOthers(game, [a!, b!])
-  putGhost(a!, game.maze.exit.x, game.maze.exit.y, 'scatter')
-  putGhost(b!, game.maze.exit.x, game.maze.exit.y, 'scatter')
-  grabPower(game)
-  const spots = [nearestOpen(game, 1, game.maze.h - 1, 'ghost'), nearestOpen(game, game.maze.w - 2, game.maze.h - 1, 'ghost')]
-  const gains: number[] = []
-  ;[a!, b!].forEach((ghost, i) => {
-    const spot = spots[i]!
-    putGhost(ghost, spot.x, spot.y, 'frightened')
-    putPlayer(game, spot.x, spot.y)
-    const before = game.score
-    const events = update(game, FRAME, IDLE)
-    gains.push(game.score - before - events.ateRam * 10)
-  })
-  if (gains[0] !== 200 || gains[1] !== 400) fail(`combo scored ${gains.join(', ')}`)
-  if (game.lawsDisabled !== 2 || a!.state !== 'disabled' || b!.state !== 'disabled') fail(`combo left lawsDisabled ${game.lawsDisabled}`)
-  // a second power-up mid-surge does not wake or re-arm switched-off laws
-  const again = grabPower(game)
-  if (!again.surgeStarted || a!.state !== 'disabled' || b!.state !== 'disabled') fail('a second power-up changed the switched-off laws')
-  putPlayer(game, a!.x, a!.y)
-  const retouch = update(game, FRAME, IDLE)
-  if (retouch.repealed || game.lawsDisabled !== 2) fail('a switched-off law scored again after a second power-up')
-}
-
-// The board clears when the RAM is gone, even with power-ups left.
-for (let level = 0; level < 3; level++) {
-  const game = reachLevel(level)
-  noMinis(game)
-  park(game)
-  const last = game.dots[0]!
-  game.dots = [last]
-  putPlayer(game, last.x, last.y)
-  const events = update(game, FRAME, IDLE)
-  if (!events.cleared || mode(game) !== 'cleared') fail(`level ${level} did not clear with power-ups left (${mode(game)})`)
-  if (game.powers.length !== 4) fail(`level ${level} power-ups changed on clear (${game.powers.length})`)
+  const repeal = createGame()
+  startRun(repeal)
+  repeal.mode = 'play'
+  noMinis(repeal)
+  repeal.surge = 4
+  repeal.player.progress = 0
+  const edible = repeal.ghosts[0]!
+  edible.state = 'frightened'
+  edible.x = repeal.player.x
+  edible.y = repeal.player.y
+  edible.progress = 0
+  const beforeScore = repeal.score
+  update(repeal, 0.01, IDLE)
+  const edibleState: string = edible.state
+  const repealMode: string = repeal.mode
+  if (edibleState !== 'eaten') fail(`vulnerable legislation was not repealed (${edibleState})`)
+  if (repeal.score <= beforeScore) fail('repeal did not score')
+  if (repeal.lawsEaten !== 1) fail(`lawsEaten is ${repeal.lawsEaten}`)
+  if (repealMode !== 'play') fail(`repeal should not end the run (${repealMode})`)
 }
 
 // ---- full run by the autopilot ----
@@ -661,7 +530,7 @@ for (let level = 0; level < 3; level++) {
 const endMode: string = run.mode
 if (endMode !== 'win') fail(`full run should win, mode=${endMode}`)
 
-// ---- laws leave the house ----
+// ---- laws leave the house, return home when eaten, and hunt again ----
 
 for (let level = 0; level < 3; level++) {
   const game = reachLevel(level)
@@ -670,15 +539,131 @@ for (let level = 0; level < 3; level++) {
   for (let f = 0; f < 60 * 10; f++) {
     pinInWall(game)
     update(game, 1 / 60, IDLE)
-    assertNeverEaten(game, `level ${level} release`)
     game.ghosts.forEach((ghost, i) => {
-      if (ghost.state !== 'housed' && !isHouse(game, ghost.x, ghost.y)) seenOut[i] = true
+      if (ghost.state !== 'housed' && ghost.state !== 'eaten' && !isHouse(game, ghost.x, ghost.y)) seenOut[i] = true
     })
   }
   if (seenOut.some((out) => !out)) {
     fail(`level ${level} kept a regulation inside: ${game.ghosts.map((ghost, i) => `${ghost.name}:${seenOut[i]}`).join(' ')}`)
   }
 }
+
+for (let level = 0; level < 3; level++) {
+  const game = reachLevel(level)
+  noMinis(game)
+  const { w, h } = game.maze
+  const spots = [
+    nearestOpen(game, 1, 2, 'ghost'),
+    nearestOpen(game, w - 3, 2, 'ghost'),
+    nearestOpen(game, 1, h - 1, 'ghost'),
+    nearestOpen(game, w - 2, h - 1, 'ghost'),
+    nearestOpen(game, Math.floor(w / 2) - 1, game.maze.exit.y, 'ghost'),
+  ]
+  for (const { x, y } of spots) {
+    const ghost = game.ghosts[0]!
+    for (const other of game.ghosts) {
+      other.state = 'housed'
+      other.release = 1e9
+      other.speed = 0
+    }
+    ghost.state = 'eaten'
+    ghost.x = x
+    ghost.y = y
+    ghost.dir = 'left'
+    ghost.progress = 0
+    let housed = false
+    for (let f = 0; f < 60 * 10 && !housed; f++) {
+      pinInWall(game)
+      for (const other of game.ghosts) {
+        if (other === ghost) continue
+        other.state = 'housed'
+        other.release = 1e9
+      }
+      update(game, 1 / 60, IDLE)
+      const state: string = ghost.state
+      housed = state === 'housed' || (ghost.x === ghost.homeX && ghost.y === ghost.homeY && state !== 'eaten')
+    }
+    if (!housed) fail(`level ${level} ${ghost.name} never returned from ${x},${y} (${ghost.state}@${ghost.x},${ghost.y})`)
+    let back = false
+    for (let f = 0; f < 60 * 8 && !back; f++) {
+      pinInWall(game)
+      for (const other of game.ghosts) {
+        if (other === ghost) continue
+        other.state = 'housed'
+        other.release = 1e9
+      }
+      update(game, 1 / 60, IDLE)
+      const state: string = ghost.state
+      back = state !== 'housed' && state !== 'eaten' && !isHouse(game, ghost.x, ghost.y)
+    }
+    if (!back) fail(`level ${level} ${ghost.name} returned home but did not hunt again (${ghost.state}@${ghost.x},${ghost.y})`)
+  }
+}
+
+// Last board: a repealed spirit used to circle in the bottom corners and never respawn.
+{
+  const finalLevel = LEVELS.length - 1
+  const probe = reachLevel(finalLevel)
+  const { w, h } = probe.maze
+  const corners = [
+    [nearestOpen(probe, 1, h - 1, 'ghost'), 'left'],
+    [nearestOpen(probe, w - 2, h - 1, 'ghost'), 'right'],
+    [nearestOpen(probe, 2, h - 1, 'ghost'), 'left'],
+    [nearestOpen(probe, w - 3, h - 1, 'ghost'), 'right'],
+  ] as const
+  for (let law = 0; law < LEVELS[finalLevel]!.laws.length; law++) {
+    for (const [{ x, y }, dir] of corners) {
+      const game = reachLevel(finalLevel)
+      noMinis(game)
+      const ghost = game.ghosts[law]!
+      for (const other of game.ghosts) {
+        other.state = 'housed'
+        other.release = 1e9
+      }
+      ghost.state = 'frightened'
+      ghost.x = x
+      ghost.y = y
+      ghost.dir = dir
+      ghost.progress = 0
+      game.surge = 4
+      game.player.x = x
+      game.player.y = y
+      game.player.progress = 0
+      game.player.dir = 'down'
+      game.player.queued = null
+      game.mode = 'play'
+      const repeal = update(game, 1 / 60, IDLE)
+      const repealedState: string = ghost.state
+      if (!repeal.repealed && repealedState !== 'eaten') {
+        fail(`final level ${ghost.name} was not repealed in the corner ${x},${y} (${repealedState})`)
+      }
+      let housed = false
+      let back = false
+      let cornerLoops = 0
+      for (let f = 0; f < 60 * 14 && !back; f++) {
+        pinInWall(game)
+        game.surge = 0
+        for (const other of game.ghosts) {
+          if (other !== ghost) {
+            other.state = 'housed'
+            other.release = 1e9
+          }
+        }
+        update(game, 1 / 60, IDLE)
+        const state: string = ghost.state
+        if (ghost.y >= game.maze.h - 4 && state === 'eaten') cornerLoops++
+        if (!housed && state === 'housed') housed = true
+        if (housed && state !== 'housed' && state !== 'eaten' && !isHouse(game, ghost.x, ghost.y)) back = true
+      }
+      if (!housed || !back) {
+        fail(
+          `final level ${ghost.name} spirit circled the bottom corner from ${x},${y} (${ghost.state}@${ghost.x},${ghost.y}, corner frames ${cornerLoops})`,
+        )
+      }
+    }
+  }
+}
+
 // Each law that targets the player itself, released alone in chase mode, reaches a still
 // player. (Flankers aim beside the player by design, so a still player can dodge them.)
 for (let level = 0; level < 3; level++) {
@@ -732,7 +717,7 @@ for (let level = 0; level < 3; level++) {
 
 // ---- consumers ----
 
-// Consumers eat RAM for themselves: it is theirs, not the player's, and never starts a surge.
+// Consumers eat RAM for themselves: it is theirs, not the player's, and never fills the surge bar.
 for (let level = 0; level < 3; level++) {
   const game = reachLevel(level)
   park(game)
@@ -744,6 +729,7 @@ for (let level = 0; level < 3; level++) {
   thief.y = ram.y
   thief.progress = 0
   thief.speed = 0
+  game.surgeCharge = 3
   const score = game.score
   const dots = game.dots.length
   const stolen = update(game, 0.01, IDLE)
@@ -752,40 +738,28 @@ for (let level = 0; level < 3; level++) {
   if (game.ramThem !== 1 || game.totalThem !== 1) fail(`level ${level} ramThem ${game.ramThem} totalThem ${game.totalThem}`)
   if (game.ramYou !== 0 || game.totalYou !== 0) fail(`level ${level} stolen RAM was counted for the player`)
   if (game.score !== score || stolen.ateRam !== 0) fail(`level ${level} stolen RAM counted toward the player score`)
-  if (game.surge !== 0 || stolen.surgeStarted || game.powers.length !== 4) fail(`level ${level} stolen RAM changed the surge`)
+  if (game.surge !== 0 || game.surgeCharge !== 3) fail(`level ${level} stolen RAM changed the surge`)
   if (marketShare(game) !== 0) fail('market share should be 0 when only consumers ate')
 }
 
-// Consumers never pick up power-ups: not when parked on one, not while roaming.
-for (let level = 0; level < 3; level++) {
-  const game = reachLevel(level)
+// Many consumers eating at once still never fill the bar.
+{
+  const game = createGame()
+  startRun(game)
+  game.mode = 'play'
   park(game)
   pinInWall(game)
+  game.surgeCharge = SURGE_RAM - 1
+  const spots = game.dots.slice(0, game.minis.length)
   game.minis.forEach((mini, i) => {
-    const cell = game.powers[i % game.powers.length]!
-    mini.x = cell.x
-    mini.y = cell.y
+    const spot = spots[i]!
+    mini.x = spot.x
+    mini.y = spot.y
     mini.progress = 0
   })
-  const speeds = game.minis.map((mini) => mini.speed)
-  for (const mini of game.minis) mini.speed = 0
-  const score = game.score
-  for (let f = 0; f < 20; f++) {
-    park(game)
-    pinInWall(game)
-    const events = update(game, FRAME, IDLE)
-    if (events.surgeStarted || game.surge !== 0) fail(`level ${level} a consumer on a power-up started the surge`)
-  }
-  if (game.powers.length !== 4) fail(`level ${level} a consumer took a power-up (${game.powers.length} left)`)
-  game.minis.forEach((mini, i) => (mini.speed = speeds[i]!))
-  for (let f = 0; f < 60 * 30 && mode(game) === 'play'; f++) {
-    park(game)
-    pinInWall(game)
-    const events = update(game, FRAME, IDLE)
-    if (events.surgeStarted || game.surge !== 0) fail(`level ${level} a roaming consumer started the surge`)
-  }
-  if (game.powers.length !== 4) fail(`level ${level} roaming consumers took power-ups (${game.powers.length} left)`)
-  if (game.score !== score) fail(`level ${level} consumers scored for the player (${game.score - score})`)
+  update(game, 0.02, IDLE)
+  if (game.ramThem !== game.minis.length) fail(`consumers ate ${game.ramThem} RAM, expected ${game.minis.length}`)
+  if (game.surgeCharge !== SURGE_RAM - 1 || game.surge !== 0 || game.score !== 0) fail('stolen RAM filled the surge bar')
 }
 
 // Levels 0-1: consumers are off limits. Touching one does nothing, and they are harmless.
@@ -822,6 +796,40 @@ for (let level = 0; level < 2; level++) {
   if (mini.stash !== 5 || game.ramThem < 5 || game.totalThem < 5) fail(`level ${level} touching a consumer moved its RAM`)
 }
 
+// Levels 0-1 during a surge: consumers can be eaten, and their RAM becomes the player's.
+for (let level = 0; level < 2; level++) {
+  const game = reachLevel(level)
+  park(game)
+  game.surge = 3
+  game.surgeMax = 5
+  const mini = game.minis[0]!
+  mini.stash = 4
+  game.ramThem = 4
+  game.totalThem = 4
+  const spot = nearestOpen(game, mini.x, mini.y)
+  for (const m of game.minis) {
+    m.x = spot.x
+    m.y = spot.y
+    m.progress = 0
+    m.speed = 0
+  }
+  game.player.x = spot.x
+  game.player.y = spot.y
+  game.player.progress = 0
+  game.player.queued = null
+  let ate = false
+  for (let f = 0; f < 10 && !ate; f++) {
+    park(game)
+    game.surge = Math.max(game.surge, 1)
+    game.player.x = spot.x
+    game.player.y = spot.y
+    game.player.progress = 0
+    ate = update(game, 1 / 60, IDLE).ateMini || ate
+  }
+  if (!ate || game.minisEaten < 1) fail(`level ${level}: a consumer could not be eaten during a surge`)
+  if (game.ramYou < 4) fail(`level ${level}: eating a consumer during a surge did not hand over its RAM`)
+}
+
 // Last level: the player eats consumers and takes their RAM.
 {
   const level = LEVELS.length - 1
@@ -850,6 +858,7 @@ for (let level = 0; level < 2; level++) {
   game.player.dir = 'up'
   const count = game.minis.length
   const score = game.score
+  const charge = game.surgeCharge
   const ate = update(game, 1 / 60, IDLE)
   if (!ate.ateMini) fail('eating a consumer did not set events.ateMini')
   if (game.minis.length !== count - 1 || game.minis.includes(thief)) fail('eaten consumer is still in the maze')
@@ -859,6 +868,7 @@ for (let level = 0; level < 2; level++) {
   if (game.ramThem !== leftover || game.totalThem !== leftover) fail(`consumer RAM was not taken from them (${game.ramThem}/${game.totalThem})`)
   if (game.score < score + 100 + 70) fail(`eating a consumer scored ${game.score - score}`)
   if (game.surge !== 0 || ate.surgeStarted) fail('eating a consumer started a surge')
+  if (game.surgeCharge > charge + 1) fail('eating a consumer filled the surge bar')
 
   const gone = game.minis.length
   for (let i = 0; i < 90; i++) {
@@ -890,7 +900,7 @@ for (let level = 0; level < 2; level++) {
   startRun(game)
   if (game.minis.length !== MINI_COUNTS[0]) fail('a new run should field the first board consumers again')
   const fresh: Game = game
-  if (fresh.minisEaten !== 0 || fresh.totalYou !== 0 || game.totalThem !== 0 || game.lawsDisabled !== 0) fail('a new run did not reset the tallies')
+  if (fresh.minisEaten !== 0 || fresh.totalYou !== 0 || game.totalThem !== 0 || game.lawsEaten !== 0) fail('a new run did not reset the tallies')
 }
 
 // Consumers roam and never clip walls or enter the house.

@@ -2,9 +2,7 @@ import { LAWS, LEVELS, validateLevel, type LevelDef, type Personality } from './
 
 export type Dir = 'left' | 'right' | 'up' | 'down'
 export type Mode = 'title' | 'ready' | 'play' | 'pause' | 'dying' | 'cleared' | 'win' | 'lose'
-// 'disabled': switched off by a power-up. The resistance can never be removed, only
-// stopped for a while. ('eaten' is the old return-home state and is no longer used.)
-export type GhostState = 'housed' | 'exiting' | 'scatter' | 'chase' | 'frightened' | 'disabled' | 'eaten'
+export type GhostState = 'housed' | 'exiting' | 'scatter' | 'chase' | 'frightened' | 'eaten'
 export type Who = 'player' | 'ghost' | 'house'
 
 export const VEC: Record<Dir, { x: number; y: number }> = {
@@ -106,8 +104,6 @@ export interface Game {
   combo: number
   maze: Maze
   dots: Pellet[]
-  // electricity power-ups: eat one and the resistance can be switched off
-  powers: Pellet[]
   ramsTotal: number
   // RAM taken on this board by the company and by consumers
   ramYou: number
@@ -116,7 +112,7 @@ export interface Game {
   totalYou: number
   totalThem: number
   minisEaten: number
-  lawsDisabled: number
+  lawsEaten: number
   player: Actor
   ghosts: Ghost[]
   minis: Mini[]
@@ -139,6 +135,7 @@ export const WIN_CARD_AT = 8
 export const CLEAR_HOLD = 2.2
 export const CAUGHT_HOLD = 1.05
 export const SEAL_HOLD = 2.15
+export const SURGE_RAM = 25
 export const SURGE_SECONDS = 5
 export const MILESTONE_HOLD = 1.6
 
@@ -213,7 +210,7 @@ function dist2(maze: Maze, ax: number, ay: number, bx: number, by: number): numb
   return dx * dx + dy * dy
 }
 
-function parseMaze(rows: string[]): { maze: Maze; dots: Pellet[]; powers: Pellet[]; player: Actor; homes: Array<{ x: number; y: number }> } {
+function parseMaze(rows: string[]): { maze: Maze; dots: Pellet[]; player: Actor; homes: Array<{ x: number; y: number }> } {
   validateLevel(rows)
   const maze: Maze = {
     rows,
@@ -223,7 +220,6 @@ function parseMaze(rows: string[]): { maze: Maze; dots: Pellet[]; powers: Pellet
     exit: { x: 0, y: 0 },
   }
   const dots: Pellet[] = []
-  const powers: Pellet[] = []
   const homes: Array<{ x: number; y: number }> = []
   let px = 1
   let py = 1
@@ -231,7 +227,6 @@ function parseMaze(rows: string[]): { maze: Maze; dots: Pellet[]; powers: Pellet
     for (let x = 0; x < maze.w; x++) {
       const ch = rows[y]![x]
       if (ch === '.') dots.push({ x, y })
-      else if (ch === 'o') powers.push({ x, y })
       else if (ch === 'P') {
         px = x
         py = y
@@ -242,7 +237,7 @@ function parseMaze(rows: string[]): { maze: Maze; dots: Pellet[]; powers: Pellet
   maze.exit = { x: maze.door.x, y: maze.door.y - 1 }
   if (homes.length < 4) homes.push({ ...maze.door })
   const player: Actor = { x: px, y: py, dir: 'left', queued: null, progress: 0, speed: 0 }
-  return { maze, dots, powers, player, homes }
+  return { maze, dots, player, homes }
 }
 
 function levelDef(index: number): LevelDef {
@@ -310,14 +305,17 @@ function nearestCallouts(dots: Pellet[], px: number, py: number): Pellet[] {
 }
 
 function markFrightened(game: Game, ghost: Ghost, reverse: boolean): void {
-  if (ghost.state === 'eaten' || ghost.state === 'disabled') return
+  if (ghost.state === 'eaten') return
   if (ghost.state === 'housed') {
     ghost.release = Math.min(ghost.release, 0.05)
     return
   }
   if (reverse && !onHouseTile(game.maze, ghost.x, ghost.y)) reverseActor(game.maze, ghost)
   if (ghost.state !== 'frightened') ghost.state = 'frightened'
-  ghost.late = true
+  if (!ghost.late) {
+    ghost.late = true
+    popup(game, ghost.x, ghost.y - 0.55, 'EAT IT', '#f4f1e4')
+  }
 }
 
 function onHouseTile(maze: Maze, x: number, y: number): boolean {
@@ -414,7 +412,6 @@ function loadLevel(game: Game, index: number): void {
   game.levelIndex = index
   game.maze = parsed.maze
   game.dots = parsed.dots
-  game.powers = parsed.powers
   game.ramsTotal = parsed.dots.length
   game.ramYou = 0
   game.ramThem = 0
@@ -479,14 +476,13 @@ export function createGame(): Game {
     combo: 0,
     maze: { rows: [], w: 0, h: 0, door: { x: 0, y: 0 }, exit: { x: 0, y: 0 } },
     dots: [],
-    powers: [],
     ramsTotal: 0,
     ramYou: 0,
     ramThem: 0,
     totalYou: 0,
     totalThem: 0,
     minisEaten: 0,
-    lawsDisabled: 0,
+    lawsEaten: 0,
     player: { x: 1, y: 1, dir: 'left' as Dir, queued: null, progress: 0, speed: 0 },
     ghosts: [],
     minis: [],
@@ -516,7 +512,7 @@ export function startRun(game: Game): void {
   game.totalYou = 0
   game.totalThem = 0
   game.minisEaten = 0
-  game.lawsDisabled = 0
+  game.lawsEaten = 0
   loadLevel(game, 0)
   game.entry = 'boot'
   game.mode = 'ready'
@@ -701,8 +697,12 @@ function minisEatRam(game: Game): void {
   }
 }
 
+export function minisEdibleNow(game: Game): boolean {
+  return levelDef(game.levelIndex).minisEdible || game.surge > 0
+}
+
 function playerEatsMinis(game: Game, events: GameEvents): void {
-  if (!levelDef(game.levelIndex).minisEdible) return
+  if (!minisEdibleNow(game)) return
   const pos = visual(game.player)
   for (let i = game.minis.length - 1; i >= 0; i--) {
     const mini = game.minis[i]!
@@ -729,7 +729,6 @@ function applySpeeds(game: Game): void {
   for (const ghost of game.ghosts) {
     if (ghost.state === 'housed') ghost.speed = 0
     else if (ghost.state === 'eaten') ghost.speed = def.eatenSpeed
-    else if (ghost.state === 'disabled') ghost.speed = 0
     else if (ghost.state === 'frightened') ghost.speed = def.frightSpeed
     else {
       ghost.speed = def.ghostSpeed
@@ -738,10 +737,11 @@ function applySpeeds(game: Game): void {
 }
 
 function beginSurge(game: Game, events: GameEvents, x: number, y: number): void {
-  const seconds = levelDef(game.levelIndex).power
+  game.surgeCharge = 0
   game.combo = 0
-  game.surge = seconds
-  game.surgeMax = seconds
+  game.surge = SURGE_SECONDS
+  game.surgeMax = SURGE_SECONDS
+  game.milestone = MILESTONE_HOLD
   game.flash = 1
   game.shake = Math.max(game.shake, 10)
   events.surgeStarted = true
@@ -761,21 +761,17 @@ function eatPellets(game: Game, events: GameEvents): void {
     game.totalYou++
     events.ateRam++
     burst(game, dot.x, dot.y, '#dffc6a', 6, 2.2)
-  }
-  // Electricity: only the player can pick it up, and it switches the resistance off.
-  for (let i = game.powers.length - 1; i >= 0; i--) {
-    const cell = game.powers[i]!
-    if (dist2(game.maze, pos.x, pos.y, cell.x, cell.y) > 0.2) continue
-    game.powers.splice(i, 1)
-    game.score += 50
-    beginSurge(game, events, cell.x, cell.y)
+    // Only RAM the player eats fills the bar. Dots removed by anyone else must not reach this.
+    if (game.surge > 0) continue
+    game.surgeCharge += 1
+    if (game.surgeCharge >= SURGE_RAM) beginSurge(game, events, dot.x, dot.y)
   }
 }
 
 function collide(game: Game, events: GameEvents): void {
   const pos = visual(game.player)
   const hits = game.ghosts.filter((ghost) => {
-    if (ghost.state === 'housed' || ghost.state === 'eaten' || ghost.state === 'disabled') return false
+    if (ghost.state === 'housed' || ghost.state === 'eaten') return false
     if (onHouseTile(game.maze, ghost.x, ghost.y)) return false
     const gpos = visual(ghost)
     return dist2(game.maze, pos.x, pos.y, gpos.x, gpos.y) < 0.36
@@ -793,18 +789,17 @@ function collide(game: Game, events: GameEvents): void {
   }
   for (const ghost of hits) {
     if (ghost.state !== 'frightened') continue
-    // switched off where it stands, until the power runs out. It is never removed.
-    ghost.state = 'disabled'
-    ghost.speed = 0
+    ghost.state = 'eaten'
+    ghost.progress = 0
     const points = 200 * 2 ** Math.min(game.combo, 4)
     game.combo++
     game.score += points
-    game.lawsDisabled++
+    game.lawsEaten++
     events.repealed = true
     game.shake = Math.max(game.shake, 6)
-    const gpos = visual(ghost)
-    burst(game, gpos.x, gpos.y, '#9fd8ff', 14, 3)
-    popup(game, gpos.x, gpos.y - 0.4, `+${points}`, '#f4f1e4')
+    burst(game, ghost.x, ghost.y, '#f4efe2', 16, 3.2)
+    burst(game, ghost.x, ghost.y, ghost.color, 8, 2.4)
+    popup(game, ghost.x, ghost.y - 0.4, LAWS[ghost.law]?.beaten ?? 'GONE', '#f4f1e4')
   }
 }
 
@@ -972,7 +967,7 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
       game.combo = 0
       for (const ghost of game.ghosts) {
         ghost.late = false
-        if (ghost.state === 'frightened' || ghost.state === 'disabled') ghost.state = game.phase
+        if (ghost.state === 'frightened') ghost.state = game.phase
       }
     }
   } else {
@@ -1005,8 +1000,7 @@ export function update(game: Game, dt: number, input: FrameInput): GameEvents {
 
 export function stateLabel(state: GhostState, phase: Game['phase']): string {
   if (state === 'housed' || state === 'exiting') return 'NOT OUT YET'
-  if (state === 'frightened') return 'NO POWER'
-  if (state === 'disabled') return 'SWITCHED OFF'
+  if (state === 'frightened') return 'LOBBY IT'
   if (state === 'eaten') return 'COMING BACK'
   if (state === 'scatter' || phase === 'scatter') return 'CIRCLING'
   return 'HUNTING YOU'

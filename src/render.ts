@@ -1,5 +1,5 @@
 import { LEVELS } from './levels'
-import { CAUGHT_HOLD, CLEAR_HOLD, MILESTONE_HOLD, SEAL_HOLD, visual, type Dir, type Game, type Ghost } from './sim'
+import { CAUGHT_HOLD, CLEAR_HOLD, SEAL_HOLD, minisEdibleNow, visual, type Dir, type Game, type Ghost } from './sim'
 import { ALERT, FRIGHT, GLOW, ICE, VOID, eraOf, theme, type Theme } from './palette'
 import { drawFacing, drawUpright, lawSprite, miniFrame, pacFrame, type GhostLook } from './sprites'
 
@@ -395,32 +395,18 @@ function ramStick(): HTMLCanvasElement {
   c.width = 22
   c.height = 12
   const g = c.getContext('2d')!
-  g.fillStyle = '#1c8f4e'
+  g.fillStyle = '#cfe9ff'
   g.fillRect(0, 0, 22, 10)
-  g.fillStyle = '#2fd17a'
+  g.fillStyle = '#ffffff'
   g.fillRect(0, 0, 22, 1)
   // the notch
   g.clearRect(10, 8, 2, 2)
-  g.fillStyle = '#0b0f14'
+  g.fillStyle = '#1b3c5c'
   for (const x of [2, 8, 14]) g.fillRect(x, 2, 5, 5)
-  g.fillStyle = '#e8c54a'
+  g.fillStyle = '#96d6ff'
   for (let x = 1; x < 21; x += 2) if (x < 10 || x > 11) g.fillRect(x, 10, 1, 2)
   stick = c
   return stick
-}
-
-function drawBolt(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, color: string): void {
-  const k = size / 20
-  ctx.beginPath()
-  ctx.moveTo(x + 2 * k, y - 10 * k)
-  ctx.lineTo(x - 6 * k, y + 1 * k)
-  ctx.lineTo(x - 0.5 * k, y + 1 * k)
-  ctx.lineTo(x - 2 * k, y + 10 * k)
-  ctx.lineTo(x + 6 * k, y - 2 * k)
-  ctx.lineTo(x + 0.5 * k, y - 2 * k)
-  ctx.closePath()
-  ctx.fillStyle = color
-  ctx.fill()
 }
 
 function drawPellets(ctx: CanvasRenderingContext2D, game: Game, tile: number, th: Theme): void {
@@ -431,7 +417,7 @@ function drawPellets(ctx: CanvasRenderingContext2D, game: Game, tile: number, th
     const y = dot.y * tile + tile / 2
     const twinkle = 0.78 + 0.22 * Math.sin(game.time * 3.2 + dot.x * 1.7 + dot.y * 2.3)
     ctx.globalAlpha = 0.16 * twinkle
-    ctx.fillStyle = '#3dff9a'
+    ctx.fillStyle = th.pellet
     ctx.fillRect(x - 13, y - 8, 26, 16)
     ctx.globalAlpha = twinkle
     ctx.drawImage(art, Math.round(x - 11), Math.round(y - 6))
@@ -439,20 +425,6 @@ function drawPellets(ctx: CanvasRenderingContext2D, game: Game, tile: number, th
     const callout =
       game.mode === 'play' && game.intro > 0 && game.callouts.some((chip) => chip.x === dot.x && chip.y === dot.y)
     if (callout) tag(ctx, 'RAM', x + 2, y - 19, 18, 'rgba(1, 4, 11, 0.9)', ICE, th.line)
-  }
-  // electricity: the power-ups pulse
-  for (const cell of game.powers) {
-    const x = cell.x * tile + tile / 2
-    const y = cell.y * tile + tile / 2
-    const pulse = 0.5 + 0.5 * Math.sin(game.time * 6 + cell.x)
-    ctx.globalAlpha = 0.1 + 0.12 * pulse
-    ctx.fillStyle = '#ffe14a'
-    ctx.beginPath()
-    ctx.arc(x, y, 17, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.globalAlpha = 1
-    drawBolt(ctx, x + 1, y + 1, 34, '#6b4a00')
-    drawBolt(ctx, x, y, 34 + pulse * 2, '#ffd21f')
   }
 }
 
@@ -486,7 +458,7 @@ function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, tile: number, th:
 
 function drawMinis(ctx: CanvasRenderingContext2D, game: Game, tile: number): void {
   const moving = game.mode === 'play'
-  const edible = LEVELS[game.levelIndex]?.minisEdible ?? false
+  const edible = minisEdibleNow(game)
   const size = Math.max(16, Math.round(actorSize(game.levelIndex) * 0.8))
   for (const mini of game.minis) {
     const pos = visual(mini)
@@ -506,7 +478,6 @@ function drawMinis(ctx: CanvasRenderingContext2D, game: Game, tile: number): voi
 
 function ghostLook(game: Game, ghost: Ghost): GhostLook {
   if (ghost.state === 'eaten') return 'eyes'
-  if (ghost.state === 'disabled') return 'blue'
   if (ghost.state !== 'frightened') return 'body'
   const warned = game.surge > 0 && game.surge < 2
   const flash = Math.floor(game.time * (warned ? 14 : 8) + ghost.law) % 2 === 0
@@ -523,24 +494,10 @@ function drawGhost(ctx: CanvasRenderingContext2D, game: Game, ghost: Ghost, tile
   else if (ghost.state !== 'housed') y += Math.sin(game.time * 8 + ghost.law * 2)
   const look = ghostLook(game, ghost)
   const art = lawSprite(ghost.law, look)
-  if (ghost.state === 'disabled') ctx.globalAlpha = 0.45
   if (art) drawUpright(ctx, art, x, y, size, ghost.dir)
   ctx.globalAlpha = 1
   if (ghost.state === 'eaten') {
     label(ctx, ghost.tag, x, y - size / 2 - 8, 17, 'rgba(226, 245, 255, 0.45)')
-    return
-  }
-  if (ghost.state === 'disabled') {
-    // switched off: grey, still, a power symbol over it
-    ctx.globalAlpha = 0.85
-    ctx.strokeStyle = ICE
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    ctx.arc(x, y - size / 2 - 10, 6, -Math.PI * 0.3, Math.PI * 1.3)
-    ctx.moveTo(x, y - size / 2 - 18)
-    ctx.lineTo(x, y - size / 2 - 10)
-    ctx.stroke()
-    ctx.globalAlpha = 1
     return
   }
   const ink = look === 'blue' ? FRIGHT : look === 'flash' ? ICE : ghost.color
@@ -599,22 +556,8 @@ function drawClearFanfare(ctx: CanvasRenderingContext2D, game: Game, width: numb
   }
 }
 
-function drawMilestone(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number): void {
-  if (game.milestone <= 0) return
-  const t = MILESTONE_HOLD - game.milestone
-  const slam = clamp(t / 0.22, 0, 1)
-  const scale = 1 + (1 - slam) * (1 - slam) * 1.6
-  ctx.save()
-  ctx.translate(snap(width / 2), snap(height * 0.42))
-  ctx.scale(scale, scale)
-  panel(ctx, ALERT, -170, -50, 340, 100)
-  label(ctx, 'LOBBY SPEND <<< $999M >>>', -158, -36, 13, ALERT, 'left')
-  label(ctx, 'INFLUENCE', 158, -36, 13, ICE, 'right')
-  headline(ctx, 'LOBBY', 0, 0, 46, ALERT)
-  hatch(ctx, ALERT, -158, 28, 96, 10, 5)
-  hatch(ctx, ALERT, 62, 28, 96, 10, 5)
-  label(ctx, 'EAT THE RESISTANCE', 0, 33, 18, ICE)
-  ctx.restore()
+function drawMilestone(_ctx: CanvasRenderingContext2D, _game: Game, _width: number, _height: number): void {
+  // The surge is shown by the flash, the shake and the theme. No text on top.
 }
 
 function drawBanner(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number, th: Theme): void {

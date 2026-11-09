@@ -1,4 +1,4 @@
-# RAM GRAB: INFINITE PROFIT
+# PAC RAM: INFINITE PROFIT
 
 A browser game about AI and who gets to own compute. Play it at https://ram-grab.vercel.app/
 
@@ -20,9 +20,9 @@ Eat the RAM across a maze while avoiding the ghosts of the resistance:
 | AI Act | AI ACT | Lawmakers writing rules for AI |
 | Datacenter Moratorium | BAN | Towns and grids that say no more datacenters |
 
-Consumers (small amber pacs) roam the maze too and take RAM for their own computers. They are slower than you. You and they cannot hurt each other, until the last era: then you can eat them and take the RAM they collected. The HUD shows the tug of war as market share.
+Consumers (small amber pacs) roam the maze too and take RAM for their own computers. They are slower than you and normally safe from you. During a surge you can eat them, and in the last era they are always fair game: eating one takes the RAM it collected. The HUD shows the tug of war as market share.
 
-The RAM is drawn as little RAM sticks. Each maze also has four lightning bolts: electricity. Grab one and the power goes out for a few seconds (7, 6 and 5 seconds by era). The resistance turns blue, and touching it switches it off where it stands. You can never eat or remove the resistance; when the power comes back, it hunts you again.
+The RAM is drawn as little white RAM sticks. Eat 25 to fill the surge bar. For a few seconds the resistance turns blue and you can eat it (a fine gets APPEALED, a protest IGNORED, a lawsuit SETTLED, the AI Act WATERED DOWN, a ban LIFTED); an eaten ghost goes back to its base and comes out again. The surge is shown by a flash and the colours, without a text overlay.
 
 The right-hand panel is a fake stock ticker: Infinite Labs' share price climbs as you take RAM, while a tape and a price list show what that does to everyone else (RAM and laptops get dearer, a cloud PC gets cheaper, fewer homes buy a computer). Your final score is your valuation.
 
@@ -34,7 +34,7 @@ Three eras, each harder and bigger than the last. You get faster, the resistance
 2. **The Build-Out** (2024 - 2026): four kinds of resistance, four consumers. You are a HYPERSCALER.
 3. **No One Stopped It** (2027 - ): all five, six consumers, and consumers are fair game. You are a CONGLOMERATE.
 
-Between eras real headlines play as a news wire (`src/news.ts`, content in `src/headlines.ts`):
+Between eras the company upgrades itself on screen (`src/upgrade.ts`): it takes in the RAM, falls apart into pixels and is rebuilt as its next form (STARTUP, HYPERSCALER, CONGLOMERATE, THE CLOUD). Then real headlines play as a news wire (`src/news.ts`, content in `src/headlines.ts`):
 
 - Before the game: Italy blocks ChatGPT (2023), OpenAI hints it may leave the EU, Italy's EUR 15M fine and OpenAI's response.
 - After era 1: communities next to datacenters (Newton County wells, xAI's turbines in Memphis, Uruguay's drought, Ireland's grid, power bills in the PJM region).
@@ -44,7 +44,9 @@ Every headline is quoted as published, with the outlet and date. Sources are lin
 
 ## Ending
 
-Clear the third era and nothing can stop you (`src/ending.ts`). The ending stays on one idea: electronics keep getting more expensive until people can't afford them, the cloud gets cheaper, and owning a powerful computer becomes obsolete. A timeline runs from 2022 to a projected future (real milestones marked with their source, the projection marked as such). Then the screen turns into your own computer and a notice says the memory above the personal allowance is being collected, worked out from how much RAM your device reports. A short chat in speech bubbles follows, where the cloud talks you out of owning a computer, and a short end card closes on Sam Altman's remark about RAM in home PCs.
+Clear the third era and the board is empty, but the company is still hungry. In the finale (`src/finale.ts`) you steer it to eat the board itself: the maze, then the stock ticker, then the glass of the screen, because there is still memory out there: in your computer.
+
+The ending (`src/ending.ts`) stays on one idea: electronics keep getting more expensive until people can't afford them, the cloud gets cheaper, and owning a powerful computer becomes obsolete. A timeline runs from 2022 to a projected future (real milestones marked with their source, the projection marked as such). Then the screen turns into your own computer and a notice says the memory above the personal allowance is being collected, worked out from how much RAM your device reports. In a short chat in speech bubbles you pick your replies while the cloud talks you out of owning a computer, and a short end card closes on Sam Altman's remark about RAM in home PCs.
 
 Lose all your lives and the resistance held.
 
@@ -67,7 +69,7 @@ Arrow keys, WASD or swipes to move. Enter, Space or a tap starts and continues. 
 
 ## Not in this version
 
-No voice (text only), no growth screens between eras, no rogue-AI story, finale or OS takeover, no online leaderboard and no analytics. The top-valuations board is kept on the player's own device.
+No voice (text only), no rogue-AI story or OS takeover, no online leaderboard and no analytics. The top-valuations board is kept on the player's own device.
 
 ## Art and sound
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The RAM GRAB: INFINITE PROFIT title logo.
+"""The PAC RAM: INFINITE PROFIT title logo.
 
 Heavy upright block letters with a chrome face and bevelled edges, warped
 into perspective (narrower at the top, as if leaning back), with a deep
@@ -18,7 +18,7 @@ import sys
 from PIL import Image
 
 OUT = os.path.join(os.path.dirname(__file__), '..', 'public', 'art')
-LOGO = 'RAM GRAB'
+LOGO = 'PAC RAM'
 PLATE = 'INFINITE PROFIT'
 KEY_SIZE = (261, 88)  # KEY_W, KEY_H in src/title.ts
 

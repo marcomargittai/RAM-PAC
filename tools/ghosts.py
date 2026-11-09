@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""RAM GRAB: the five arms of the resistance that hunt Infinite Labs, as 32x32 sprites.
+"""PAC RAM: the five arms of the resistance that hunt Infinite Labs, as 32x32 sprites.
 
 Each keeps the ghost silhouette (dome, wavy hem) so it reads at a glance, and
 wears one sign of how it slows the RAM grab down:

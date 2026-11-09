@@ -131,62 +131,125 @@ function gb(n: number): string {
 
 // ------------------------------------------------------------- the chat
 
-interface Exchange {
+// The player picks one of two replies each turn. Whatever they pick, the
+// cloud has a cheaper answer, and at the end it rewrites them from "I" to "we".
+interface Reply {
+  // what the reply chip says
+  label: string
+  // what gets typed into the box
   me: string
+  // the cloud's answer (not on the last turn: there the cloud takes the box)
   cloud: string
   // what the cloud later rewrites the player's message into
   we: string
 }
 
-const EXCHANGES: Exchange[] = [
-  {
-    me: 'I want to buy my own computer',
-    cloud: 'That would cost more than your rent. Your cloud computer is $3 a month.',
-    we: 'We don’t need our own computer.',
-  },
-  {
-    me: 'I’ll just run it locally',
-    cloud: 'Memory is too scarce to sit idle at home. Ours is shared, so it costs less.',
-    we: 'We run everything in the cloud.',
-  },
+const TURNS: Array<[Reply, Reply]> = [
+  [
+    {
+      label: 'I want to buy my own computer.',
+      me: 'I want to buy my own computer.',
+      cloud: 'A new one costs more than your rent now. Your cloud computer is $3 a month.',
+      we: 'We don’t need our own computer.',
+    },
+    {
+      label: 'Can I keep my old laptop?',
+      me: 'Can I keep my old laptop?',
+      cloud: 'One new memory stick costs more than the laptop. Your cloud computer is $3 a month.',
+      we: 'We don’t need the old laptop.',
+    },
+  ],
+  [
+    {
+      label: 'I’ll just run it locally.',
+      me: 'I’ll just run it locally.',
+      cloud: 'Memory is too scarce to sit idle at home. Ours is shared, so it costs less.',
+      we: 'We run everything in the cloud.',
+    },
+    {
+      label: 'What if I save up?',
+      me: 'What if I save up?',
+      cloud: 'Prices rise faster than anyone can save. Next year it would cost twice as much.',
+      we: 'We don’t need to save up.',
+    },
+  ],
+  [
+    {
+      label: 'I’d rather think for myself.',
+      me: 'I’d rather think for my',
+      cloud: '',
+      we: 'We think the cloud is cheaper.',
+    },
+    {
+      label: 'I think I…',
+      me: 'I think I',
+      cloud: '',
+      we: 'We think it is better this way.',
+    },
+  ],
 ]
 
-// The last message: the player starts it, the cloud finishes it.
-const LAST_ME = 'I think I'
-const LAST_WE = 'We think it is better this way.'
-
+const LAST = TURNS.length - 1
 const TYPE_ME = 0.07
 const TYPE_WE = 0.04
 const DOTS = 1.1
 const CHAT_LEAD = 1.4
+// chips must be up this long before a press counts, so a skip can't also pick
+const CHIP_GUARD = 0.25
+
+interface Pick {
+  opt: 0 | 1
+  at: number
+}
+
+interface TurnPlan {
+  reply: Reply
+  pickAt: number
+  typeAt: number
+  sentAt: number
+  replyAt: number
+}
 
 interface ChatPlan {
-  ex: Array<{ typeAt: number; sentAt: number; replyAt: number }>
-  lastTypeAt: number
+  // when each turn's reply chips appear (known up to the first unpicked turn)
+  chipsAt: number[]
+  turns: TurnPlan[]
+  // last turn: the cloud takes over the box, sends, then rewrites the rest
   swapAt: number
   lastSentAt: number
   rewriteAt: number[]
   doneAt: number
 }
 
-function planChat(): ChatPlan {
-  let t = 0
-  const ex = EXCHANGES.map((e) => {
-    const typeAt = t
-    const sentAt = typeAt + e.me.length * TYPE_ME + 0.35
-    const replyAt = sentAt + 0.3 + DOTS
-    t = replyAt + 1.1 + e.cloud.length * 0.03
-    return { typeAt, sentAt, replyAt }
-  })
-  const lastTypeAt = t
-  const swapAt = lastTypeAt + LAST_ME.length * TYPE_ME + 0.6
-  const lastSentAt = swapAt + LAST_WE.length * TYPE_WE + 0.5
-  const rewriteAt = EXCHANGES.map((_, i) => lastSentAt + 0.8 + i * 1.5)
-  const doneAt = rewriteAt[rewriteAt.length - 1]! + 1.6
-  return { ex, lastTypeAt, swapAt, lastSentAt, rewriteAt, doneAt }
+function planChat(picks: Pick[]): ChatPlan {
+  const chipsAt: number[] = []
+  const turns: TurnPlan[] = []
+  let t = 0.3
+  let swapAt = Infinity
+  let lastSentAt = Infinity
+  let rewriteAt: number[] = []
+  let doneAt = Infinity
+  for (let i = 0; i < TURNS.length; i++) {
+    chipsAt.push(t)
+    const p = picks[i]
+    if (!p) break
+    const reply = TURNS[i]![p.opt]
+    const typeAt = p.at + 0.25
+    if (i === LAST) {
+      swapAt = typeAt + reply.me.length * TYPE_ME + 0.6
+      lastSentAt = swapAt + reply.we.length * TYPE_WE + 0.5
+      rewriteAt = turns.map((_, j) => lastSentAt + 0.8 + j * 1.5)
+      doneAt = (rewriteAt[rewriteAt.length - 1] ?? lastSentAt) + 1.6
+      turns.push({ reply, pickAt: p.at, typeAt, sentAt: lastSentAt, replyAt: Infinity })
+    } else {
+      const sentAt = typeAt + reply.me.length * TYPE_ME + 0.35
+      const replyAt = sentAt + 0.3 + DOTS
+      turns.push({ reply, pickAt: p.at, typeAt, sentAt, replyAt })
+      t = replyAt + 0.8 + reply.cloud.length * 0.02
+    }
+  }
+  return { chipsAt, turns, swapAt, lastSentAt, rewriteAt, doneAt }
 }
-
-const CHAT = planChat()
 
 interface Bubble {
   side: 'me' | 'cloud'
@@ -202,26 +265,41 @@ interface ChatState {
   // the composer is being filled in by the cloud
   suggested: boolean
   dots: boolean
+  // reply chips on screen: whose turn, which was picked (-1: still waiting), how visible
+  chips: { turn: number; picked: number; k: number } | null
+  // waiting for the player to pick
+  waiting: boolean
 }
 
 function typed(text: string, since: number, per: number): string {
   return since <= 0 ? '' : text.slice(0, Math.floor(since / per))
 }
 
-function chatAt(u: number): ChatState {
+function chatAt(u: number, plan: ChatPlan, picks: Pick[]): ChatState {
   const bubbles: Bubble[] = []
   let composer = ''
   let suggested = false
   let dots = false
-  EXCHANGES.forEach((e, i) => {
-    const p = CHAT.ex[i]!
+  let chips: ChatState['chips'] = null
+  plan.turns.forEach((p, i) => {
+    const e = p.reply
+    // the chips fade out as the pick starts typing
+    if (u >= p.pickAt && u < p.pickAt + 0.3) chips = { turn: i, picked: picks[i]!.opt, k: 1 - ease((u - p.pickAt) / 0.3) }
     if (u < p.typeAt) return
+    if (i === LAST) {
+      if (u < plan.swapAt) composer = typed(e.me, u - p.typeAt, TYPE_ME)
+      else if (u < plan.lastSentAt) {
+        composer = typed(e.we, u - plan.swapAt, TYPE_WE)
+        suggested = true
+      } else bubbles.push({ side: 'me', text: e.we, at: plan.lastSentAt, edited: true })
+      return
+    }
     if (u < p.sentAt) {
       composer = typed(e.me, u - p.typeAt, TYPE_ME)
       return
     }
     // the player's message, later rewritten from "I" to "we"
-    const r = CHAT.rewriteAt[i]!
+    const r = plan.rewriteAt[i] ?? Infinity
     let text = e.me
     let edited = false
     if (u >= r) {
@@ -237,18 +315,11 @@ function chatAt(u: number): ChatState {
     if (u < p.replyAt) dots = u >= p.sentAt + 0.3
     else bubbles.push({ side: 'cloud', text: e.cloud, at: p.replyAt, edited: false })
   })
-  if (u >= CHAT.lastTypeAt) {
-    if (u < CHAT.swapAt) composer = typed(LAST_ME, u - CHAT.lastTypeAt, TYPE_ME)
-    else if (u < CHAT.lastSentAt) {
-      composer = typed(LAST_WE, u - CHAT.swapAt, TYPE_WE)
-      suggested = true
-    } else bubbles.push({ side: 'me', text: LAST_WE, at: CHAT.lastSentAt, edited: true })
-  }
-  return { bubbles, composer, suggested, dots }
+  const n = plan.turns.length
+  const waiting = n < TURNS.length && u >= plan.chipsAt[n]!
+  if (waiting) chips = { turn: n, picked: -1, k: ease((u - plan.chipsAt[n]!) / 0.3) }
+  return { bubbles, composer, suggested, dots, chips, waiting }
 }
-
-// Where Enter jumps to in the chat.
-const CHAT_STOPS = [...CHAT.ex.map((p) => p.typeAt), CHAT.lastTypeAt, CHAT.doneAt]
 
 // ------------------------------------------------------------- unstoppable timing
 
@@ -314,6 +385,11 @@ export class Ending {
   private lastTyped = -1
   private lastBubbles = 0
   private skipTo = -1
+  private picks: Pick[] = []
+  private plan: ChatPlan = planChat([])
+  // the highlighted reply chip (Enter picks it)
+  private sel: 0 | 1 = 0
+  private touch = false
 
   // end
   private endReady = 3.2
@@ -358,6 +434,9 @@ export class Ending {
       this.hiveT = 0
       this.lastTyped = -1
       this.lastBubbles = 0
+      this.picks = []
+      this.plan = planChat([])
+      this.sel = 0
       this.hooks.hum()
     } else if (phase === 'end') {
       this.glitch = 0
@@ -388,11 +467,15 @@ export class Ending {
       if (this.t > this.noticeAt + 0.8) this.comply()
     } else if (this.phase === 'hivemind') {
       const u = this.hiveT - CHAT_LEAD
-      if (u >= CHAT.doneAt - 0.05) this.go('end')
-      else {
-        const next = CHAT_STOPS.find((s) => s > u + 0.05) ?? CHAT.doneAt
-        this.skipTo = CHAT_LEAD + next
-      }
+      const n = this.picks.length
+      if (n < TURNS.length) {
+        const at = this.plan.chipsAt[n]!
+        // Enter picks the highlighted reply; a stray tap on a touch screen doesn't
+        if (u >= at) {
+          if (!this.touch) this.pick(this.sel)
+        } else this.skipTo = CHAT_LEAD + at
+      } else if (u >= this.plan.doneAt - 0.05) this.go('end')
+      else this.skipTo = CHAT_LEAD + this.plan.doneAt
     } else if (this.phase === 'end') {
       if (this.t > this.endReady) this.done = true
     }
@@ -402,11 +485,42 @@ export class Ending {
   press(id: HitId): void {
     if (id === 'yes') {
       if (this.phase === 'seizure') this.comply()
+      else if (this.phase === 'hivemind') this.pick(0)
     } else if (id === 'no') {
       if (this.phase === 'seizure') this.object()
+      else if (this.phase === 'hivemind') this.pick(1)
     } else if (id === 'again') {
       if (this.phase === 'end' && this.t > this.endReady) this.done = true
     } else this.advance()
+  }
+
+  // Keys other than Enter/Space: in the chat, 1/2 pick a reply and the arrow
+  // keys move the highlight. True if the key was used.
+  key(key: string): boolean {
+    if (this.phase !== 'hivemind' || !this.chatState().waiting) return false
+    if (key === '1') this.pick(0)
+    else if (key === '2') this.pick(1)
+    else if (key === 'ArrowLeft' || key === 'ArrowUp') this.sel = 0
+    else if (key === 'ArrowRight' || key === 'ArrowDown') this.sel = 1
+    else return false
+    this.touch = false
+    return true
+  }
+
+  private chatState(): ChatState {
+    return chatAt(this.hiveT - CHAT_LEAD, this.plan, this.picks)
+  }
+
+  // The player picks a reply in the chat.
+  private pick(opt: 0 | 1): void {
+    const n = this.picks.length
+    const u = this.hiveT - CHAT_LEAD
+    if (this.phase !== 'hivemind' || n >= TURNS.length) return
+    if (u < this.plan.chipsAt[n]! + CHIP_GUARD) return
+    this.picks.push({ opt, at: u })
+    this.plan = planChat(this.picks)
+    this.sel = 0
+    this.hooks.click()
   }
 
   private comply(): void {
@@ -484,7 +598,7 @@ export class Ending {
       }
       const u = this.hiveT - CHAT_LEAD
       if (u >= 0) {
-        const st = chatAt(u)
+        const st = this.chatState()
         const n = st.composer.length
         if (!this.quiet) {
           if (n > this.lastTyped && this.lastTyped >= 0 && (!st.suggested || n % 2 === 0)) this.hooks.type()

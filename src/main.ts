@@ -20,7 +20,7 @@ type Stage =
   | { kind: 'briefing' }
   | { kind: 'ending'; ending: Ending }
 
-const TITLE = 'RAM GRAB: INFINITE PROFIT'
+const TITLE = 'PAC RAM: INFINITE PROFIT'
 const game: Game = createGame()
 const audio = new Sfx()
 const source = document.querySelector<HTMLCanvasElement>('#screen')!
@@ -157,7 +157,7 @@ function startEnding(): void {
   stage = {
     kind: 'ending',
     ending: new Ending(
-      { score: game.score, ramYou: game.totalYou, ramThem: game.totalThem, minisEaten: game.minisEaten, lawsDisabled: game.lawsDisabled },
+      { score: game.score, ramYou: game.totalYou, ramThem: game.totalThem, minisEaten: game.minisEaten, lawsDisabled: game.lawsEaten },
       {
         type: () => audio.play('type', 0.18, 0.9 + Math.random() * 0.3),
         stamp: () => audio.play('popup', 0.5, 0.9 + Math.random() * 0.2),

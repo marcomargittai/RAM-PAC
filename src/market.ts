@@ -3,9 +3,9 @@
 // to everybody else: memory and computers get dearer, the cloud gets cheaper.
 
 import { LEVELS } from './levels'
-import { ALERT, FRIGHT, GLOW, ICE } from './palette'
+import { ALERT, GLOW, ICE } from './palette'
 import { MONO, clamp, fill, label } from './render'
-import type { Game } from './sim'
+import { SURGE_RAM, type Game } from './sim'
 import { lawSprite } from './sprites'
 
 const UP = '#3dff9a'
@@ -132,6 +132,21 @@ function tape(ctx: CanvasRenderingContext2D, game: Game, x: number, y: number, w
   ctx.restore()
 }
 
+// The surge bar: 25 RAM fills it, then for a few seconds the resistance can be eaten.
+function surgeBar(ctx: CanvasRenderingContext2D, game: Game, x: number, y: number, w: number, h: number, time: number, k: number): void {
+  const surging = game.surge > 0
+  const r = clamp(surging ? game.surge / game.surgeMax : game.surgeCharge / SURGE_RAM, 0, 1)
+  label(ctx, surging ? 'SURGE' : `SURGE ${game.surgeCharge}/${SURGE_RAM}`, x, y + h / 2, 15 * k, surging ? ALERT : GLOW, 'left')
+  const bx = x + 110 * k
+  const bw = w - 110 * k
+  ctx.strokeStyle = surging ? ALERT : 'rgba(150, 214, 255, 0.5)'
+  ctx.lineWidth = 1
+  ctx.strokeRect(bx + 0.5, y + 0.5, bw, h)
+  if (r <= 0) return
+  const blink = !surging || game.surge > 1.5 || Math.floor(time * 8) % 2 === 0
+  if (blink) fill(ctx, surging ? ALERT : ICE, bx + 2, y + 2, (bw - 3) * r, h - 3)
+}
+
 // What the company's growth costs everybody else.
 function prices(ctx: CanvasRenderingContext2D, game: Game, x: number, y: number, w: number): void {
   label(ctx, 'MEANWHILE, FOR EVERYONE ELSE', x, y + 10, 18, 'rgba(150, 214, 255, 0.7)', 'left')
@@ -185,7 +200,7 @@ export function drawMarket(ctx: CanvasRenderingContext2D, game: Game, x: number,
 
   const tapeH = 36 * k
   const footH = 44 * k
-  const cy = y + 92 * k
+  const cy = y + 112 * k
   // a tall panel also lists what everybody else pays
   const table = h > 500
   const tableH = table ? 250 : 0
@@ -193,21 +208,15 @@ export function drawMarket(ctx: CanvasRenderingContext2D, game: Game, x: number,
   const room = h - (cy - y) - tapeH - footH - tableH - 10 * k
   const chH = room >= 50 ? room : 0
   if (chH) chart(ctx, x + pad, cy, w - pad * 2, chH)
-  if (game.surge > 0) {
-    // the power is out: a thin bar along the chart's top, no text
-    const r = clamp(game.surge / game.surgeMax, 0, 1)
-    const blink = game.surge > 1.5 || Math.floor(time * 8) % 2 === 0
-    if (blink) fill(ctx, FRIGHT, x + pad, cy - 4, (w - pad * 2) * r, 4)
-  }
+  surgeBar(ctx, game, x + pad, cy - 16 * k, w - pad * 2, 14 * k, time, k)
   tape(ctx, game, x + 1, cy + chH + 10 * k + tapeH / 2, w - 2, 18 * k, time)
   if (table) prices(ctx, game, x + pad, cy + chH + 10 * k + tapeH + 16, w - pad * 2)
 
   // the resistance, just as icons: dim when they're switched off
   const fy = y + h - footH / 2
   game.ghosts.forEach((ghost, i) => {
-    const off = ghost.state === 'disabled' || ghost.state === 'frightened'
-    const art = lawSprite(ghost.law, off ? 'blue' : 'body')
-    ctx.globalAlpha = ghost.state === 'disabled' ? 0.35 : 1
+    const art = lawSprite(ghost.law, ghost.state === 'frightened' ? 'blue' : 'body')
+    ctx.globalAlpha = ghost.state === 'eaten' || ghost.state === 'housed' ? 0.35 : 1
     if (art) ctx.drawImage(art, x + pad + i * 34 * k, fy - 13 * k, 26 * k, 26 * k)
     ctx.globalAlpha = 1
   })

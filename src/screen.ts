@@ -312,7 +312,7 @@ function drawBoot(ctx: CanvasRenderingContext2D, view: View): void {
 function drawHeader(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, W: number, th: Theme, compact: boolean): void {
   label(ctx, 'INC//', 24, 16, 17, GLOW, 'left')
   label(ctx, 'INFINITE LABS · INSERT CAPITAL', 62, 16, 17, ALERT, 'left')
-  logo(ctx, 'RAM GRAB', 24, 48, compact ? 40 : 36, ICE)
+  logo(ctx, 'PAC RAM', 24, 48, compact ? 40 : 36, ICE)
 
   const bw = compact ? 118 : 104
   const bh = 36
@@ -514,7 +514,7 @@ function drawPhone(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: 
   const view = frame.view
 
   // header: the name, the board you are on, pause and sound
-  logo(ctx, 'RAM GRAB', 22, 50, 46, ICE)
+  logo(ctx, 'PAC RAM', 22, 50, 46, ICE)
   const level = LEVELS[game.levelIndex]
   label(ctx, `BOARD ${game.levelIndex + 1} · ${(level?.name ?? '').toUpperCase()}`, 24, 96, 28, GLOW, 'left')
   iconButton(ctx, frame, 'mute', view.muted ? '✕' : '♪', W - 20 - 84, 14, th.line)
