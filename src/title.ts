@@ -1,11 +1,11 @@
 // The title screen, drawn like an old cartridge cover: 3D key art over a
 // datacenter skyline and a grid floor, the company's last build rising like a
-// sun, one big start button, the board of top valuations and the credit.
+// sun, one big start button and the board of top valuations.
 
 import { ALERT, GLOW, ICE } from './palette'
 import { DISPLAY, MONO, fill, label } from './render'
 import { frameFor } from './scenes'
-import { button, hit, type Frame, type Hit, type HitId, type View } from './screen'
+import { hit, type Frame, type Hit, type HitId, type View } from './screen'
 import { drawFacing, pacFrameOf } from './sprites'
 
 function art(name: string): HTMLImageElement {
@@ -27,20 +27,6 @@ const STARS = Array.from({ length: 140 }, (_, i) => {
   return { x: r(1), y: r(2), s: r(3) < 0.12 ? 2 : 1, pink: r(4) < 0.04, phase: r(5) * 6.28 }
 })
 
-export const CREDIT = 'MARCO MARGITTAI'
-export const CREDIT_URL = 'https://marcomargittai.com'
-
-// Players who came from the portfolio get a way back to it; everyone else
-// gets a pointer to who made the game.
-export const FROM_PORTFOLIO = (() => {
-  if (new URLSearchParams(location.search).get('ref') === 'portfolio') return true
-  try {
-    const r = document.referrer ? new URL(document.referrer) : null
-    return !!r && r.hostname.endsWith('marcomargittai.com') && !r.pathname.startsWith('/pac-ram') && !r.pathname.startsWith('/ram-grab')
-  } catch {
-    return false
-  }
-})()
 
 // A chunky arcade button with a visible edge underneath. It sinks when the
 // pointer is on it or it is being pressed.
@@ -233,25 +219,9 @@ export function drawTitle(ctx: CanvasRenderingContext2D, view: View, form: numbe
     label(ctx, ft, W / 2, fy, fsz, frame.view.hover === 'full' ? ICE : GLOW)
     hit(frame, 'full', W / 2 - fw / 2 - 16, fy - fsz, fw + 32, fsz * 2)
   }
-  // top left of the screen, not the design area, so it sits in the corner on any shape
-  const home = FROM_PORTFOLIO ? '\u25C2  BACK TO PORTFOLIO' : 'MORE BY MARCO MARGITTAI  \u2197'
-  const hs = portrait ? 18 : 13
-  ctx.font = `600 ${hs}px ${MONO}`
-  // the button draws with letter spacing, so the box counts it too
-  const hw = ctx.measureText(home).width + home.length * hs * 0.16 + hs * 3
-  // in from the corner, clear of the CRT's curved edge
-  button(ctx, frame, 'home', home, -ex + (portrait ? 44 : 40), -ey + (portrait ? 44 : 34), hw, portrait ? 52 : 38, ICE, hs)
-
   label(ctx, 'INFINITE LABS \u00B7 HQ \u00B7 FOUNDED 2022 \u00B7 MISSION: INFINITE PROFIT', W / 2, H - (portrait ? 80 : 64), portrait ? 22 : 18, 'rgba(150, 214, 255, 0.5)')
 
-  // credit
-  const year = new Date().getFullYear()
-  const credit = `© ${year} ${CREDIT}  ·  marcomargittai.com`
-  const cs = portrait ? 26 : 22
-  label(ctx, credit, W / 2, H - 32, cs, ICE)
-  ctx.font = `${cs}px ${MONO}`
-  const cw = ctx.measureText(credit).width
-  hit(frame, 'credit', W / 2 - cw / 2 - 10, H - 46, cw + 20, 36)
+  label(ctx, 'RAM GRAB \u00B7 A GAME ABOUT AI AND WHO OWNS COMPUTE', W / 2, H - 32, portrait ? 24 : 22, ICE)
   label(ctx, 'An independent game. Not affiliated with or endorsed by Bandai Namco.', W / 2, H - 9, portrait ? 16 : 14, 'rgba(150, 214, 255, 0.55)')
   ctx.restore()
   return frame.hits

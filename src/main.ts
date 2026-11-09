@@ -10,7 +10,7 @@ import { BOOT_SECONDS, DEV, drawScreen, type Card, type Hit, type HitId, type Vi
 import { createGame, startRun, update, type Dir, type Game } from './sim'
 import { setPacForm } from './sprites'
 import { Upgrade } from './upgrade'
-import { CREDIT_URL, FROM_PORTFOLIO, drawTitle } from './title'
+import { drawTitle } from './title'
 import './style.css'
 
 type Stage =
@@ -345,12 +345,7 @@ function press(id: HitId): void {
   if (id === 'pause') pressPause()
   else if (id === 'mute') toggleMute()
   else if (id === 'full') toggleFullscreen()
-  else if (id === 'credit') window.open(CREDIT_URL, '_blank', 'noopener')
-  else if (id === 'home') {
-    if (!FROM_PORTFOLIO) window.open(CREDIT_URL, '_blank', 'noopener')
-    else if (document.referrer.includes('marcomargittai.com') && history.length > 1) history.back()
-    else location.href = CREDIT_URL
-  } else if (id === 'menu') quitToTitle()
+  else if (id === 'menu') quitToTitle()
   else if (id === 'board') openBoard()
   else if (id === 'action') pressStart()
   else if (id === 'skip') skipAhead()
