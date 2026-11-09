@@ -454,7 +454,8 @@ function goFullscreen(): void {
 
 window.addEventListener('keydown', (event) => {
   if (stage.kind === 'ending') {
-    if (event.key === 'Enter' || event.key === ' ') {
+    if (stage.ending.key(event.key)) event.preventDefault()
+    else if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault()
       if (!event.repeat) stage.ending.advance()
     } else if (event.key === 'm' || event.key === 'M') toggleMute()

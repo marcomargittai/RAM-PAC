@@ -1,4 +1,4 @@
-// The ending of RAM GRAB. The resistance is switched off, so nothing is left
+// The ending of PAC RAM. The resistance has been eaten, so nothing is left
 // to stop the company, and memory becomes something people can't afford.
 //
 //   unstoppable  the tally, in the game's CRT style; valuation spins to infinity
@@ -333,7 +333,7 @@ const U_LINE = 8.0
 const U_READY = 8.8
 
 // the five ghosts' stamps, in LAWS order
-const STAMPS = ['OVERRULED', 'IGNORED', 'DISMISSED', 'DELAYED', 'LIFTED']
+const STAMPS = ['APPEALED', 'IGNORED', 'SETTLED', 'WATERED DOWN', 'LIFTED']
 
 // ------------------------------------------------------------- timeline items
 
@@ -688,12 +688,12 @@ export class Ending {
     }
     y += 64
     ctx.globalAlpha = ease((t - 0.7) / 0.5)
-    const sub = 'THE RESISTANCE IS SWITCHED OFF'
+    const sub = 'NOTHING IS LEFT TO STOP YOU'
     write(ctx, sub, cx, y, mono(fitSize(ctx, sub, mono, 26, dw - 10)), DIM, 'center', 2)
     ctx.globalAlpha = 1
     y += 70
 
-    // the five ghosts, switched off one by one
+    // the five ghosts, beaten one by one
     const n = LAWS.length
     const slot = dw / n
     const gs = Math.min(64, slot * 0.62)
@@ -746,7 +746,7 @@ export class Ending {
     // the tally
     const rowSize = portrait ? 24 : 30
     const rows: Array<[string, string]> = [
-      ['RESISTANCE SWITCHED OFF', `${this.stats.lawsDisabled}×`],
+      ['RESISTANCE EATEN', `${this.stats.lawsDisabled}×`],
       ['CONSUMERS ABSORBED', String(this.stats.minisEaten)],
       ['SHARE OF THE WORLD’S RAM', ''],
     ]
@@ -1192,7 +1192,7 @@ export class Ending {
       cy += 10
     })
     write(ctx, 'Ref. MAA-20XX-0000001 · Issued automatically. No reply is possible.', x + pad, cy + 6, uiFont(os, phone ? 10 : 11), soft, 'left')
-    write(ctx, 'RAM GRAB · a work of fiction · nothing is collected', x + pad, cy + 24, uiFont(os, phone ? 10 : 11), '#9a9aa0', 'left')
+    write(ctx, 'PAC RAM · a work of fiction · nothing is collected', x + pad, cy + 24, uiFont(os, phone ? 10 : 11), '#9a9aa0', 'left')
     cy += metaH
 
     let result: { comply: Rect; object: Rect } | null = null
