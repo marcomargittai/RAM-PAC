@@ -127,9 +127,12 @@ export function drawDesktop(ctx: CanvasRenderingContext2D, os: Os, W: number, H:
     write(ctx, 'Finder', x, 13, uiFont(os, 13, 700), '#ffffff')
     x += 56
     for (const item of ['File', 'Edit', 'View', 'Go', 'Window', 'Help']) {
-      write(ctx, item, x, 13, uiFont(os, 13), '#ffffff')
       ctx.font = uiFont(os, 13)
-      x += ctx.measureText(item).width + 20
+      const iw = ctx.measureText(item).width
+      // narrow screens show only the menus that fit before the clock
+      if (x + iw > W - 90) break
+      write(ctx, item, x, 13, uiFont(os, 13), '#ffffff')
+      x += iw + 20
     }
     write(ctx, clock(os), W - 16, 13, uiFont(os, 13), '#ffffff', 'right')
   } else if (os === 'windows') {
