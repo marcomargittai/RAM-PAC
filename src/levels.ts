@@ -8,18 +8,16 @@ export interface LawDef {
   tag: string
   color: string
   personality: Personality
-  // what happens to it when the company eats it during a lobbying surge
-  beaten: string
   // one line for the briefing card
   about: string
 }
 
 export const LAWS: LawDef[] = [
-  { name: 'Data Watchdog', tag: 'FINE', color: '#ffe14a', personality: 'chase', beaten: 'APPEALED', about: 'Privacy regulators. They block apps and hand out fines.' },
-  { name: 'Local Residents', tag: 'PROTEST', color: '#38e0a8', personality: 'patrol', beaten: 'IGNORED', about: 'The people living next to your datacenters.' },
-  { name: 'Copyright Lawsuit', tag: 'LAWSUIT', color: '#ff2e45', personality: 'ambush', beaten: 'SETTLED', about: 'Writers, artists and newspapers who want their work back.' },
-  { name: 'AI Act', tag: 'AI ACT', color: '#b48cff', personality: 'flank', beaten: 'WATERED DOWN', about: 'Lawmakers writing rules for what AI may do.' },
-  { name: 'Datacenter Moratorium', tag: 'BAN', color: '#ff5fd2', personality: 'chase', beaten: 'LIFTED', about: 'Towns and grids that say: no more datacenters here.' },
+  { name: 'Data Watchdog', tag: 'FINE', color: '#ffe14a', personality: 'chase', about: 'Privacy regulators. They block apps and hand out fines.' },
+  { name: 'Local Residents', tag: 'PROTEST', color: '#38e0a8', personality: 'patrol', about: 'The people living next to your datacenters.' },
+  { name: 'Copyright Lawsuit', tag: 'LAWSUIT', color: '#ff2e45', personality: 'ambush', about: 'Writers, artists and newspapers who want their work back.' },
+  { name: 'AI Act', tag: 'AI ACT', color: '#b48cff', personality: 'flank', about: 'Lawmakers writing rules for what AI may do.' },
+  { name: 'Datacenter Moratorium', tag: 'BAN', color: '#ff5fd2', personality: 'chase', about: 'Towns and grids that say: no more datacenters here.' },
 ]
 
 export interface MiniSpawn {
@@ -51,32 +49,34 @@ export interface LevelDef {
   miniSpeed: number
   // on the last board consumers are no longer safe from you
   minisEdible: boolean
+  // seconds an electricity power-up keeps the resistance switched off
+  power: number
 }
 
 // 15 x 15: the early days. A small market with RAM to spare.
 const BOOM = [
-  '#......#......#',
-  '#.##.#.#.#.##.#',
   '#.............#',
   '#.##.##.##.##.#',
+  '#o...........o#',
+  '#.##.#...#.##.#',
   '#....#...#....#',
-  '####.#...#.####',
-  '.....#GdG#.....',
-  '####.#GGG#.####',
-  '#....#####....#',
-  '#.##.#.P.#.##.#',
-  '#.............#',
+  '...#.#GdG#.#...',
+  '#.##.#GGG#.##.#',
+  '#......P......#',
   '#.##.#####.##.#',
-  '#....#...#....#',
-  '#.##...#...##.#',
-  '#......#......#',
+  '...#.......#...',
+  '#o...#.#.#...o#',
+  '#.#.##.#.##.#.#',
+  '#.............#',
+  '#.##.##.##.##.#',
+  '#.............#',
 ]
 
 // 19 x 19: the build-out.
 const BUILD = [
   '#....#.......#....#',
   '#.##.#.#####.#.##.#',
-  '#.................#',
+  '#o...............o#',
   '##.#.###.#.###.#.##',
   '##.#.###.#.###.#.##',
   '...#.....#.....#...',
@@ -88,7 +88,7 @@ const BUILD = [
   '##.#####.#.#####.##',
   '##.......#.......##',
   '##.###.#####.###.##',
-  '#.................#',
+  '#o...............o#',
   '#.##.###.#.###.##.#',
   '#.##.#...#...#.##.#',
   '#.##.#.#####.#.##.#',
@@ -100,7 +100,7 @@ const SPRAWL = [
   '#...........#...........#',
   '#.###.#####.#.#####.###.#',
   '#.###.#####.#.#####.###.#',
-  '#.......................#',
+  '#o.....................o#',
   '#.###.#.#########.#.###.#',
   '#.....#.....#.....#.....#',
   '#####.###.#.#.#.###.#####',
@@ -118,7 +118,7 @@ const SPRAWL = [
   '###.#.#.#.#####.#.#.#.###',
   '#.....#.#...#...#.#.....#',
   '#.#####.###.#.###.#####.#',
-  '#.......................#',
+  '#o.....................o#',
   '#.###.#.#########.#.###.#',
   '#.###.#.....#.....#.###.#',
   '#.....#.....#.....#.....#',
@@ -134,13 +134,13 @@ export const LEVELS: LevelDef[] = [
     rows: [...BOOM],
     laws: [0, 1],
     playerSpeed: 5.2,
-    ghostSpeed: 4.3,
+    ghostSpeed: 3.9,
     frightSpeed: 2.7,
     eatenSpeed: 8.4,
     scatter: 7,
     chase: 14,
     lead: 3,
-    release: [0.6, 3.2],
+    release: [2, 6],
     minis: [
       { x: 1, y: 0, dir: 'right' },
       { x: 13, y: 14, dir: 'left' },
@@ -148,6 +148,7 @@ export const LEVELS: LevelDef[] = [
     ],
     miniSpeed: 3.0,
     minisEdible: false,
+    power: 7,
   },
   {
     name: 'The Build-Out',
@@ -173,6 +174,7 @@ export const LEVELS: LevelDef[] = [
     ],
     miniSpeed: 2.4,
     minisEdible: false,
+    power: 6,
   },
   {
     name: 'No One Stopped It',
@@ -200,10 +202,11 @@ export const LEVELS: LevelDef[] = [
     ],
     miniSpeed: 1.8,
     minisEdible: true,
+    power: 5,
   },
 ]
 
-const PLAYER_TILES = new Set(['.', 'P', ' '])
+const PLAYER_TILES = new Set(['.', 'o', 'P', ' '])
 
 export function validateLevel(rows: string[]): void {
   const w = rows[0]?.length ?? 0
@@ -227,7 +230,7 @@ export function validateLevel(rows: string[]): void {
       else if (ch === 'd') {
         doorX = x
         doorY = y
-      } else if (ch === '.') dots++
+      } else if (ch === '.' || ch === 'o') dots++
       else if (ch !== '#' && ch !== ' ') {
         throw new Error(`Unknown tile "${ch}" at ${x},${y}`)
       }
@@ -265,7 +268,7 @@ export function validateLevel(rows: string[]): void {
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const ch = rows[y]![x]!
-      if (ch === '.' && !seen[y]![x]) {
+      if ((ch === '.' || ch === 'o') && !seen[y]![x]) {
         throw new Error(`Unreachable RAM at ${x},${y}`)
       }
     }

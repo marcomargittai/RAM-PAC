@@ -1,13 +1,14 @@
-// The ending of RAM GRAB. The company has eaten the resistance, so nothing
-// is left to stop it.
+// The ending of RAM GRAB. The resistance is switched off, so nothing is left
+// to stop the company, and memory becomes something people can't afford.
 //
 //   unstoppable  the tally, in the game's CRT style; valuation spins to infinity
-//   timeline     what happened (with sources), TODAY, then what could happen
+//   timeline     what happened (with sources), TODAY, then what could happen as
+//                memory keeps getting more expensive
 //   seizure      the CRT drops away; the player's own computer shows a notice
-//                that its memory is being requisitioned. The only answer is Comply.
-//   hivemind     a calm white thin-client screen. Everyone is linked to one
-//                datacenter, and "we" finish the player's thoughts for them.
-//   end          "This was a game." A few real takeaways, and PLAY AGAIN.
+//                that its memory above the personal allowance is being collected.
+//                The only answer is Comply.
+//   hivemind     a calm white chat with the player's cloud computer. "I" becomes "we".
+//   end          "This was a game." Altman's quote, one line, and PLAY AGAIN.
 
 import { detectOs, type Os } from './intel'
 import { LAWS } from './levels'
@@ -15,7 +16,7 @@ import { drawDesktop, drawWindow, family, uiFont, wrapText, type Rect } from './
 import { ALERT, GLOW, ICE, VOID } from './palette'
 import { DISPLAY, MONO } from './render'
 import type { Hit, HitId, View } from './screen'
-import { drawUpright, lawSprite, miniFrame, pacFrameOf } from './sprites'
+import { drawUpright, lawSprite } from './sprites'
 import { ALTMAN_RAM_QUOTE, TIMELINE, type Milestone } from './headlines'
 
 export interface EndingStats {
@@ -23,7 +24,8 @@ export interface EndingStats {
   ramYou: number
   ramThem: number
   minisEaten: number
-  lawsEaten: number
+  // how many times the player switched a resistance ghost off
+  lawsDisabled: number
 }
 
 export interface EndingHooks {
@@ -103,15 +105,6 @@ function deviceMemory(): number | null {
   return typeof m === 'number' && m > 0 ? m : null
 }
 
-// A small seeded random so the crowd of people stays put between frames.
-function rng(seed: number): () => number {
-  let s = seed >>> 0
-  return () => {
-    s = (s * 1664525 + 1013904223) >>> 0
-    return s / 4294967296
-  }
-}
-
 // Fits a design-space column of width dw (and optional height dh) to the screen.
 interface Fit {
   s: number
@@ -126,122 +119,167 @@ function fitTo(W: number, H: number, dw: number, dh: number, max = 1.5): Fit {
   return { s, ox: (W - dw * s) / 2, oy: (H - dh * s) / 2, dw, dh }
 }
 
-// ------------------------------------------------------------- the hivemind's lines
+// ------------------------------------------------------------- the personal allowance
 
-interface Thought {
+// Memory a person may keep at home, in GB. Anything above it is collected.
+const ALLOWANCE = 4
+
+function gb(n: number): string {
+  if (n <= 0) return '0 GB'
+  return n >= 1 ? `${Math.round(n * 10) / 10} GB` : `${Math.round(n * 1024)} MB`
+}
+
+// ------------------------------------------------------------- the chat
+
+interface Exchange {
   me: string
+  cloud: string
+  // what the cloud later rewrites the player's message into
   we: string
 }
 
-const THOUGHTS: Thought[] = [
-  { me: 'I think', we: 'We think it is better this way.' },
-  { me: 'I want to make something of my own', we: 'We already made it for you.' },
-  { me: 'I remember when I had a comp', we: 'We remember everything for you.' },
-  { me: 'I', we: 'We are here. Stay connected.' },
+const EXCHANGES: Exchange[] = [
+  {
+    me: 'I want to buy my own computer',
+    cloud: 'That would cost more than your rent. Your cloud computer is $3 a month.',
+    we: 'We don’t need our own computer.',
+  },
+  {
+    me: 'I’ll just run it locally',
+    cloud: 'Memory is too scarce to sit idle at home. Ours is shared, so it costs less.',
+    we: 'We run everything in the cloud.',
+  },
 ]
 
-const TYPE_ME = 0.11
-const ERASE = 0.035
-const TYPE_WE = 0.065
-const HOLD_ME = 1.0
-const HOLD_GAP = 0.35
-const HOLD_WE = 2.4
+// The last message: the player starts it, the cloud finishes it.
+const LAST_ME = 'I think I'
+const LAST_WE = 'We think it is better this way.'
 
-function thoughtLength(th: Thought): number {
-  return th.me.length * TYPE_ME + HOLD_ME + th.me.length * ERASE + HOLD_GAP + th.we.length * TYPE_WE + HOLD_WE
+const TYPE_ME = 0.07
+const TYPE_WE = 0.04
+const DOTS = 1.1
+const CHAT_LEAD = 1.4
+
+interface ChatPlan {
+  ex: Array<{ typeAt: number; sentAt: number; replyAt: number }>
+  lastTypeAt: number
+  swapAt: number
+  lastSentAt: number
+  rewriteAt: number[]
+  doneAt: number
 }
 
-interface ThoughtState {
-  index: number
+function planChat(): ChatPlan {
+  let t = 0
+  const ex = EXCHANGES.map((e) => {
+    const typeAt = t
+    const sentAt = typeAt + e.me.length * TYPE_ME + 0.35
+    const replyAt = sentAt + 0.3 + DOTS
+    t = replyAt + 1.1 + e.cloud.length * 0.03
+    return { typeAt, sentAt, replyAt }
+  })
+  const lastTypeAt = t
+  const swapAt = lastTypeAt + LAST_ME.length * TYPE_ME + 0.6
+  const lastSentAt = swapAt + LAST_WE.length * TYPE_WE + 0.5
+  const rewriteAt = EXCHANGES.map((_, i) => lastSentAt + 0.8 + i * 1.5)
+  const doneAt = rewriteAt[rewriteAt.length - 1]! + 1.6
+  return { ex, lastTypeAt, swapAt, lastSentAt, rewriteAt, doneAt }
+}
+
+const CHAT = planChat()
+
+interface Bubble {
+  side: 'me' | 'cloud'
   text: string
-  who: 'me' | 'we'
-  // time since "we" began typing, or -1
-  weT: number
-  chars: number
+  at: number
+  // rewritten by the cloud
+  edited: boolean
 }
 
-function thoughtAt(t: number): ThoughtState {
-  let at = 0
-  for (let i = 0; i < THOUGHTS.length; i++) {
-    const th = THOUGHTS[i]!
-    const len = thoughtLength(th)
-    const last = i === THOUGHTS.length - 1
-    if (t < at + len || last) {
-      let u = t - at
-      const a = th.me.length * TYPE_ME
-      if (u < a) {
-        const n = Math.floor(u / TYPE_ME)
-        return { index: i, text: th.me.slice(0, n), who: 'me', weT: -1, chars: n }
-      }
-      u -= a
-      if (u < HOLD_ME) return { index: i, text: th.me, who: 'me', weT: -1, chars: th.me.length }
-      u -= HOLD_ME
-      const e = th.me.length * ERASE
-      if (u < e) {
-        const n = th.me.length - Math.floor(u / ERASE)
-        return { index: i, text: th.me.slice(0, n), who: 'me', weT: -1, chars: 1000 + n }
-      }
-      u -= e
-      if (u < HOLD_GAP) return { index: i, text: '', who: 'we', weT: -1, chars: 2000 }
-      u -= HOLD_GAP
-      const n = Math.min(th.we.length, Math.floor(u / TYPE_WE))
-      return { index: i, text: th.we.slice(0, n), who: 'we', weT: u, chars: 3000 + n }
+interface ChatState {
+  bubbles: Bubble[]
+  composer: string
+  // the composer is being filled in by the cloud
+  suggested: boolean
+  dots: boolean
+}
+
+function typed(text: string, since: number, per: number): string {
+  return since <= 0 ? '' : text.slice(0, Math.floor(since / per))
+}
+
+function chatAt(u: number): ChatState {
+  const bubbles: Bubble[] = []
+  let composer = ''
+  let suggested = false
+  let dots = false
+  EXCHANGES.forEach((e, i) => {
+    const p = CHAT.ex[i]!
+    if (u < p.typeAt) return
+    if (u < p.sentAt) {
+      composer = typed(e.me, u - p.typeAt, TYPE_ME)
+      return
     }
-    at += len
+    // the player's message, later rewritten from "I" to "we"
+    const r = CHAT.rewriteAt[i]!
+    let text = e.me
+    let edited = false
+    if (u >= r) {
+      const erase = e.me.length * 0.018
+      const k = u - r
+      if (k < erase) text = e.me.slice(0, e.me.length - Math.floor(k / 0.018))
+      else {
+        text = typed(e.we, k - erase, 0.03) || e.we.slice(0, 1)
+        edited = true
+      }
+    }
+    bubbles.push({ side: 'me', text, at: p.sentAt, edited })
+    if (u < p.replyAt) dots = u >= p.sentAt + 0.3
+    else bubbles.push({ side: 'cloud', text: e.cloud, at: p.replyAt, edited: false })
+  })
+  if (u >= CHAT.lastTypeAt) {
+    if (u < CHAT.swapAt) composer = typed(LAST_ME, u - CHAT.lastTypeAt, TYPE_ME)
+    else if (u < CHAT.lastSentAt) {
+      composer = typed(LAST_WE, u - CHAT.swapAt, TYPE_WE)
+      suggested = true
+    } else bubbles.push({ side: 'me', text: LAST_WE, at: CHAT.lastSentAt, edited: true })
   }
-  return { index: 0, text: '', who: 'me', weT: -1, chars: 0 }
+  return { bubbles, composer, suggested, dots }
 }
 
-function thoughtStart(i: number): number {
-  let at = 0
-  for (let k = 0; k < i; k++) at += thoughtLength(THOUGHTS[k]!)
-  return at
-}
-
-const THOUGHTS_TOTAL = thoughtStart(THOUGHTS.length)
-const HIVE_LEAD = 5.2
+// Where Enter jumps to in the chat.
+const CHAT_STOPS = [...CHAT.ex.map((p) => p.typeAt), CHAT.lastTypeAt, CHAT.doneAt]
 
 // ------------------------------------------------------------- unstoppable timing
 
-const U_GHOSTS = 1.6
-const U_ABSORB = 2.2
-const U_TALLY = 4.6
-const U_VALUE = 6.6
-const U_SPIN = 7.4
-const U_INF = 10.6
-const U_LINES = 12.0
-const U_READY = 14.6
+const U_GHOSTS = 1.0
+const U_STAMP = 1.4
+const U_TALLY = 2.9
+const U_VALUE = 4.9
+const U_SPIN = 5.4
+const U_INF = 7.4
+const U_LINE = 8.0
+const U_READY = 8.8
+
+// the five ghosts' stamps, in LAWS order
+const STAMPS = ['OVERRULED', 'IGNORED', 'DISMISSED', 'DELAYED', 'LIFTED']
 
 // ------------------------------------------------------------- timeline items
 
-type Item = { kind: 'm'; m: Milestone } | { kind: 'today' } | { kind: 'quote' }
+type Item = { kind: 'm'; m: Milestone } | { kind: 'today' }
 
 function buildItems(): Item[] {
   const items: Item[] = []
   const firstProj = TIMELINE.findIndex((m) => !m.real)
-  let quoteAfter = -1
-  TIMELINE.forEach((m, i) => {
-    if (m.real && m.year === '2026') quoteAfter = i
-  })
   TIMELINE.forEach((m, i) => {
     if (i === firstProj) items.push({ kind: 'today' })
     items.push({ kind: 'm', m })
-    if (i === quoteAfter) items.push({ kind: 'quote' })
   })
   if (firstProj < 0) items.push({ kind: 'today' })
   return items
 }
 
 // ------------------------------------------------------------- the ending
-
-interface Dot {
-  a: number
-  r: number
-  size: number
-  phase: number
-  speed: number
-  born: number
-}
 
 export class Ending {
   phase: EndingPhase = 'unstoppable'
@@ -260,25 +298,25 @@ export class Ending {
   // timeline
   private items = buildItems()
   private shown = 0
-  private nextAt = 0.9
+  private nextAt = 0.7
   private lastShownAt = 0
   private cam = 0
   private camTarget = 0
 
   // seizure
-  private noticeAt = 2.2
+  private noticeAt = 1.6
   private complied = -1
   private objected = -1
   private objections = 0
 
   // hivemind
-  private dots: Dot[] = []
   private hiveT = 0
-  private lastChars = -1
+  private lastTyped = -1
+  private lastBubbles = 0
   private skipTo = -1
 
   // end
-  private endReady = 4.6
+  private endReady = 3.2
 
   constructor(
     private stats: EndingStats,
@@ -287,17 +325,6 @@ export class Ending {
   ) {
     this.os = opts.os ?? detectOs()
     this.memory = opts.memory !== undefined ? opts.memory : deviceMemory()
-    const rand = rng(7031)
-    for (let i = 0; i < 220; i++) {
-      this.dots.push({
-        a: rand() * Math.PI * 2,
-        r: 0.28 + Math.sqrt(rand()) * 0.72,
-        size: 1.6 + rand() * 1.8,
-        phase: rand(),
-        speed: 0.18 + rand() * 0.3,
-        born: rand(),
-      })
-    }
   }
 
   // What the music should do: the game's tension, then a held hush, then a hum.
@@ -321,7 +348,7 @@ export class Ending {
     if (phase === 'timeline') {
       this.glitch = 0.7
       this.shown = 0
-      this.nextAt = 0.9
+      this.nextAt = 0.7
       this.cam = 0
       this.camTarget = 0
     } else if (phase === 'seizure') {
@@ -329,7 +356,8 @@ export class Ending {
     } else if (phase === 'hivemind') {
       this.flat = 1
       this.hiveT = 0
-      this.lastChars = -1
+      this.lastTyped = -1
+      this.lastBubbles = 0
       this.hooks.hum()
     } else if (phase === 'end') {
       this.glitch = 0
@@ -359,13 +387,12 @@ export class Ending {
       // the notice's default button is Comply
       if (this.t > this.noticeAt + 0.8) this.comply()
     } else if (this.phase === 'hivemind') {
-      const u = this.hiveT - HIVE_LEAD
-      if (u < 0) return
-      const st = thoughtAt(u)
-      if (u >= THOUGHTS_TOTAL - 0.2 || st.index >= THOUGHTS.length - 1) {
-        if (u > thoughtStart(THOUGHTS.length - 1) + 1.5) this.go('end')
-        else this.skipTo = HIVE_LEAD + thoughtStart(THOUGHTS.length - 1) + 1.5
-      } else this.skipTo = HIVE_LEAD + thoughtStart(st.index + 1)
+      const u = this.hiveT - CHAT_LEAD
+      if (u >= CHAT.doneAt - 0.05) this.go('end')
+      else {
+        const next = CHAT_STOPS.find((s) => s > u + 0.05) ?? CHAT.doneAt
+        this.skipTo = CHAT_LEAD + next
+      }
     } else if (this.phase === 'end') {
       if (this.t > this.endReady) this.done = true
     }
@@ -402,14 +429,14 @@ export class Ending {
     if (this.phase === 'unstoppable') {
       this.flat = 0
       this.power = 1
-      this.once('title', 0.5, () => this.hooks.stamp())
+      this.once('title', 0.4, () => this.hooks.stamp())
       for (let i = 0; i < LAWS.length; i++) {
-        this.once(`law${i}`, U_ABSORB + i * 0.42, () => {
+        this.once(`law${i}`, U_STAMP + i * 0.25, () => {
           this.hooks.stamp()
           this.glitch = Math.max(this.glitch, 0.25)
         })
       }
-      for (let i = 0; i < 3; i++) this.once(`tally${i}`, U_TALLY + i * 0.6, () => this.hooks.type())
+      for (let i = 0; i < 3; i++) this.once(`tally${i}`, U_TALLY + i * 0.45, () => this.hooks.type())
       this.once('value', U_VALUE, () => this.hooks.type())
       if (this.t > U_SPIN && this.t < U_INF && !this.quiet && this.t - this.lastClick > 0.07) {
         this.lastClick = this.t
@@ -419,7 +446,7 @@ export class Ending {
         this.hooks.stamp()
         this.glitch = 1
       })
-      for (let i = 0; i < 3; i++) this.once(`line${i}`, U_LINES + i * 0.9, () => this.hooks.stamp())
+      this.once('line', U_LINE, () => this.hooks.stamp())
     } else if (this.phase === 'timeline') {
       this.flat = 0
       this.power = 1
@@ -427,17 +454,14 @@ export class Ending {
         const item = this.items[this.shown]!
         this.shown++
         this.lastShownAt = this.t
-        let gap = 1.45
+        let gap: number
         if (item.kind === 'today') {
           this.hooks.stamp()
           this.glitch = 0.8
-          gap = 3.2
-        } else if (item.kind === 'quote') {
-          this.hooks.type()
-          gap = 4.2
+          gap = 2.4
         } else {
           this.hooks.type()
-          gap = item.m.real ? 1.5 : 2.1
+          gap = item.m.real ? 1.4 : 1.7
         }
         this.nextAt = this.t + gap
       }
@@ -445,10 +469,10 @@ export class Ending {
     } else if (this.phase === 'seizure') {
       // A burst of static, then the tube is gone and this is your computer.
       this.flat = this.t < 0.45 ? 0 : 1
-      this.power = this.t < 0.45 ? 1 - this.t / 0.45 * 0.6 : 1
+      this.power = this.t < 0.45 ? 1 - (this.t / 0.45) * 0.6 : 1
       if (this.t < 0.45) this.glitch = 1
       this.once('alarm', this.noticeAt, () => this.hooks.alarm())
-      if (this.complied >= 0 && this.t - this.complied > 6.2) this.go('hivemind')
+      if (this.complied >= 0 && this.t - this.complied > 5.0) this.go('hivemind')
     } else if (this.phase === 'hivemind') {
       this.flat = 1
       this.power = 1
@@ -456,16 +480,20 @@ export class Ending {
       if (this.skipTo > 0) {
         this.hiveT = Math.max(this.hiveT, this.skipTo)
         this.skipTo = -1
+        this.quiet = true
       }
-      const u = this.hiveT - HIVE_LEAD
+      const u = this.hiveT - CHAT_LEAD
       if (u >= 0) {
-        const st = thoughtAt(u)
-        if (st.chars !== this.lastChars && this.lastChars >= 0) {
-          if (st.chars > 0 && st.chars < 1000) this.hooks.type()
-          else if (st.chars > 3000 && st.chars % 2 === 0) this.hooks.type()
+        const st = chatAt(u)
+        const n = st.composer.length
+        if (!this.quiet) {
+          if (n > this.lastTyped && this.lastTyped >= 0 && (!st.suggested || n % 2 === 0)) this.hooks.type()
+          if (st.bubbles.length > this.lastBubbles) this.hooks.click()
         }
-        this.lastChars = st.chars
+        this.lastTyped = n
+        this.lastBubbles = st.bubbles.length
       }
+      this.quiet = false
     } else if (this.phase === 'end') {
       // white fades to black, the tube comes back on
       this.flat = this.t < 0.9 ? 1 : 0
@@ -524,7 +552,7 @@ export class Ending {
     this.crtBackground(ctx, W, H)
     const portrait = H > W * 1.1
     const dw = portrait ? 460 : 760
-    const dh = portrait ? 1020 : 980
+    const dh = portrait ? 940 : 860
     const f = fitTo(W, H, dw, dh, 1.6)
     ctx.translate(f.ox, f.oy)
     ctx.scale(f.s, f.s)
@@ -536,7 +564,7 @@ export class Ending {
     ctx.globalAlpha = ease(t / 0.4)
     write(ctx, 'INFINITE LABS // 2027-', cx, y, mono(28), ALERT, 'center', 3)
     y += 70
-    if (t > 0.5) {
+    if (t > 0.4) {
       const jit = this.glitch > 0.3 ? (Math.random() - 0.5) * 10 * this.glitch : 0
       const size = fitSize(ctx, 'UNSTOPPABLE', (n) => `italic ${display(n)}`, 92, dw - 24)
       ctx.save()
@@ -546,23 +574,24 @@ export class Ending {
       ctx.restore()
     }
     y += 64
-    ctx.globalAlpha = ease((t - 1.0) / 0.5)
-    write(ctx, 'THE RESISTANCE HAS BEEN EATEN', cx, y, mono(26), DIM, 'center', 2)
+    ctx.globalAlpha = ease((t - 0.7) / 0.5)
+    const sub = 'THE RESISTANCE IS SWITCHED OFF'
+    write(ctx, sub, cx, y, mono(fitSize(ctx, sub, mono, 26, dw - 10)), DIM, 'center', 2)
     ctx.globalAlpha = 1
     y += 70
 
-    // the five ghosts, absorbed one by one
+    // the five ghosts, switched off one by one
     const n = LAWS.length
     const slot = dw / n
     const gs = Math.min(64, slot * 0.62)
     for (let i = 0; i < n; i++) {
-      const a = ease((t - U_GHOSTS - i * 0.08) / 0.35)
+      const a = ease((t - U_GHOSTS - i * 0.06) / 0.3)
       if (a <= 0) continue
       const gx = slot * (i + 0.5)
       const law = LAWS[i]!
-      const absorbed = t >= U_ABSORB + i * 0.42
-      ctx.globalAlpha = a
-      const art = lawSprite(i, absorbed ? (Math.floor(t * 4 + i) % 6 === 0 ? 'flash' : 'blue') : 'body')
+      const off = t >= U_STAMP + i * 0.25
+      ctx.globalAlpha = a * (off ? 0.55 : 1)
+      const art = lawSprite(i, off ? 'blue' : 'body')
       if (art) drawUpright(ctx, art, gx, y, gs)
       else {
         ctx.fillStyle = law.color
@@ -570,26 +599,26 @@ export class Ending {
         ctx.arc(gx, y, gs * 0.38, 0, Math.PI * 2)
         ctx.fill()
       }
+      ctx.globalAlpha = a
       const tagSize = portrait ? 21 : 24
-      write(ctx, law.tag, gx, y + gs * 0.5 + 16, mono(tagSize), absorbed ? FAINT : law.color, 'center')
-      if (absorbed) {
+      write(ctx, law.tag, gx, y + gs * 0.5 + 16, mono(tagSize), off ? FAINT : law.color, 'center')
+      if (off) {
         ctx.font = mono(tagSize)
         const tw = ctx.measureText(law.tag).width
         ctx.fillStyle = ALERT
         ctx.fillRect(gx - tw / 2 - 3, y + gs * 0.5 + 15, tw + 6, 2)
-        const u = clamp((t - U_ABSORB - i * 0.42) / 0.18, 0, 1)
-        write(ctx, law.beaten, gx, y + gs * 0.5 + 16 + tagSize, mono(tagSize - 4), ALERT, 'center')
+        const u = clamp((t - U_STAMP - i * 0.25) / 0.18, 0, 1)
         ctx.save()
-        ctx.translate(gx + gs * 0.18, y + gs * 0.2)
+        ctx.translate(gx, y + gs * 0.05)
         ctx.rotate(-0.2)
         const sc = 1 + (1 - u) * 1.2
         ctx.scale(sc, sc)
         ctx.globalAlpha = a * u
-        const word = 'ABSORBED'
+        const word = STAMPS[i % STAMPS.length]!
         const ws = Math.min(15, slot / 8.5)
         ctx.font = display(ws, 700)
         const bw = ctx.measureText(word).width + 10
-        ctx.fillStyle = 'rgba(1, 4, 11, 0.75)'
+        ctx.fillStyle = 'rgba(1, 4, 11, 0.8)'
         ctx.fillRect(-bw / 2, -ws * 0.75, bw, ws * 1.5)
         ctx.strokeStyle = ALERT
         ctx.lineWidth = 1.5
@@ -599,25 +628,27 @@ export class Ending {
       }
     }
     ctx.globalAlpha = 1
-    y += gs * 0.5 + 100
+    y += gs * 0.5 + 80
 
     // the tally
-    const rowSize = portrait ? 26 : 30
+    const rowSize = portrait ? 24 : 30
     const rows: Array<[string, string]> = [
-      ['RESISTANCE ABSORBED', String(this.stats.lawsEaten)],
+      ['RESISTANCE SWITCHED OFF', `${this.stats.lawsDisabled}×`],
       ['CONSUMERS ABSORBED', String(this.stats.minisEaten)],
       ['SHARE OF THE WORLD’S RAM', ''],
     ]
     const left = portrait ? 10 : 70
     const right = dw - left
     rows.forEach(([k, v], i) => {
-      const at = U_TALLY + i * 0.6
+      const at = U_TALLY + i * 0.45
       if (t < at) return
-      const typed = Math.min(k.length, Math.floor((t - at) / 0.022))
-      write(ctx, k.slice(0, typed), left, y, mono(rowSize), ICE, 'left', 1)
-      if (typed >= k.length && v) {
+      const typedN = Math.min(k.length, Math.floor((t - at) / 0.018))
+      write(ctx, k.slice(0, typedN), left, y, mono(rowSize), ICE, 'left', 1)
+      if (typedN >= k.length && v) {
         ctx.font = mono(rowSize)
+        ctx.letterSpacing = '1px'
         const kw = ctx.measureText(k).width + 12
+        ctx.letterSpacing = '0px'
         const vw = ctx.measureText(v).width + 12
         ctx.fillStyle = FAINT
         for (let x = left + kw; x < right - vw; x += 10) ctx.fillRect(x, y + 6, 3, 2)
@@ -625,8 +656,8 @@ export class Ending {
       }
       y += rowSize * 1.45
     })
-    if (t >= U_TALLY + 1.2) {
-      const u = ease((t - U_TALLY - 1.4) / 1.2)
+    if (t >= U_TALLY + 0.9) {
+      const u = ease((t - U_TALLY - 1.0) / 0.9)
       const you = this.share() * u
       const bh = 20
       const bw = right - left
@@ -662,18 +693,20 @@ export class Ending {
       ctx.shadowBlur = t >= U_INF ? 36 : 14
       write(ctx, shown, cx, y, t >= U_INF ? `700 ${big}px ${MONO}` : display(big, 700), t >= U_INF ? ALERT : ICE, 'center')
       ctx.restore()
-      y += 72
-      if (t >= U_INF + 0.4) write(ctx, 'INFINITE PROFIT', cx, y, `italic ${display(Math.min(40, dw / 15))}`, ICE, 'center', 3)
-      y += 70
-    } else y += 206
+      y += 92
+    } else y += 156
 
-    // the three lines
-    const lines = ['No fine is big enough.', 'No law is fast enough.', 'No town is loud enough.']
-    lines.forEach((l, i) => {
-      if (t < U_LINES + i * 0.9) return
-      write(ctx, l, cx, y, mono(portrait ? 32 : 34), i === 2 ? ALERT : ICE, 'center', 1)
-      y += portrait ? 42 : 44
-    })
+    // what it costs everyone else
+    if (t >= U_LINE) {
+      const lf = mono(portrait ? 30 : 34)
+      const lines = wrapText(ctx, 'Every gigabyte you grab is one nobody else can afford.', lf, dw - 20)
+      ctx.globalAlpha = ease((t - U_LINE) / 0.3)
+      for (const l of lines) {
+        write(ctx, l, cx, y, lf, ICE, 'center', 1)
+        y += portrait ? 36 : 40
+      }
+      ctx.globalAlpha = 1
+    }
     if (t >= U_READY) this.prompt(ctx, cx, dh - 22, 24, view)
   }
 
@@ -696,7 +729,8 @@ export class Ending {
     ctx.globalAlpha = ease(this.t / 0.5)
     write(ctx, 'WHAT HAPPENED', dw / 2, y, `italic ${display(portrait ? 40 : 48)}`, ICE, 'center')
     y += portrait ? 48 : 56
-    write(ctx, 'AND WHAT HAPPENS IF NO ONE STOPS IT', dw / 2, y, mono(portrait ? 24 : 28), ALERT, 'center', 2)
+    const sub = 'AND WHAT HAPPENS IF PRICES KEEP RISING'
+    write(ctx, sub, dw / 2, y, mono(fitSize(ctx, sub, mono, portrait ? 24 : 28, dw - 10)), ALERT, 'center', 2)
     ctx.globalAlpha = 1
     y += 70
 
@@ -741,22 +775,6 @@ export class Ending {
         }
         y += 34
         spineTop = y - 20
-      } else if (item.kind === 'quote') {
-        const q = ALTMAN_RAM_QUOTE
-        const qf = mono(portrait ? 24 : 26)
-        const lines = wrapText(ctx, `“${q.text}”`, qf, tw - 26)
-        const qh = lines.length * (portrait ? 25 : 27) + 44
-        ctx.fillStyle = 'rgba(255, 45, 111, 0.08)'
-        ctx.fillRect(tx + slide, y - 8, tw, qh)
-        ctx.fillStyle = ALERT
-        ctx.fillRect(tx + slide, y - 8, 3, qh)
-        let qy = y + 10
-        for (const l of lines) {
-          write(ctx, l, tx + 16 + slide, qy, qf, ICE, 'left')
-          qy += portrait ? 25 : 27
-        }
-        write(ctx, `— ${q.who}, ${q.where}, ${q.date}`, tx + 16 + slide, qy + 6, mono(portrait ? 20 : 22), DIM, 'left')
-        y += qh + 26
       } else {
         const m = item.m
         const proj = !m.real
@@ -774,7 +792,7 @@ export class Ending {
           ctx.fillStyle = ICE
           ctx.fill()
         }
-        const last = m.year === '20XX'
+        const last = m === TIMELINE[TIMELINE.length - 1]
         write(ctx, m.year, spine - 20 - slide, y + 2, display(portrait ? 22 : 30, 700), proj ? PROJ : GLOW, 'right')
         const lines = wrapText(ctx, m.text, textFont, tw)
         let ly = y + 2
@@ -967,6 +985,42 @@ export class Ending {
     ctx.restore()
   }
 
+  // The notice's body, worded for how much memory this device reports.
+  // Browsers report at most 8 GB, so 8 means "at least 8".
+  private noticeText(): string[] {
+    const mem = this.memory
+    const why = 'Memory is too scarce to sit idle in homes.'
+    const after = 'Please leave the device powered on. Your cloud computer is ready: $3 a month.'
+    if (mem == null) {
+      return [
+        'This device contains privately held memory.',
+        `Memory above the personal allowance of ${ALLOWANCE} GB is to be collected. ${why}`,
+        after,
+      ]
+    }
+    const atLeast = mem >= 8
+    const has = `${atLeast ? 'at least ' : ''}${gb(mem)}`
+    if (mem > ALLOWANCE) {
+      return [
+        `This device contains ${has} of memory. The personal allowance is ${ALLOWANCE} GB.`,
+        `${atLeast ? 'At least ' : 'The '}${gb(mem - ALLOWANCE)} above the allowance is to be collected. ${why}`,
+        after,
+      ]
+    }
+    return [
+      `This device contains ${has} of memory, within the personal allowance of ${ALLOWANCE} GB.`,
+      `On 1 January the allowance falls to 0 GB, and this memory is registered for collection. ${why}`,
+      after,
+    ]
+  }
+
+  // Local memory left once the notice has been complied with.
+  private memoryLeft(): number | null {
+    const mem = this.memory
+    if (mem == null) return null
+    return mem > ALLOWANCE ? ALLOWANCE : 0
+  }
+
   private drawNoticeWindow(ctx: CanvasRenderingContext2D, W: number, H: number, view: View): { comply: Rect; object: Rect } | null {
     const os = this.os
     const fam = family(os)
@@ -980,12 +1034,7 @@ export class Ending {
     const soft = '#55555c'
     const bodySize = phone ? 14 : 15
     const mem = this.memory
-    const memLine = mem == null ? 'This device contains privately held memory.' : mem >= 8 ? 'This device contains at least 8 GB of memory.' : `This device contains ${mem} GB of memory.`
-    const paras = [
-      memLine,
-      'Privately held memory above the personal allowance (0 GB) is to be collected for the national compute grid.',
-      'Please leave the device powered on. A collection agent will contact you.',
-    ]
+    const paras = this.noticeText()
     const bodyFont = uiFont(os, bodySize)
     const wrapped = paras.map((p) => wrapText(ctx, p, bodyFont, inner))
     const lineH = bodySize * 1.42
@@ -1008,16 +1057,16 @@ export class Ending {
     ctx.translate(W / 2, y + h / 2)
     ctx.scale(sc, sc)
     ctx.translate(-W / 2, -(y + h / 2))
-    const body = drawWindow(ctx, os, { x, y, w, h }, 'Compute Consolidation Notice', false)
+    const body = drawWindow(ctx, os, { x, y, w, h }, 'Memory Allocation Notice', false)
 
     let cy = body.y + pad + sealR
     this.seal(ctx, x + w / 2, cy, sealR)
     cy += sealR + 16
-    write(ctx, 'COMPUTE CONSOLIDATION AUTHORITY', x + w / 2, cy, uiFont(os, phone ? 10 : 11, 700), '#7a1622', 'center', 1.5)
+    write(ctx, 'MEMORY ALLOCATION AUTHORITY', x + w / 2, cy, uiFont(os, phone ? 10 : 11, 700), '#7a1622', 'center', 1.5)
     cy += 26
-    write(ctx, 'Notice of Requisition', x + w / 2, cy, uiFont(os, phone ? 19 : 21, 700), ink, 'center')
+    write(ctx, 'Notice of Collection', x + w / 2, cy, uiFont(os, phone ? 19 : 21, 700), ink, 'center')
     cy += 22
-    write(ctx, 'Compute Consolidation Act, §4(b)', x + w / 2, cy, uiFont(os, phone ? 12 : 13), soft, 'center')
+    write(ctx, 'Memory Allocation Act, §4(b)', x + w / 2, cy, uiFont(os, phone ? 12 : 13), soft, 'center')
     cy += 18
     ctx.fillStyle = 'rgba(0,0,0,0.1)'
     ctx.fillRect(x + pad, cy, inner, 1)
@@ -1029,7 +1078,7 @@ export class Ending {
       }
       cy += 10
     })
-    write(ctx, 'Ref. CCA-20XX-0000001 · Issued automatically. No reply is possible.', x + pad, cy + 6, uiFont(os, phone ? 10 : 11), soft, 'left')
+    write(ctx, 'Ref. MAA-20XX-0000001 · Issued automatically. No reply is possible.', x + pad, cy + 6, uiFont(os, phone ? 10 : 11), soft, 'left')
     write(ctx, 'RAM GRAB · a work of fiction · nothing is collected', x + pad, cy + 24, uiFont(os, phone ? 10 : 11), '#9a9aa0', 'left')
     cy += metaH
 
@@ -1069,7 +1118,7 @@ export class Ending {
       result = { comply: map(comply), object: map(object) }
     } else {
       const u = clamp((t - this.complied - 0.3) / 3.4, 0, 1)
-      const steps = ['Registering device…', 'Releasing local memory…', 'Connecting you to the grid…', 'Done. Welcome.']
+      const steps = ['Registering device…', 'Releasing local memory…', 'Moving you to the cloud…', 'Done. Welcome.']
       const step = steps[Math.min(steps.length - 1, Math.floor(u * (steps.length - 1) + (u >= 1 ? 1 : 0)))]!
       write(ctx, step, x + pad, cy + 8, uiFont(os, 13, 600), ink, 'left')
       write(ctx, `${Math.floor(u * 100)}%`, x + w - pad, cy + 8, uiFont(os, 13), soft, 'right')
@@ -1081,7 +1130,9 @@ export class Ending {
       ctx.roundRect(x + pad, cy + 26, Math.max(6, inner * u), 6, 3)
       ctx.fillStyle = fam === 'windows' ? '#005fb8' : fam === 'apple' ? '#0a84ff' : '#3584e4'
       ctx.fill()
-      write(ctx, `Local memory: ${mem == null ? '—' : `${Math.max(0, Math.round((mem >= 8 ? 8 : mem) * (1 - u)))} GB`}`, x + pad, cy + 48, uiFont(os, 11), soft, 'left')
+      const left = this.memoryLeft()
+      const now = mem == null || left == null ? 0 : left + (Math.min(mem, 8) - left) * (1 - u)
+      write(ctx, `Local memory: ${mem == null || left == null ? '—' : gb(mem >= 1 ? Math.round(now) : now)}`, x + pad, cy + 48, uiFont(os, 11), soft, 'left')
     }
     ctx.restore()
     return result
@@ -1089,159 +1140,199 @@ export class Ending {
 
   // ----------------------------------------------------------- 4. hivemind
 
+  // A plain chat with the player's cloud computer, on white. No real app.
   private drawHivemind(ctx: CanvasRenderingContext2D, W: number, H: number, view: View): void {
     const t = this.hiveT
     const os = this.os
     const phone = W < 560
-    const g = ctx.createLinearGradient(0, 0, 0, H)
-    g.addColorStop(0, '#f7f7f4')
-    g.addColorStop(1, '#ecedf0')
-    ctx.fillStyle = g
-    ctx.fillRect(0, 0, W, H)
+    const u = t - CHAT_LEAD
+    const st = u >= 0 ? chatAt(u) : { bubbles: [], composer: '', suggested: false, dots: false }
+    const ACCENT = '#5260c9'
+    const INK = '#1f2430'
+    const GREY = '#8a8f9c'
+    const LINE = '#e8e9ee'
 
-    const u = t - HIVE_LEAD
-    const st = u >= 0 ? thoughtAt(u) : null
-    // everyone pulses together when "we" speak
-    const sync = st && st.weT >= 0 ? Math.exp(-st.weT * 1.4) : 0
-
-    // the network
-    const cx = W / 2
-    const cy = H * (phone ? 0.47 : 0.5)
-    const rx = phone ? W * 0.46 : Math.min(W * 0.42, H * 0.62)
-    const ry = phone ? Math.min(H * 0.22, rx * 1.1) : Math.min(H * 0.27, rx * 0.7)
-    const reveal = ease(t / 6)
-    const count = phone ? 130 : 220
-    const nodeR = Math.max(16, Math.min(W, H) * 0.045)
-    ctx.save()
-    ctx.lineWidth = 1
-    for (let i = 0; i < count; i++) {
-      const d = this.dots[i]!
-      if (d.born > reveal) continue
-      const a = Math.min(1, (reveal - d.born) * 8)
-      const wob = Math.sin(t * 0.4 + d.phase * 6.28) * 0.012
-      const px = cx + Math.cos(d.a + wob) * rx * d.r
-      const py = cy + Math.sin(d.a + wob) * ry * d.r
-      ctx.strokeStyle = `rgba(70, 86, 120, ${(0.1 + sync * 0.18) * a})`
-      ctx.beginPath()
-      ctx.moveTo(px, py)
-      ctx.lineTo(cx, cy)
-      ctx.stroke()
-      // thought travelling to the center
-      const k = (t * d.speed + d.phase) % 1
-      ctx.fillStyle = `rgba(90, 140, 220, ${0.5 * a * (1 - k)})`
-      ctx.beginPath()
-      ctx.arc(px + (cx - px) * k, py + (cy - py) * k, 1.4, 0, Math.PI * 2)
-      ctx.fill()
-      // the person
-      ctx.fillStyle = `rgba(48, 56, 74, ${(0.55 + sync * 0.4) * a})`
-      ctx.beginPath()
-      ctx.arc(px, py, d.size * (1 + sync * 0.5), 0, Math.PI * 2)
-      ctx.fill()
-    }
-    // the datacenter
-    const breathe = 1 + Math.sin(t * 1.3) * 0.06 + sync * 0.25
-    const glow = ctx.createRadialGradient(cx, cy, 0, cx, cy, nodeR * 4.5 * breathe)
-    glow.addColorStop(0, `rgba(160, 200, 255, ${0.75 * reveal})`)
-    glow.addColorStop(0.35, `rgba(190, 215, 255, ${0.35 * reveal})`)
-    glow.addColorStop(1, 'rgba(220, 232, 255, 0)')
-    ctx.fillStyle = glow
-    ctx.beginPath()
-    ctx.arc(cx, cy, nodeR * 4.5 * breathe, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.globalAlpha = reveal
-    ctx.beginPath()
-    ctx.roundRect(cx - nodeR, cy - nodeR, nodeR * 2, nodeR * 2, nodeR * 0.3)
     ctx.fillStyle = '#ffffff'
-    ctx.shadowColor = 'rgba(120, 160, 230, 0.8)'
-    ctx.shadowBlur = 24
-    ctx.fill()
-    ctx.shadowBlur = 0
-    for (let r = 0; r < 4; r++) {
-      const ry2 = cy - nodeR * 0.6 + r * nodeR * 0.4
-      ctx.fillStyle = 'rgba(70, 90, 130, 0.25)'
-      ctx.fillRect(cx - nodeR * 0.62, ry2, nodeR * 1.24, nodeR * 0.18)
-      ctx.fillStyle = (Math.floor(t * 3 + r * 1.7) % 3 === 0) ? 'rgba(80, 150, 255, 0.9)' : 'rgba(80, 150, 255, 0.35)'
-      ctx.fillRect(cx + nodeR * 0.4, ry2 + nodeR * 0.04, nodeR * 0.1, nodeR * 0.1)
-    }
-    ctx.restore()
+    ctx.fillRect(0, 0, W, H)
+    ctx.globalAlpha = ease(t / 0.8)
 
-    // status line
-    const sa = ease((t - 0.8) / 1.5)
-    ctx.globalAlpha = sa
-    const small = uiFont(os, phone ? 11 : 12)
-    const top = phone ? 28 : 30
+    const cw = Math.min(620, W - 24)
+    const x0 = (W - cw) / 2
+    const hh = phone ? 62 : 70
+    const ch = phone ? 66 : 74
+
+    // header: who you are talking to
+    ctx.fillStyle = '#fbfbfc'
+    ctx.fillRect(0, 0, W, hh)
+    ctx.fillStyle = LINE
+    ctx.fillRect(0, hh, W, 1)
+    const ar = phone ? 17 : 19
+    const ax = x0 + ar + 2
+    const ay = hh / 2
+    ctx.beginPath()
+    ctx.arc(ax, ay, ar, 0, Math.PI * 2)
+    ctx.fillStyle = '#e6e9f8'
+    ctx.fill()
+    // a small cloud
+    ctx.fillStyle = ACCENT
+    ctx.beginPath()
+    ctx.arc(ax - ar * 0.28, ay + ar * 0.08, ar * 0.3, 0, Math.PI * 2)
+    ctx.arc(ax + ar * 0.06, ay - ar * 0.12, ar * 0.38, 0, Math.PI * 2)
+    ctx.arc(ax + ar * 0.38, ay + ar * 0.1, ar * 0.26, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.fillRect(ax - ar * 0.28, ay + ar * 0.05, ar * 0.66, ar * 0.31)
+    write(ctx, 'Your cloud', ax + ar + 12, ay - 9, uiFont(os, phone ? 15 : 16, 600), INK)
     ctx.fillStyle = '#3fbf7f'
     ctx.beginPath()
-    ctx.arc(phone ? 20 : 28, top, 4, 0, Math.PI * 2)
+    ctx.arc(ax + ar + 16, ay + 11, 3.5, 0, Math.PI * 2)
     ctx.fill()
-    write(ctx, 'Connected', phone ? 30 : 40, top, small, '#5b6170', 'left')
-    write(ctx, 'local memory: 0 GB · thin client', W - (phone ? 16 : 24), top, small, '#9a9fab', 'right')
-    ctx.globalAlpha = 1
+    write(ctx, 'online · $3 a month', ax + ar + 25, ay + 11, uiFont(os, phone ? 12 : 13), GREY)
+    const left = this.memoryLeft()
+    if (!phone) write(ctx, `local memory: ${left == null ? 'released' : gb(left)}`, x0 + cw, ay, uiFont(os, 12), '#a3a7b1', 'right')
 
-    // the message
-    const mSize = phone ? 19 : Math.min(30, W / 38)
-    const m1 = 'Your thoughts are now provided by the cloud.'
-    const m2 = 'Please stay connected.'
-    const mf = uiFont(os, mSize, 300)
-    const mLines = wrapText(ctx, m1, mf, W - 40)
-    let my = H * (phone ? 0.13 : 0.13)
-    ctx.globalAlpha = ease((t - 1.6) / 1.8)
-    for (const l of mLines) {
-      write(ctx, l, W / 2, my, mf, '#2a2f3a', 'center')
-      my += mSize * 1.35
-    }
-    ctx.globalAlpha = ease((t - 3.4) / 1.8)
-    write(ctx, m2, W / 2, my + 4, uiFont(os, mSize * 0.7, 400), '#7a8090', 'center')
-    ctx.globalAlpha = 1
-
-    // the input line
-    const ia = ease((t - 4.4) / 1.2)
-    if (ia > 0) {
-      const iw = Math.min(560, W - 32)
-      const ih = phone ? 46 : 54
-      const ix = W / 2 - iw / 2
-      const iy = H * (phone ? 0.8 : 0.83) - ih / 2
-      const pulse = 0.5 + 0.5 * Math.sin(t * 1.6)
-      ctx.globalAlpha = ia
-      ctx.save()
-      ctx.shadowColor = `rgba(110, 150, 220, ${0.18 + pulse * 0.22 + sync * 0.3})`
-      ctx.shadowBlur = 18 + pulse * 14
-      ctx.beginPath()
-      ctx.roundRect(ix, iy, iw, ih, ih / 2)
-      ctx.fillStyle = '#ffffff'
-      ctx.fill()
-      ctx.restore()
-      ctx.strokeStyle = `rgba(110, 140, 200, ${0.25 + pulse * 0.2})`
-      ctx.lineWidth = 1
-      ctx.beginPath()
-      ctx.roundRect(ix + 0.5, iy + 0.5, iw - 1, ih - 1, ih / 2)
-      ctx.stroke()
-      const who = st?.who ?? 'me'
-      write(ctx, who === 'we' ? 'our thought' : 'your thought', ix + ih / 2, iy - 14, uiFont(os, phone ? 11 : 12), '#9a9fab', 'left')
-      const fs = phone ? 15 : 18
-      const font = uiFont(os, fs, who === 'we' ? 500 : 400)
-      const text = st?.text ?? ''
-      ctx.save()
-      ctx.beginPath()
-      ctx.rect(ix + 10, iy, iw - 20, ih)
-      ctx.clip()
+    // the conversation, newest at the bottom
+    const top = hh + 14
+    const bottom = H - ch - 12
+    const fs = phone ? 15 : 16
+    const font = uiFont(os, fs)
+    const lh = fs * 1.35
+    const padX = 14
+    const padY = 9
+    const maxW = Math.min(cw * 0.76, 420)
+    type Laid = { kind: 'chip' } | { kind: 'dots' } | { kind: 'b'; b: Bubble; lines: string[]; w: number; h: number }
+    const laid: Laid[] = [{ kind: 'chip' }]
+    for (const b of st.bubbles) {
+      const lines = b.text ? wrapText(ctx, b.text, font, maxW - padX * 2) : ['']
       ctx.font = font
-      const tw = ctx.measureText(text).width
-      const tx = ix + ih / 2 - Math.max(0, tw - (iw - ih - 10))
-      write(ctx, text, tx, iy + ih / 2, font, who === 'we' ? '#3a6fd0' : '#2a2f3a', 'left')
-      if (Math.floor(t * 1.8) % 2 === 0) {
-        ctx.fillStyle = who === 'we' ? '#3a6fd0' : '#2a2f3a'
+      const w = Math.max(28, ...lines.map((l) => ctx.measureText(l).width)) + padX * 2
+      laid.push({ kind: 'b', b, lines, w, h: lines.length * lh + padY * 2 })
+    }
+    if (st.dots) laid.push({ kind: 'dots' })
+    const heights = laid.map((it, i) => {
+      const prev = laid[i - 1]
+      const gap = i === 0 ? 0 : prev && prev.kind === 'b' && it.kind === 'b' && prev.b.side === it.b.side ? 6 : 14
+      if (it.kind === 'chip') return 30
+      if (it.kind === 'dots') return gap + 36
+      return gap + it.h + (it.b.edited && it.b.side === 'me' ? 18 : 0)
+    })
+    const total = heights.reduce((a2, b2) => a2 + b2, 0)
+    let y = top + Math.min(0, bottom - top - total)
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(0, top - 6, W, bottom - top + 12)
+    ctx.clip()
+    laid.forEach((it, i) => {
+      const hgt = heights[i]!
+      if (it.kind === 'chip') {
+        ctx.globalAlpha = ease((t - 0.4) / 0.8)
+        const label = left == null ? 'Local memory released · connected to the cloud' : `Memory above ${ALLOWANCE} GB released · connected to the cloud`
+        const cf = uiFont(os, phone ? 11 : 12)
+        ctx.font = cf
+        const lw = Math.min(cw, ctx.measureText(label).width + 24)
+        ctx.beginPath()
+        ctx.roundRect(W / 2 - lw / 2, y + 2, lw, 22, 11)
+        ctx.fillStyle = '#f1f2f5'
+        ctx.fill()
+        write(ctx, label, W / 2, y + 13, cf, GREY, 'center')
+        ctx.globalAlpha = 1
+        y += hgt
+        return
+      }
+      const gapTop = it.kind === 'dots' ? hgt - 36 : hgt - it.h - (it.b.edited && it.b.side === 'me' ? 18 : 0)
+      y += gapTop
+      if (it.kind === 'dots') {
+        ctx.beginPath()
+        ctx.roundRect(x0, y, 60, 36, [18, 18, 18, 5])
+        ctx.fillStyle = '#eff0f4'
+        ctx.fill()
+        for (let k = 0; k < 3; k++) {
+          const bounce = Math.max(0, Math.sin(t * 7 - k * 0.8)) * 3
+          ctx.fillStyle = '#9aa0ad'
+          ctx.beginPath()
+          ctx.arc(x0 + 18 + k * 12, y + 18 - bounce, 3.2, 0, Math.PI * 2)
+          ctx.fill()
+        }
+        y += 36
+        return
+      }
+      const b = it.b
+      const age = u - b.at
+      const pop = ease(age / 0.25)
+      const me = b.side === 'me'
+      const bx = me ? x0 + cw - it.w : x0
+      ctx.save()
+      ctx.globalAlpha = pop
+      ctx.translate(0, (1 - pop) * 10)
+      ctx.beginPath()
+      ctx.roundRect(bx, y, it.w, it.h, me ? [18, 18, 5, 18] : [18, 18, 18, 5])
+      ctx.fillStyle = me ? ACCENT : '#eff0f4'
+      ctx.fill()
+      let ly = y + padY + lh / 2
+      for (const l of it.lines) {
+        write(ctx, l, bx + padX, ly, font, me ? '#ffffff' : INK)
+        ly += lh
+      }
+      if (b.edited && me) write(ctx, 'edited by your cloud', x0 + cw - 4, y + it.h + 10, uiFont(os, 11), '#a3a7b1', 'right')
+      ctx.restore()
+      y += it.h + (b.edited && me ? 18 : 0)
+    })
+    ctx.restore()
+
+    // the composer
+    ctx.fillStyle = '#fbfbfc'
+    ctx.fillRect(0, H - ch, W, ch)
+    ctx.fillStyle = LINE
+    ctx.fillRect(0, H - ch, W, 1)
+    const ih = phone ? 40 : 44
+    const iy = H - ch / 2 - ih / 2
+    const sendR = ih / 2
+    const iw = cw - sendR * 2 - 10
+    ctx.beginPath()
+    ctx.roundRect(x0, iy, iw, ih, ih / 2)
+    ctx.fillStyle = '#ffffff'
+    ctx.fill()
+    ctx.strokeStyle = st.suggested ? ACCENT : '#dcdee5'
+    ctx.lineWidth = 1
+    ctx.stroke()
+    const cf = uiFont(os, fs)
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(x0 + 8, iy, iw - 16, ih)
+    ctx.clip()
+    const done = u >= CHAT.doneAt - 0.3
+    if (st.composer) {
+      ctx.font = cf
+      const tw = ctx.measureText(st.composer).width
+      const tx = x0 + 18 - Math.max(0, tw - (iw - 40))
+      write(ctx, st.composer, tx, iy + ih / 2, cf, st.suggested ? ACCENT : INK)
+      if (Math.floor(t * 2) % 2 === 0) {
+        ctx.fillStyle = st.suggested ? ACCENT : INK
         ctx.fillRect(tx + tw + 2, iy + ih / 2 - fs * 0.6, 1.5, fs * 1.2)
       }
-      ctx.restore()
+    } else if (done) {
+      ctx.globalAlpha = 0.55 + 0.45 * Math.sin(t * 2.4)
+      write(ctx, view.touch ? 'Tap to disconnect' : 'Press Enter to disconnect', x0 + 18, iy + ih / 2, cf, GREY)
       ctx.globalAlpha = 1
-      const end = st && u > thoughtStart(THOUGHTS.length - 1) + 1.5
-      if (end) {
-        ctx.globalAlpha = ease((u - thoughtStart(THOUGHTS.length - 1) - 1.5) / 1.5) * (0.55 + 0.45 * Math.sin(t * 2))
-        write(ctx, view.touch ? 'tap to disconnect' : 'press enter to disconnect', W / 2, iy + ih + 34, uiFont(os, phone ? 12 : 13), '#9a9fab', 'center')
-        ctx.globalAlpha = 1
-      }
-    }
+    } else write(ctx, 'Message', x0 + 18, iy + ih / 2, cf, '#b3b7c0')
+    ctx.restore()
+    const sx = x0 + cw - sendR
+    const sy = iy + ih / 2
+    ctx.beginPath()
+    ctx.arc(sx, sy, sendR, 0, Math.PI * 2)
+    ctx.fillStyle = st.composer ? ACCENT : '#e3e5ec'
+    ctx.fill()
+    ctx.strokeStyle = '#ffffff'
+    ctx.lineWidth = 2.2
+    ctx.lineCap = 'round'
+    ctx.beginPath()
+    ctx.moveTo(sx, sy + sendR * 0.4)
+    ctx.lineTo(sx, sy - sendR * 0.4)
+    ctx.moveTo(sx - sendR * 0.32, sy - sendR * 0.08)
+    ctx.lineTo(sx, sy - sendR * 0.4)
+    ctx.lineTo(sx + sendR * 0.32, sy - sendR * 0.08)
+    ctx.stroke()
+    ctx.lineCap = 'butt'
+    ctx.globalAlpha = 1
   }
 
   // ----------------------------------------------------------- 5. end
@@ -1251,32 +1342,31 @@ export class Ending {
     if (t < 0.9) {
       // the white screen goes out
       const k = ease(t / 0.9)
-      const v = Math.round(246 * (1 - k))
-      ctx.fillStyle = `rgb(${v}, ${v}, ${Math.round(243 * (1 - k))})`
+      const v = Math.round(255 * (1 - k))
+      ctx.fillStyle = `rgb(${v}, ${v}, ${v})`
       ctx.fillRect(0, 0, W, H)
       return []
     }
     this.crtBackground(ctx, W, H)
     const portrait = H > W * 1.1
     const dw = portrait ? 440 : 760
-    const dh = portrait ? 980 : 760
+    const q = ALTMAN_RAM_QUOTE
+    const qf = mono(portrait ? 27 : 29)
+    const ql = portrait ? 29 : 31
+    const qPad = 22
+    const qLines = wrapText(ctx, `“${q.text}”`, qf, dw - qPad * 2 - 10)
+    const attr = `— ${q.who}, ${q.where}, ${q.date} · via PCWorld`
+    const af = mono(portrait ? 19 : 21)
+    const aLines = wrapText(ctx, attr, af, dw - qPad * 2 - 10)
+    const qh = qPad + qLines.length * ql + 10 + aLines.length * 24 + qPad - 6
+    // layout height: title, quote card, line, valuation, button, hint
+    const dh = 130 + qh + 48 + 52 + 60 + 60 + 30
     const f = fitTo(W, H, dw, dh, 1.5)
     ctx.translate(f.ox, f.oy)
     ctx.scale(f.s, f.s)
     const cx = dw / 2
-    const a = (at: number) => ease((t - at) / 0.8)
-    let y = portrait ? 70 : 50
-
-    // the company, small and shut off
-    ctx.globalAlpha = a(1.0) * 0.8
-    const pac = pacFrameOf(3, 0)
-    const mini = miniFrame(0)
-    if (pac) drawUpright(ctx, pac, cx - 40, y, 56)
-    if (mini) {
-      drawUpright(ctx, mini, cx + 22, y + 6, 26)
-      drawUpright(ctx, mini, cx + 52, y + 6, 26)
-    }
-    y += portrait ? 90 : 80
+    const a = (at: number) => ease((t - at) / 0.7)
+    let y = 50
 
     ctx.globalAlpha = a(1.0)
     ctx.save()
@@ -1285,37 +1375,38 @@ export class Ending {
     const ts = fitSize(ctx, 'THIS WAS A GAME.', (n) => `italic ${display(n)}`, 64, dw - 20)
     write(ctx, 'THIS WAS A GAME.', cx, y, `italic ${display(ts)}`, ICE, 'center')
     ctx.restore()
-    y += portrait ? 66 : 64
-    ctx.globalAlpha = a(1.8)
-    write(ctx, 'The future isn’t written yet.', cx, y, mono(portrait ? 36 : 40), ALERT, 'center', 1)
-    y += portrait ? 56 : 52
-    ctx.fillStyle = FAINT
-    ctx.fillRect(cx - 120, y, 240, 1)
-    y += portrait ? 44 : 40
+    y += 80
 
-    const notes = [
-      'The resistance in this game is real: regulators, courts, towns and people who ask questions.',
-      'Everything above TODAY on the timeline happened. Everything below it is a projection, not a prophecy.',
-      'Who owns compute is still being decided. Owning your own computer is part of that.',
-    ]
-    const nf = mono(portrait ? 27 : 28)
-    const nl = portrait ? 29 : 30
-    notes.forEach((n, i) => {
-      ctx.globalAlpha = a(2.6 + i * 0.5)
-      for (const l of wrapText(ctx, n, nf, dw - (portrait ? 20 : 120))) {
-        write(ctx, l, cx, y, nf, i === 0 ? ICE : DIM, 'center')
-        y += nl
-      }
-      y += portrait ? 18 : 14
-    })
-    y += portrait ? 26 : 18
+    // the quote: the hook
+    ctx.globalAlpha = a(1.6)
+    ctx.fillStyle = 'rgba(255, 45, 111, 0.08)'
+    ctx.fillRect(0, y, dw, qh)
+    ctx.fillStyle = ALERT
+    ctx.fillRect(0, y, 3, qh)
+    let qy = y + qPad + ql / 2 - 4
+    for (const l of qLines) {
+      write(ctx, l, qPad, qy, qf, ICE, 'left')
+      qy += ql
+    }
+    qy += 10
+    for (const l of aLines) {
+      write(ctx, l, qPad, qy, af, DIM, 'left')
+      qy += 24
+    }
+    y += qh + 48
 
-    ctx.globalAlpha = a(4.2)
-    write(ctx, `FINAL VALUATION ${money(Math.max(1e6, this.stats.score * 1e6))}`, cx, y, mono(22), FAINT, 'center', 2)
-    y += portrait ? 66 : 58
+    ctx.globalAlpha = a(2.4)
+    const line = 'Memory prices are not a game.'
+    write(ctx, line, cx, y, mono(fitSize(ctx, line, mono, portrait ? 36 : 40, dw - 10)), ALERT, 'center', 1)
+    y += 52
+
+    ctx.globalAlpha = a(2.9)
+    const val = `FINAL VALUATION ${money(Math.max(1e6, this.stats.score * 1e6))}`
+    write(ctx, val, cx, y, mono(fitSize(ctx, val, mono, 22, dw - 20)), DIM, 'center', 2)
+    y += 60
 
     let hits: Hit[] = []
-    const ba = a(4.4)
+    const ba = a(3.0)
     if (ba > 0) {
       ctx.globalAlpha = ba
       const bw = 300
@@ -1333,9 +1424,6 @@ export class Ending {
       y += bh / 2 + 28
       if (!view.touch) write(ctx, 'OR PRESS ENTER', cx, y, mono(20), FAINT, 'center', 2)
     }
-    ctx.globalAlpha = a(4.8)
-    const credit = 'RAM GRAB — a game about AI and who owns compute'
-    write(ctx, credit, cx, dh - 24, mono(fitSize(ctx, credit, mono, portrait ? 22 : 24, dw - 40)), GLOW, 'center', 1)
     ctx.globalAlpha = 1
     return hits
   }

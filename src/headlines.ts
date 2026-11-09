@@ -160,26 +160,26 @@ export interface Milestone {
   source?: string
 }
 
-// The ending's timeline: what happened, then what could.
+// The ending's timeline: what happened, then what could. The story is
+// affordability: memory gets scarce, computers get expensive, and the only
+// computer most people can afford is one in the cloud.
 export const TIMELINE: Milestone[] = [
   { year: '2022', text: 'ChatGPT launches. A million users in five days.', real: true, source: 'OpenAI' },
-  { year: '2023', text: 'Italy blocks ChatGPT. It is back within a month.', real: true, source: 'AP' },
-  { year: '2024', text: 'Data centres use 21% of Ireland’s electricity.', real: true, source: 'The Irish Times' },
-  { year: '2025', text: 'Stargate: $500 billion for AI infrastructure.', real: true, source: 'Al Jazeera' },
-  { year: '2025', text: 'Micron stops selling memory to consumers. Datacenters need it more.', real: true, source: 'Micron' },
-  { year: '2026', text: 'PC makers raise prices 15-20%. Memory is too scarce.', real: true, source: 'The Register' },
-  { year: '2026', text: 'On RAM in home PCs: “it’s quite terrible to have everybody …”', real: true, source: 'Sam Altman, via PCWorld' },
-  { year: '2028', text: 'The last consumer memory line closes. New PCs ship as thin clients.', real: false },
-  { year: '2030', text: 'Local compute is reclassified as “strategically wasteful”.', real: false },
-  { year: '2032', text: 'Owning more than 8 GB of RAM requires a licence.', real: false },
-  { year: '2034', text: 'The Compute Consolidation Act. Idle memory is collected for the grid.', real: false },
-  { year: '20XX', text: 'Nobody owns a computer. Everybody is connected.', real: false },
+  { year: '2025', text: 'Micron exits Crucial, its consumer memory business. AI datacenters need the chips.', real: true, source: 'Micron' },
+  { year: '2026', text: 'Dell, Lenovo and HP raise PC prices 15-20%. Memory is running short.', real: true, source: 'The Register' },
+  { year: '2026', text: 'A 16 GB Raspberry Pi 5 now costs $385. It launched at $120.', real: true, source: 'CNX Software' },
+  { year: '2027', text: 'Memory costs more than the computer around it.', real: false },
+  { year: '2028', text: 'New laptops ship with 4 GB. Anything heavy runs in the cloud.', real: false },
+  { year: '2030', text: 'A cloud computer: $3 a month. A real one: a month’s rent.', real: false },
+  { year: '2032', text: 'Most homes no longer own a computer that can think for itself.', real: false },
+  { year: '20XX', text: 'Owning memory becomes a luxury. Then a liability.', real: false },
 ]
 
+// Shown on the end card. Exact words, fragments joined with ellipses.
 export const ALTMAN_RAM_QUOTE: Quote = {
   who: 'Sam Altman',
   where: 'Cheeky Pint podcast',
   date: 'Oct 2026',
-  text: 'A lot of people want local inference … But from, like, a global allocation perspective, actually, it’s quite terrible to have everybody …',
+  text: 'A lot of people want local inference … But from, like, a global allocation perspective, actually, it’s quite terrible to have everybody … And being used five percent of the time.',
   url: 'https://pcworld.com/article/3274634/sam-altman-says-your-pcs-memory-should-belong-to-him.html',
 }

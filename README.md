@@ -2,7 +2,7 @@
 
 A browser game about AI and who gets to own compute. Play it at https://ram-grab.vercel.app/
 
-This is the group version, a fork of PAC RAM: ROGUE AI. The original stays on `main`; this version lives on its own branch.
+This is the group version, a fork of PAC RAM: ROGUE AI.
 
 ## The idea
 
@@ -22,7 +22,9 @@ Eat the RAM across a maze while avoiding the ghosts of the resistance:
 
 Consumers (small amber pacs) roam the maze too and take RAM for their own computers. They are slower than you. You and they cannot hurt each other, until the last era: then you can eat them and take the RAM they collected. The HUD shows the tug of war as market share.
 
-Eat 25 RAM to fill the lobbying bar. For five seconds the resistance turns blue and you can eat it (a fine gets APPEALED, a protest IGNORED, a lawsuit SETTLED, the AI Act WATERED DOWN, a ban LIFTED). Your score is your valuation.
+The RAM is drawn as little RAM sticks. Each maze also has four lightning bolts: electricity. Grab one and the power goes out for a few seconds (7, 6 and 5 seconds by era). The resistance turns blue, and touching it switches it off where it stands. You can never eat or remove the resistance; when the power comes back, it hunts you again.
+
+The right-hand panel is a fake stock ticker: Infinite Labs' share price climbs as you take RAM, while a tape and a price list show what that does to everyone else (RAM and laptops get dearer, a cloud PC gets cheaper, fewer homes buy a computer). Your final score is your valuation.
 
 ## Progression
 
@@ -32,7 +34,7 @@ Three eras, each harder and bigger than the last. You get faster, the resistance
 2. **The Build-Out** (2024 - 2026): four kinds of resistance, four consumers. You are a HYPERSCALER.
 3. **No One Stopped It** (2027 - ): all five, six consumers, and consumers are fair game. You are a CONGLOMERATE.
 
-Between eras the company grows on screen (`src/upgrade.ts`) and real headlines play as a news wire (`src/news.ts`, content in `src/headlines.ts`):
+Between eras real headlines play as a news wire (`src/news.ts`, content in `src/headlines.ts`):
 
 - Before the game: Italy blocks ChatGPT (2023), OpenAI hints it may leave the EU, Italy's EUR 15M fine and OpenAI's response.
 - After era 1: communities next to datacenters (Newton County wells, xAI's turbines in Memphis, Uruguay's drought, Ireland's grid, power bills in the PJM region).
@@ -42,7 +44,7 @@ Every headline is quoted as published, with the outlet and date. Sources are lin
 
 ## Ending
 
-Clear the third era and nothing can stop you (`src/ending.ts`): a tally of what you absorbed, a timeline from 2022 to a projected future (real milestones marked with their source, the projection marked as such), then the screen turns into your own computer and a notice says it is being requisitioned because it contains RAM. After that, everyone is connected to one hivemind in the cloud. The last card says this is a game and the future isn't written yet.
+Clear the third era and nothing can stop you (`src/ending.ts`). The ending stays on one idea: electronics keep getting more expensive until people can't afford them, the cloud gets cheaper, and owning a powerful computer becomes obsolete. A timeline runs from 2022 to a projected future (real milestones marked with their source, the projection marked as such). Then the screen turns into your own computer and a notice says the memory above the personal allowance is being collected, worked out from how much RAM your device reports. A short chat in speech bubbles follows, where the cloud talks you out of owning a computer, and a short end card closes on Sam Altman's remark about RAM in home PCs.
 
 Lose all your lives and the resistance held.
 
@@ -57,7 +59,7 @@ Open http://127.0.0.1:43123/
 
 `npm run build` makes a static build in `dist/` with relative paths, so it runs from any sub-path. `npm run check` typechecks and simulates a full three-era run.
 
-Test mode: open with `?dev` to get a SKIP BOARD button (also the `]` key). `?dev=0` turns it off.
+Test mode for playtesting: open https://ram-grab.vercel.app/?dev to get a SKIP BOARD button (also the `]` key). It stays on in that browser; `?dev=0` turns it off.
 
 ## Controls
 
@@ -65,7 +67,7 @@ Arrow keys, WASD or swipes to move. Enter, Space or a tap starts and continues. 
 
 ## Not in this version
 
-No voice (text only), no rogue-AI story, finale or OS takeover, no online leaderboard and no analytics. The top-valuations board is kept on the player's own device.
+No voice (text only), no growth screens between eras, no rogue-AI story, finale or OS takeover, no online leaderboard and no analytics. The top-valuations board is kept on the player's own device.
 
 ## Art and sound
 

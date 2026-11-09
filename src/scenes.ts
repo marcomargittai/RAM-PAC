@@ -3,7 +3,7 @@
 
 import { countdown, type Entry } from './leaderboard'
 import { ALERT, GLOW, ICE, VOID, theme } from './palette'
-import { MONO, brackets, fill, hatch, label, panel, tag } from './render'
+import { MONO, brackets, fill, label, panel, tag } from './render'
 import { button, drawBackdrop, hit, logo, text, wrap, type Frame, type Hit, type View } from './screen'
 import { drawFacing, drawUpright, lawSprite, miniFrame, pacFrame } from './sprites'
 import { LEVELS } from './levels'
@@ -138,18 +138,13 @@ export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
       const art = pacFrame(t * 8)
       if (art) drawFacing(ctx, art, x, y, 64, 'right', 'right')
     }],
-    ['RAM', 'Memory chips. Eat them to grow your valuation. When the board runs out of RAM, the next era begins.', (x, y) => {
-      for (let i = 0; i < 3; i++) {
-        ctx.fillStyle = ICE
-        ctx.globalAlpha = 0.25
-        ctx.beginPath()
-        ctx.arc(x - 24 + i * 24, y, 9, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.globalAlpha = 1
-        ctx.beginPath()
-        ctx.arc(x - 24 + i * 24, y, 4.5, 0, Math.PI * 2)
-        ctx.fill()
-      }
+    ['RAM', 'Memory sticks. Eat them and your share price climbs. When the board runs out of RAM, the next era begins.', (x, y) => {
+      ctx.fillStyle = '#1c8f4e'
+      ctx.fillRect(x - 33, y - 10, 66, 18)
+      ctx.fillStyle = '#0b0f14'
+      for (const dx of [-27, -9, 9]) ctx.fillRect(x + dx, y - 6, 16, 10)
+      ctx.fillStyle = '#e8c54a'
+      for (let dx = -31; dx < 32; dx += 5) ctx.fillRect(x + dx, y + 8, 3, 5)
     }],
     ['CONSUMERS', 'Ordinary people who want RAM too. Slower than you, and safe from you. Until the last era.', (x, y) => {
       for (let i = 0; i < 3; i++) {
@@ -157,16 +152,25 @@ export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
         if (art) drawFacing(ctx, art, x - 28 + i * 28, y, 24, 'right', 'right')
       }
     }],
-    ['THE RESISTANCE', 'Regulators, residents, courts and lawmakers. If one touches you, you lose a life.', (x, y) => {
+    ['THE RESISTANCE', 'Regulators, residents, courts and lawmakers. They chase you. If one touches you, you lose a life.', (x, y) => {
       for (let i = 0; i < 3; i++) {
         const art = lawSprite(i, 'body')
         if (art) drawUpright(ctx, art, x - 30 + i * 30, y + Math.sin(t * 6 + i) * 2, 30)
       }
     }],
-    ['LOBBYING', 'Eat 25 RAM to fill the bar. For 5 seconds the resistance turns blue: eat it.', (x, y) => {
-      ctx.strokeStyle = GLOW
-      ctx.strokeRect(x - 44.5, y - 9.5, 88, 18)
-      hatch(ctx, ICE, x - 42, y - 7, 84 * ((t * 0.4) % 1), 14, 6)
+    ['ELECTRICITY', 'Grab a lightning bolt and the power goes out: for a few seconds you can switch the resistance off. You can never get rid of it.', (x, y) => {
+      ctx.fillStyle = '#ffe14a'
+      ctx.globalAlpha = 0.6 + 0.4 * Math.sin(t * 6)
+      ctx.beginPath()
+      ctx.moveTo(x + 4, y - 22)
+      ctx.lineTo(x - 12, y + 2)
+      ctx.lineTo(x - 1, y + 2)
+      ctx.lineTo(x - 4, y + 22)
+      ctx.lineTo(x + 12, y - 4)
+      ctx.lineTo(x + 1, y - 4)
+      ctx.closePath()
+      ctx.fill()
+      ctx.globalAlpha = 1
     }],
   ]
   const iconX = portrait ? 110 : 150

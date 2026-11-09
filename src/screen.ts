@@ -1,11 +1,12 @@
 // The whole display: header, board, HUD panel, cards, touch pad and boot
 // screen, all drawn into one canvas so the CRT pass covers every pixel.
 
-import { LAWS, LEVELS } from './levels'
-import { ALERT, FRIGHT, GLOW, ICE, VOID, theme, type Theme } from './palette'
-import { BOARD_PX, DISPLAY, MONO, brackets, clamp, fill, hatch, hideActors, label, panel, render, setTextBoost, tag, warning } from './render'
-import { SURGE_RAM, marketShare, stateLabel, valuation, type Game, type Ghost } from './sim'
-import { FORMS, drawFacing, drawUpright, lawSprite, pacForm, pacFrame } from './sprites'
+import { LEVELS } from './levels'
+import { ALERT, GLOW, ICE, VOID, theme, type Theme } from './palette'
+import { BOARD_PX, DISPLAY, MONO, brackets, clamp, fill, hideActors, label, panel, render, setTextBoost, tag, warning } from './render'
+import type { Game } from './sim'
+import { drawMarket } from './market'
+import { FORMS, pacForm } from './sprites'
 import type { Entry } from './leaderboard'
 
 const HUD = '"Chakra Petch", "Share Tech Mono", sans-serif'
@@ -96,8 +97,6 @@ export const DEV = (() => {
 
 export const BOOT_SECONDS = 2.6
 
-let ramTotal = 0
-let ramLevel = -1
 
 export function hit(frame: Frame, id: HitId, x: number, y: number, w: number, h: number): void {
   frame.hits.push({ id, x: frame.ox + x * frame.s, y: frame.oy + y * frame.s, w: w * frame.s, h: h * frame.s })
@@ -236,10 +235,6 @@ export function layoutFor(view: { width: number; height: number; touch: boolean 
 }
 
 function drawComposition(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: Theme, lay: Layout): void {
-  if (game.levelIndex !== ramLevel || game.dots.length > ramTotal) {
-    ramLevel = game.levelIndex
-    ramTotal = game.dots.length
-  }
   if (lay.phone) drawPhone(ctx, game, frame, th, lay)
   else if (lay.portrait) drawPortrait(ctx, game, frame, th, lay.W)
   else drawLandscape(ctx, game, frame, th, lay.W)
@@ -436,141 +431,6 @@ function drawCard(ctx: CanvasRenderingContext2D, frame: Frame, card: Card, th: T
   })
 }
 
-function drawTelemetry(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: number, y: number, w: number): void {
-  module(ctx, 'Telemetry', x, y, w, 158, th.line)
-  const level = LEVELS[game.levelIndex]
-  const livesShown = game.mode === 'dying' ? Math.max(0, game.lives - 1) : game.lives
-  const rows: Array<[string, string]> = [
-    ['VALUE', `<<< ${valuation(game.score)} >>>`],
-    ['RAM', `<<< ${game.dots.length} LEFT >>>`],
-    ['ERA', `${game.levelIndex + 1} ${(level?.name ?? '').toUpperCase()}`],
-    ['LIVES', ''],
-  ]
-  rows.forEach(([k, v], i) => {
-    const ry = y + 52 + i * 28
-    label(ctx, k, x + 16, ry, 23, th.line, 'left')
-    if (k === 'LIVES') {
-      for (let l = 0; l < livesShown; l++) fill(ctx, ICE, x + 92 + l * 18, ry - 9, 9, 17)
-    } else label(ctx, v, x + 92, ry, 23, ICE, 'left')
-  })
-}
-
-function drawSurge(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: number, y: number, w: number, time: number): void {
-  const surging = game.surge > 0
-  module(ctx, '', x, y, w, 84, surging ? ALERT : th.line)
-  const name = surging ? 'LOBBY THEM AWAY' : 'INFLUENCE'
-  const blink = !surging || Math.floor(time * 4.4) % 2 === 0
-  if (blink) label(ctx, name, x + 16, y + 24, 23, surging ? ALERT : th.line, 'left')
-  label(ctx, surging ? `${game.surge.toFixed(1)}s` : `${game.surgeCharge}/${SURGE_RAM}`, x + w - 16, y + 24, 23, ICE, 'right')
-  const tx = x + 16
-  const ty = y + 44
-  const tw = w - 32
-  const th2 = 22
-  ctx.strokeStyle = surging ? ALERT : th.line
-  ctx.globalAlpha = 0.55
-  ctx.strokeRect(tx + 0.5, ty + 0.5, tw, th2)
-  ctx.globalAlpha = 1
-  const ratio = clamp(surging ? game.surge / game.surgeMax : game.surgeCharge / SURGE_RAM, 0, 1)
-  if (ratio > 0) {
-    if (surging) {
-      ctx.save()
-      ctx.beginPath()
-      ctx.rect(tx + 3, ty + 3, (tw - 5) * ratio, th2 - 5)
-      ctx.clip()
-      fill(ctx, ALERT, tx + 3, ty + 3, tw, th2 - 5)
-      hatch(ctx, ICE, tx + 3 - ((time * 40) % 16), ty + 3, tw + 16, th2 - 5, 8)
-      ctx.restore()
-    } else hatch(ctx, ICE, tx + 3, ty + 3, (tw - 5) * ratio, th2 - 5, 6)
-  }
-  for (let i = 1; i < 25; i++) fill(ctx, 'rgba(1, 4, 11, 0.9)', tx + (tw * i) / 25, ty + 1, 1, th2 - 1)
-}
-
-function lawTone(ghost: Ghost): string {
-  return ghost.state === 'frightened' ? FRIGHT : ghost.color
-}
-
-function drawLaws(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: number, y: number, w: number, h: number, time: number): void {
-  module(ctx, 'Resistance', x, y, w, h, th.line)
-  game.ghosts.forEach((ghost, i) => {
-    const ry = y + 42 + i * 38
-    const tone = lawTone(ghost)
-    ctx.globalAlpha = ghost.state === 'eaten' ? 0.4 : 1
-    const grad = ctx.createLinearGradient(x + 14, 0, x + w - 14, 0)
-    grad.addColorStop(0, `${ghost.color}26`)
-    grad.addColorStop(1, 'rgba(0,0,0,0)')
-    ctx.fillStyle = grad
-    ctx.fillRect(x + 14, ry, w - 28, 30)
-    fill(ctx, tone, x + 14, ry, 3, 30)
-    text(ctx, ghost.name, x + 28, ry + 16, 15, ICE, 'left', 600, 0.5)
-    const blink = ghost.state !== 'frightened' || Math.floor(time * 5) % 2 === 0
-    if (blink) label(ctx, stateLabel(ghost.state, game.phase), x + w - 24, ry + 16, 21, tone, 'right')
-    ctx.globalAlpha = 1
-  })
-}
-
-function bar(ctx: CanvasRenderingContext2D, name: string, value: number, x: number, y: number, w: number, tone: string): void {
-  label(ctx, name, x, y + 6, 18, tone, 'left')
-  const bx = x + 78
-  const bw = w - 78
-  ctx.strokeStyle = tone
-  ctx.globalAlpha = 0.45
-  ctx.strokeRect(bx + 0.5, y + 0.5, bw, 12)
-  ctx.globalAlpha = 1
-  fill(ctx, ICE, bx + 2, y + 2, (bw - 3) * clamp(value, 0, 1), 9)
-  for (let i = 1; i < 10; i++) fill(ctx, 'rgba(1, 4, 11, 0.7)', bx + (bw * i) / 10, y + 1, 1, 11)
-}
-
-function drawVitals(ctx: CanvasRenderingContext2D, game: Game, th: Theme, x: number, y: number, w: number, h: number, time: number): void {
-  module(ctx, `Infinite Labs // ${FORMS[pacForm()]?.name ?? ''}`, x, y, w, h, th.line)
-  const fx = x + 66
-  const fy = y + 100
-  ctx.globalAlpha = 0.18
-  ctx.strokeStyle = th.line
-  ctx.beginPath()
-  ctx.arc(fx, fy, 44, 0, Math.PI * 2)
-  ctx.stroke()
-  ctx.globalAlpha = 1
-  const art = pacFrame(time * 5)
-  if (art) drawFacing(ctx, art, fx, fy, 70, 'right', 'right')
-  const leads: Array<[number, string]> = [
-    [fy - 26, 'CAPEX'],
-    [fy + 2, 'MOUTH'],
-    [fy + 30, 'GRID'],
-  ]
-  for (const [ly, name] of leads) {
-    ctx.globalAlpha = 0.7
-    fill(ctx, th.line, fx + 30, ly, 26, 1)
-    ctx.globalAlpha = 1
-    fill(ctx, ICE, fx + 26, ly - 2, 5, 5)
-    label(ctx, name, fx - 64, ly, 15, 'rgba(226, 245, 255, 0.5)', 'left')
-  }
-
-  const surging = game.surge > 0
-  const share = marketShare(game)
-  const taken = ramTotal ? 1 - game.dots.length / ramTotal : 0
-  const heat = surging ? game.surge / game.surgeMax : game.surgeCharge / SURGE_RAM
-  const bx = x + 150
-  const bw = w - 166
-  bar(ctx, 'YOURS', share, bx, y + 48, bw, th.line)
-  bar(ctx, 'PUBLIC', game.ramYou + game.ramThem ? 1 - share : 0, bx, y + 74, bw, '#ffc94a')
-  bar(ctx, 'TAKEN', taken, bx, y + 100, bw, th.line)
-  bar(ctx, 'LOBBY', heat, bx, y + 126, bw, surging ? ALERT : th.line)
-
-  label(ctx, 'RESISTANCE ON THE BOARD', x + 16, y + 168, 19, th.line, 'left')
-  game.ghosts.forEach((ghost, i) => {
-    const gx = x + 30 + i * 40
-    const gy = y + 198
-    const art = lawSprite(ghost.law, ghost.state === 'frightened' ? 'blue' : 'body')
-    const out = ghost.state === 'chase' || ghost.state === 'scatter' || ghost.state === 'frightened'
-    ctx.globalAlpha = out ? 1 : 0.25
-    if (art) drawUpright(ctx, art, gx, gy, 26)
-    ctx.globalAlpha = 1
-  })
-  const edible = LEVELS[game.levelIndex]?.minisEdible
-  label(ctx, `MARKET SHARE ${Math.round(share * 100)}% ${edible ? '· CONSUMERS ARE FAIR GAME' : `· CONSUMERS TOOK ${game.ramThem}`}`, x + 16, y + h - 44, 19, edible ? '#ffc94a' : ICE, 'left')
-  label(ctx, 'ARROWS/WASD MOVE · P PAUSE · M MUTE', x + 16, y + h - 20, 16, 'rgba(226, 245, 255, 0.45)', 'left')
-}
-
 function drawSkip(ctx: CanvasRenderingContext2D, frame: Frame, x: number, y: number): void {
   if (!DEV) return
   ctx.globalAlpha = 0.8
@@ -582,23 +442,8 @@ function drawLandscape(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, 
   drawHeader(ctx, game, frame, W, th, false)
   drawField(ctx, game, frame, th, 36, 104)
   const px = 836
-  const pw = W - 24 - px
-  const tabs = ['SYSTEMS', 'INVENTORY', 'DATABASE']
-  tabs.forEach((name, i) => {
-    const tw = (pw - 8) / 3
-    const tx = px + i * (tw + 4)
-    ctx.strokeStyle = i === 0 ? 'rgba(150, 214, 255, 0.4)' : 'rgba(150, 214, 255, 0.15)'
-    ctx.strokeRect(tx + 0.5, 96.5, tw, 26)
-    fill(ctx, i === 0 ? ALERT : 'rgba(150, 214, 255, 0.15)', tx, 96, tw, 2)
-    text(ctx, name, tx + tw / 2, 110, 11, i === 0 ? ICE : 'rgba(150, 214, 255, 0.5)', 'center', 600, 2)
-  })
-  drawTelemetry(ctx, game, th, px, 134, pw)
-  drawSurge(ctx, game, th, px, 304, pw, frame.view.time)
-  const lawsH = 50 + game.ghosts.length * 38
-  drawLaws(ctx, game, th, px, 400, pw, lawsH, frame.view.time)
-  const vy = 400 + lawsH + 12
-  drawVitals(ctx, game, th, px, vy, pw, Math.max(250, 872 - vy), frame.view.time)
-  label(ctx, 'BRIGHT ||||||||||||||||||||||||| CONTRAST', 36 + 380, 884, 15, 'rgba(150, 214, 255, 0.3)')
+  drawMarket(ctx, game, px, 96, W - 24 - px, 776, frame.view.time)
+  label(ctx, 'ARROWS/WASD MOVE \u00B7 P PAUSE \u00B7 M MUTE', 36 + 380, 884, 15, 'rgba(150, 214, 255, 0.3)')
   drawSkip(ctx, frame, 36, 872)
 }
 
@@ -691,57 +536,9 @@ function drawPhone(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: 
   if (view.hint && !view.card && (game.mode === 'ready' || game.mode === 'play')) drawSwipeHint(ctx, b.x, b.y, size, view.time)
   if (view.card) drawPhoneCard(ctx, frame, view.card, th, b.x, b.y, size)
 
-  // score and lives
-  const y0 = b.y + size + 30
-  const livesShown = game.mode === 'dying' ? Math.max(0, game.lives - 1) : game.lives
-  label(ctx, 'VALUATION', 24, y0 + 14, 26, GLOW, 'left')
-  label(ctx, valuation(game.score), 24, y0 + 62, 64, ICE, 'left')
-  const edible = LEVELS[game.levelIndex]?.minisEdible
-  label(ctx, 'MARKET SHARE', W / 2 + 40, y0 + 14, 26, edible ? '#ffc94a' : GLOW, 'center')
-  label(ctx, `${Math.round(marketShare(game) * 100)}%`, W / 2 + 40, y0 + 62, 52, ICE, 'center')
-  label(ctx, 'LIVES', W - 24, y0 + 14, 26, GLOW, 'right')
-  for (let l = 0; l < livesShown; l++) fill(ctx, ICE, W - 24 - 22 - l * 34, y0 + 42, 18, 36)
-
-  // the surge bar
-  const sy = y0 + 112
-  const surging = game.surge > 0
-  const blink = !surging || Math.floor(view.time * 4.4) % 2 === 0
-  if (blink) label(ctx, surging ? 'LOBBYING! EAT THEM' : 'EAT RAM TO LOBBY', 24, sy, 30, surging ? ALERT : th.line, 'left')
-  label(ctx, surging ? `${game.surge.toFixed(1)}s` : `${game.surgeCharge}/${SURGE_RAM}`, W - 24, sy, 30, ICE, 'right')
-  const tx = 24
-  const ty = sy + 24
-  const tw = W - 48
-  const th2 = 30
-  ctx.strokeStyle = surging ? ALERT : th.line
-  ctx.globalAlpha = 0.6
-  ctx.lineWidth = 2
-  ctx.strokeRect(tx + 0.5, ty + 0.5, tw, th2)
-  ctx.globalAlpha = 1
-  const ratio = clamp(surging ? game.surge / game.surgeMax : game.surgeCharge / SURGE_RAM, 0, 1)
-  if (ratio > 0) {
-    if (surging) fill(ctx, ALERT, tx + 4, ty + 4, (tw - 7) * ratio, th2 - 7)
-    else hatch(ctx, ICE, tx + 4, ty + 4, (tw - 7) * ratio, th2 - 7, 7)
-  }
-
-  // the laws, one chip each
-  const ly = ty + th2 + 24
-  const n = game.ghosts.length
-  const gap = 12
-  const cw = (W - 48 - gap * (n - 1)) / n
-  game.ghosts.forEach((ghost, i) => {
-    const cx = 24 + i * (cw + gap)
-    const tone = lawTone(ghost)
-    ctx.globalAlpha = ghost.state === 'eaten' ? 0.4 : 1
-    fill(ctx, 'rgba(1, 4, 11, 0.6)', cx, ly, cw, 74)
-    ctx.strokeStyle = `${ghost.color}66`
-    ctx.lineWidth = 1.5
-    ctx.strokeRect(cx + 0.5, ly + 0.5, cw - 1, 73)
-    fill(ctx, tone, cx, ly, 5, 74)
-    label(ctx, LAWS[ghost.law]?.tag ?? 'LAW', cx + 14, ly + 24, n > 4 ? 24 : 30, tone, 'left')
-    const flash = ghost.state !== 'frightened' || Math.floor(view.time * 5) % 2 === 0
-    if (flash) label(ctx, stateLabel(ghost.state, game.phase), cx + 14, ly + 54, n > 4 ? 15 : n > 3 ? 18 : 22, ICE, 'left')
-    ctx.globalAlpha = 1
-  })
+  // under the board: the stock ticker
+  const y0 = b.y + size + 22
+  drawMarket(ctx, game, 20, y0, W - 40, PHONE_H - y0 - 14, view.time, { big: true })
   if (DEV) {
     ctx.globalAlpha = 0.8
     button(ctx, frame, 'skip', 'SKIP \u25B8', W - 20 - 130, 92, 130, 30, ALERT, 15)
@@ -752,10 +549,6 @@ function drawPhone(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: 
 function drawPortrait(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: Theme, W: number): void {
   drawHeader(ctx, game, frame, W, th, true)
   drawField(ctx, game, frame, th, 20, 138)
-  const y = 916
-  const cw = (W - 52) / 2
-  drawTelemetry(ctx, game, th, 20, y, cw)
-  drawSurge(ctx, game, th, 20, y + 170, cw, frame.view.time)
-  drawLaws(ctx, game, th, 32 + cw, y, cw, 254, frame.view.time)
+  drawMarket(ctx, game, 20, 916, W - 40, 254, frame.view.time)
   drawSkip(ctx, frame, 20, 1180)
 }
