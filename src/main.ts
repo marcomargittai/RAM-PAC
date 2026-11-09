@@ -9,6 +9,7 @@ import { drawBriefing, drawEntry, drawLeaderboard } from './scenes'
 import { BOOT_SECONDS, DEV, drawScreen, type Card, type Hit, type HitId, type View } from './screen'
 import { createGame, startRun, update, type Dir, type Game } from './sim'
 import { setPacForm } from './sprites'
+import { Upgrade } from './upgrade'
 import { drawTitle } from './title'
 import './style.css'
 
@@ -18,6 +19,7 @@ type Stage =
   | { kind: 'entry'; escaped: boolean; level: number }
   | { kind: 'board'; mine: Entry | null; from: 'title' | 'run' }
   | { kind: 'briefing' }
+  | { kind: 'upgrade'; up: Upgrade; then: () => void }
   | { kind: 'ending'; ending: Ending }
 
 const TITLE = 'PAC RAM: INFINITE PROFIT'
@@ -135,6 +137,31 @@ function tell(beat: NewsBeat, then: () => void): void {
   }
 }
 
+function upgradeTo(to: number, then: () => void): void {
+  audio.unlock()
+  stage = {
+    kind: 'upgrade',
+    then,
+    up: new Upgrade(grown, to, {
+      build: () => audio.play('upgrade', 0.75),
+      glitch: () => {
+        audio.play('glitch', 0.6)
+        glitchPulse = 0.6
+      },
+      done: () => {
+        audio.play('online', 0.85)
+        navigator.vibrate?.([30, 30, 60])
+      },
+    }),
+  }
+}
+
+function finishUpgrade(): void {
+  if (stage.kind !== 'upgrade') return
+  grown = stage.up.to
+  stage.then()
+}
+
 function play(): void {
   stage = { kind: 'game' }
 }
@@ -232,6 +259,10 @@ function pressStart(): void {
     stage.news.advance()
     return
   }
+  if (stage.kind === 'upgrade') {
+    if (stage.up.canContinue) finishUpgrade()
+    return
+  }
   if (stage.kind === 'entry') {
     saveEntry(false)
     return
@@ -269,6 +300,10 @@ function skipAhead(): void {
   audio.unlock()
   if (stage.kind === 'news') {
     stage.news.skip()
+    return
+  }
+  if (stage.kind === 'upgrade') {
+    finishUpgrade()
     return
   }
   if (stage.kind === 'entry') {
@@ -446,7 +481,7 @@ window.addEventListener('keydown', (event) => {
     pressPause()
   } else if (event.key === 'Escape') {
     event.preventDefault()
-    if (stage.kind === 'news') skipAhead()
+    if (stage.kind === 'news' || stage.kind === 'upgrade') skipAhead()
     else if (stage.kind === 'board') leaveBoard()
     else pressPause()
   } else if (event.key === 'm' || event.key === 'M') {
@@ -588,7 +623,7 @@ function listen(target: HTMLCanvasElement): void {
       const dx = event.clientX - swipeX
       const dy = event.clientY - swipeY
       if (Math.hypot(dx, dy) >= SWIPE * 0.6) swipeTo(dx, dy)
-      else if (stage.kind === 'news' || stage.kind === 'ending') pressStart()
+      else if (stage.kind === 'news' || stage.kind === 'upgrade' || stage.kind === 'ending') pressStart()
     }
   }
   target.addEventListener('pointerup', (event) => finish(event, false))
@@ -675,11 +710,12 @@ function direct(): void {
   if (game.mode === 'cleared' && game.modeTimer <= 0 && game.levelIndex < LEVELS.length - 1 && !told.has(game.levelIndex)) {
     told.add(game.levelIndex)
     const beat = game.levelIndex === 0 ? INTERLUDE_1 : INTERLUDE_2
-    grown = game.levelIndex + 1
-    tell(beat, () => {
-      play()
-      startEdge = true
-    })
+    upgradeTo(game.levelIndex + 1, () =>
+      tell(beat, () => {
+        play()
+        startEdge = true
+      }),
+    )
   }
   if (game.mode === 'win' && lastMode !== 'win') {
     grown = 3
@@ -735,6 +771,9 @@ function frame(now: number): void {
     const n = stage.news
     n.update(dt)
     if (n.done) stage.then()
+  } else if (stage.kind === 'upgrade') {
+    stage.up.update(dt)
+    if (stage.up.finished) finishUpgrade()
   } else if (stage.kind === 'ending') {
     stage.ending.update(dt)
     if (stage.ending.done) finishEnding()
@@ -755,13 +794,14 @@ function frame(now: number): void {
   } else if (stage.kind === 'board') {
     hits = drawLeaderboard(ctx, v, { records, mine: stage.mine, global: false, online: false, loading: false, from: stage.from })
   } else if (stage.kind === 'briefing') hits = drawBriefing(ctx, v)
+  else if (stage.kind === 'upgrade') hits = stage.up.draw(ctx, v)
   else if (stage.kind === 'ending') hits = stage.ending.draw(ctx, v)
   else if (booted && game.mode === 'title') hits = drawTitle(ctx, v, 0)
   else hits = drawScreen(ctx, game, v)
   drawToast(v)
 
   const sinceBoot = booted ? (now - bootEndedAt) / 1000 : 1
-  const stageGlitch = stage.kind === 'ending' ? stage.ending.glitch : 0
+  const stageGlitch = stage.kind === 'ending' ? stage.ending.glitch : stage.kind === 'upgrade' ? stage.up.glitch : 0
   const bootPower = calm.matches ? 1 : Math.min(1, (now - loadedAt) / 600)
   crt?.draw(source, {
     time: now / 1000,

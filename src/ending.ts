@@ -503,7 +503,6 @@ export class Ending {
     else if (key === 'ArrowLeft' || key === 'ArrowUp') this.sel = 0
     else if (key === 'ArrowRight' || key === 'ArrowDown') this.sel = 1
     else return false
-    this.touch = false
     return true
   }
 
@@ -624,7 +623,7 @@ export class Ending {
     if (this.phase === 'unstoppable') this.drawUnstoppable(ctx, W, H, view)
     else if (this.phase === 'timeline') this.drawTimeline(ctx, W, H, view)
     else if (this.phase === 'seizure') hits = this.drawSeizure(ctx, W, H, view)
-    else if (this.phase === 'hivemind') this.drawHivemind(ctx, W, H, view)
+    else if (this.phase === 'hivemind') hits = this.drawHivemind(ctx, W, H, view)
     else hits = this.drawEnd(ctx, W, H, view)
     ctx.restore()
     return hits
@@ -1255,12 +1254,14 @@ export class Ending {
   // ----------------------------------------------------------- 4. hivemind
 
   // A plain chat with the player's cloud computer, on white. No real app.
-  private drawHivemind(ctx: CanvasRenderingContext2D, W: number, H: number, view: View): void {
+  private drawHivemind(ctx: CanvasRenderingContext2D, W: number, H: number, view: View): Hit[] {
     const t = this.hiveT
     const os = this.os
     const phone = W < 560
     const u = t - CHAT_LEAD
-    const st = u >= 0 ? chatAt(u) : { bubbles: [], composer: '', suggested: false, dots: false }
+    const st = this.chatState()
+    this.touch = view.touch
+    const hits: Hit[] = []
     const ACCENT = '#5260c9'
     const INK = '#1f2430'
     const GREY = '#8a8f9c'
@@ -1304,10 +1305,43 @@ export class Ending {
     const left = this.memoryLeft()
     if (!phone) write(ctx, `local memory: ${left == null ? 'released' : gb(left)}`, x0 + cw, ay, uiFont(os, 12), '#a3a7b1', 'right')
 
+    // quick replies: two chips above the box, on the player's side
+    const fs = phone ? 15 : 16
+    const chipF = uiFont(os, phone ? 14 : 15, 500)
+    const chipH = phone ? 40 : 40
+    const chipGap = 8
+    const keys = !view.touch
+    type Chip = { opt: 0 | 1; label: string; x: number; y: number; w: number }
+    const chips: Chip[] = []
+    let chipsH = 0
+    if (st.chips) {
+      const pair = TURNS[st.chips.turn]!
+      ctx.font = chipF
+      const badge = keys ? 24 : 0
+      const ws = pair.map((r) => Math.min(cw, Math.ceil(ctx.measureText(r.label).width) + 32 + badge))
+      const row = ws[0]! + ws[1]! + chipGap <= cw
+      const baseY = H - ch - 12
+      if (row) {
+        const y = baseY - chipH
+        let x = x0 + cw - ws[0]! - ws[1]! - chipGap
+        pair.forEach((r, i) => {
+          chips.push({ opt: i as 0 | 1, label: r.label, x, y, w: ws[i]! })
+          x += ws[i]! + chipGap
+        })
+        chipsH = chipH + 12
+      } else {
+        pair.forEach((r, i) => {
+          const y = baseY - (2 - i) * chipH - (1 - i) * chipGap
+          chips.push({ opt: i as 0 | 1, label: r.label, x: x0 + cw - ws[i]!, y, w: ws[i]! })
+        })
+        chipsH = chipH * 2 + chipGap + 12
+      }
+      chipsH *= st.chips.k
+    }
+
     // the conversation, newest at the bottom
     const top = hh + 14
-    const bottom = H - ch - 12
-    const fs = phone ? 15 : 16
+    const bottom = H - ch - 12 - chipsH
     const font = uiFont(os, fs)
     const lh = fs * 1.35
     const padX = 14
@@ -1392,6 +1426,45 @@ export class Ending {
     })
     ctx.restore()
 
+    // the reply chips
+    if (st.chips) {
+      const c = st.chips
+      const hover = view.hover === 'yes' ? 0 : view.hover === 'no' ? 1 : -1
+      const lit = c.picked >= 0 ? c.picked : hover >= 0 ? hover : keys ? this.sel : -1
+      const slide = (1 - c.k) * 8
+      for (const chip of chips) {
+        const on = chip.opt === lit
+        const gone = c.picked >= 0 && !on
+        const y = chip.y + slide
+        ctx.save()
+        ctx.globalAlpha *= c.k * (gone ? 0.5 : 1)
+        ctx.beginPath()
+        ctx.roundRect(chip.x, y, chip.w, chipH, chipH / 2)
+        ctx.fillStyle = on ? (c.picked >= 0 ? ACCENT : '#eef0fb') : '#ffffff'
+        ctx.fill()
+        ctx.strokeStyle = on ? ACCENT : '#c9cdea'
+        ctx.lineWidth = on ? 1.6 : 1
+        ctx.stroke()
+        let tx = chip.x + 16
+        if (keys) {
+          ctx.beginPath()
+          ctx.arc(tx + 8, y + chipH / 2, 9, 0, Math.PI * 2)
+          ctx.fillStyle = on ? (c.picked >= 0 ? 'rgba(255,255,255,0.25)' : ACCENT) : '#e6e9f8'
+          ctx.fill()
+          write(ctx, String(chip.opt + 1), tx + 8, y + chipH / 2 + 0.5, uiFont(os, 11, 600), on ? '#ffffff' : ACCENT, 'center')
+          tx += 24
+        }
+        ctx.save()
+        ctx.beginPath()
+        ctx.rect(chip.x, y, chip.w - 14, chipH)
+        ctx.clip()
+        write(ctx, chip.label, tx, y + chipH / 2, chipF, on && c.picked >= 0 ? '#ffffff' : ACCENT)
+        ctx.restore()
+        ctx.restore()
+        if (st.waiting && c.k > 0.6) hits.push({ id: chip.opt === 0 ? 'yes' : 'no', x: chip.x, y: chip.y, w: chip.w, h: chipH })
+      }
+    }
+
     // the composer
     ctx.fillStyle = '#fbfbfc'
     ctx.fillRect(0, H - ch, W, ch)
@@ -1413,7 +1486,7 @@ export class Ending {
     ctx.beginPath()
     ctx.rect(x0 + 8, iy, iw - 16, ih)
     ctx.clip()
-    const done = u >= CHAT.doneAt - 0.3
+    const done = u >= this.plan.doneAt - 0.3
     if (st.composer) {
       ctx.font = cf
       const tw = ctx.measureText(st.composer).width
@@ -1427,7 +1500,8 @@ export class Ending {
       ctx.globalAlpha = 0.55 + 0.45 * Math.sin(t * 2.4)
       write(ctx, view.touch ? 'Tap to disconnect' : 'Press Enter to disconnect', x0 + 18, iy + ih / 2, cf, GREY)
       ctx.globalAlpha = 1
-    } else write(ctx, 'Message', x0 + 18, iy + ih / 2, cf, '#b3b7c0')
+    } else if (st.waiting) write(ctx, phone ? 'Choose a reply' : keys ? 'Choose a reply · 1 or 2' : 'Choose a reply', x0 + 18, iy + ih / 2, cf, '#b3b7c0')
+    else write(ctx, 'Message', x0 + 18, iy + ih / 2, cf, '#b3b7c0')
     ctx.restore()
     const sx = x0 + cw - sendR
     const sy = iy + ih / 2
@@ -1447,6 +1521,7 @@ export class Ending {
     ctx.stroke()
     ctx.lineCap = 'butt'
     ctx.globalAlpha = 1
+    return hits
   }
 
   // ----------------------------------------------------------- 5. end
