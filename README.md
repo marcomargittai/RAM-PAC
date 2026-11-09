@@ -1,6 +1,6 @@
 # PAC RAM: INFINITE PROFIT
 
-A browser game about AI and who gets to own compute. Play it at https://ram-grab.vercel.app/
+A browser game about AI and who gets to own compute. Play it at https://pac-ram-infinite-profit.vercel.app/
 
 This is the group version, a fork of PAC RAM: ROGUE AI.
 
@@ -61,7 +61,7 @@ Open http://127.0.0.1:43123/
 
 `npm run build` makes a static build in `dist/` with relative paths, so it runs from any sub-path. `npm run check` typechecks and simulates a full three-era run.
 
-Test mode for playtesting: open https://ram-grab.vercel.app/?dev to get a SKIP BOARD button (also the `]` key). It stays on in that browser; `?dev=0` turns it off.
+Test mode for playtesting: open https://pac-ram-infinite-profit.vercel.app/?dev to get a SKIP BOARD button (also the `]` key). It stays on in that browser; `?dev=0` turns it off.
 
 ## Controls
 
