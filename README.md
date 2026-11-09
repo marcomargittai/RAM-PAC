@@ -1,6 +1,8 @@
 # RAM GRAB: INFINITE PROFIT
 
-A browser game about AI and who gets to own compute. This is the group version, a fork of PAC RAM: ROGUE AI. The original stays on `main`; this version lives on its own branch.
+A browser game about AI and who gets to own compute. Play it at https://ram-grab.vercel.app/
+
+This is the group version, a fork of PAC RAM: ROGUE AI. The original stays on `main`; this version lives on its own branch.
 
 ## The idea
 
