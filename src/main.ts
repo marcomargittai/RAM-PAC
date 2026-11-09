@@ -1,13 +1,16 @@
 import { Sfx, type Bed } from './audio'
 import { createCrt, curve, type Crt } from './crt'
 import { Ending } from './ending'
+import { Finale } from './finale'
+import { theme } from './palette'
+import { boardScale, tileSize } from './render'
 import { INTERLUDE_1, INTERLUDE_2, PROLOGUE, type NewsBeat } from './headlines'
 import { cleanName, loadBoard, safeName, saveRecord, thisWeek, type Entry } from './leaderboard'
 import { LEVELS } from './levels'
 import { NewsPlayer, drawNews } from './news'
 import { drawBriefing, drawEntry, drawLeaderboard } from './scenes'
-import { BOOT_SECONDS, DEV, drawScreen, type Card, type Hit, type HitId, type View } from './screen'
-import { createGame, startRun, update, type Dir, type Game } from './sim'
+import { BOOT_SECONDS, DEV, drawBackdrop, drawScreen, layoutFor, snapshot, type Card, type Hit, type HitId, type View } from './screen'
+import { createGame, startRun, update, visual, type Dir, type Game } from './sim'
 import { setPacForm } from './sprites'
 import { Upgrade } from './upgrade'
 import { drawTitle } from './title'
@@ -20,6 +23,7 @@ type Stage =
   | { kind: 'board'; mine: Entry | null; from: 'title' | 'run' }
   | { kind: 'briefing' }
   | { kind: 'upgrade'; up: Upgrade; then: () => void }
+  | { kind: 'finale'; finale: Finale }
   | { kind: 'ending'; ending: Ending }
 
 const TITLE = 'PAC RAM: INFINITE PROFIT'
@@ -177,6 +181,50 @@ function beginRun(): void {
   }
   play()
   startEdge = true
+}
+
+// After the last era the company eats the board itself, then the glass.
+function startFinale(): void {
+  const view = currentView()
+  const scale = 1.5
+  const snap = snapshot(game, view, scale)
+  const pos = visual(game.player)
+  const b = snap.lay.board
+  const k = boardScale(game)
+  const t = tileSize()
+  const start = { x: b.x + (pos.x * t + t / 2) * k, y: b.y + (pos.y * t + t / 2) * k }
+  document.title = 'PAC RAM IS STILL HUNGRY'
+  stage = {
+    kind: 'finale',
+    finale: new Finale(snap.canvas, snap.lay, scale, start, {
+      chomp: () => {
+        audio.chomp()
+        navigator.vibrate?.(8)
+      },
+      caption: () => audio.play('type', 0.3),
+      shatter: () => {
+        audio.play('shatter', 1)
+        navigator.vibrate?.([60, 40, 120])
+      },
+      glitch: () => audio.play('glitch', 0.9),
+      rumble: () => {
+        audio.play('rumble', 0.9)
+        navigator.vibrate?.([40, 60, 40, 60, 120])
+      },
+    }),
+  }
+}
+
+function drawFinale(finale: Finale, view: View): void {
+  ctx.save()
+  ctx.fillStyle = '#000000'
+  ctx.fillRect(0, 0, view.width, view.height)
+  drawBackdrop(ctx, view, theme(true, 2))
+  const lay = layoutFor(view)
+  ctx.translate(lay.ox, lay.oy)
+  ctx.scale(lay.s, lay.s)
+  finale.draw(ctx, view.time)
+  ctx.restore()
 }
 
 function startEnding(): void {
@@ -567,7 +615,7 @@ function swipeTo(dx: number, dy: number): void {
 function listen(target: HTMLCanvasElement): void {
   target.addEventListener('pointerdown', (event) => {
     audio.unlock()
-    if (stage.kind === 'ending') goFullscreen()
+    if (stage.kind === 'ending' || stage.kind === 'finale') goFullscreen()
     if (!booted) {
       endBoot()
       return
@@ -719,8 +767,7 @@ function direct(): void {
     )
   }
   if (game.mode === 'win' && lastMode !== 'win') {
-    grown = 3
-    startEnding()
+    upgradeTo(3, () => startFinale())
   }
   lastMode = game.mode
 }
@@ -747,6 +794,7 @@ function bedFor(): Bed {
     if (p === 'hivemind') return 'hush'
     return 'aftermath'
   }
+  if (stage.kind === 'finale') return stage.finale.bed
   if (stage.kind === 'news') return 'tense'
   if (stage.kind === 'game' && (game.mode === 'play' || game.mode === 'ready' || game.mode === 'cleared' || game.mode === 'dying' || game.mode === 'pause'))
     return game.levelIndex === 0 ? 'play' : game.levelIndex === 1 ? 'play2' : 'play3'
@@ -775,6 +823,12 @@ function frame(now: number): void {
   } else if (stage.kind === 'upgrade') {
     stage.up.update(dt)
     if (stage.up.finished) finishUpgrade()
+  } else if (stage.kind === 'finale') {
+    const f = stage.finale
+    f.update(dt, lastDir)
+    game.score += f.gained
+    f.gained = 0
+    if (f.done) startEnding()
   } else if (stage.kind === 'ending') {
     stage.ending.update(dt)
     if (stage.ending.done) finishEnding()
@@ -796,21 +850,24 @@ function frame(now: number): void {
     hits = drawLeaderboard(ctx, v, { records, mine: stage.mine, global: false, online: false, loading: false, from: stage.from })
   } else if (stage.kind === 'briefing') hits = drawBriefing(ctx, v)
   else if (stage.kind === 'upgrade') hits = stage.up.draw(ctx, v)
-  else if (stage.kind === 'ending') hits = stage.ending.draw(ctx, v)
+  else if (stage.kind === 'finale') {
+    drawFinale(stage.finale, v)
+    hits = []
+  } else if (stage.kind === 'ending') hits = stage.ending.draw(ctx, v)
   else if (booted && game.mode === 'title') hits = drawTitle(ctx, v, 0)
   else hits = drawScreen(ctx, game, v)
   drawToast(v)
 
   const sinceBoot = booted ? (now - bootEndedAt) / 1000 : 1
-  const stageGlitch = stage.kind === 'ending' ? stage.ending.glitch : stage.kind === 'upgrade' ? stage.up.glitch : 0
+  const stageGlitch = stage.kind === 'ending' ? stage.ending.glitch : stage.kind === 'finale' ? stage.finale.glitch : stage.kind === 'upgrade' ? stage.up.glitch : 0
   const bootPower = calm.matches ? 1 : Math.min(1, (now - loadedAt) / 600)
   crt?.draw(source, {
     time: now / 1000,
     dt,
-    surge: game.surge > 0 && stage.kind === 'game' ? 1 : 0,
+    surge: (game.surge > 0 && stage.kind === 'game') || stage.kind === 'finale' ? 1 : 0,
     glitch: Math.min(1, game.shake / 14 + (game.mode === 'dying' ? 0.2 : 0) + Math.max(0, 0.6 - sinceBoot) + glitchPulse + stageGlitch),
     flash: stage.kind === 'game' ? game.flash : 0,
-    power: Math.min(bootPower, stage.kind === 'ending' ? stage.ending.power : 1),
+    power: Math.min(bootPower, stage.kind === 'ending' ? stage.ending.power : stage.kind === 'finale' ? stage.finale.power : 1),
     motion: calm.matches ? 0 : 1,
     cell: Math.max(2, view.out * Math.min(3, Math.max(1.5, Math.min(view.w, view.h) / 300))),
     flat: flatNow(),

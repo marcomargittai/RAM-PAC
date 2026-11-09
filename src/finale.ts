@@ -237,7 +237,7 @@ export class Finale {
         if (this.phaseT > 0.6) this.line('empty')
         const readEmpty = this.said.has('empty') && (!this.caption || this.caption.age > 2.4)
         if (readEmpty && (boardDone > 0.2 || this.phaseT > 4.2)) this.line('board')
-        if (boardDone > 0.72 || this.phaseT > 22) {
+        if (boardDone > 0.72 || this.phaseT > 18) {
           this.setPhase('pause')
           this.rumbled = false
         }
@@ -245,7 +245,7 @@ export class Finale {
         const outside = this.totalInk - this.boardInk
         const outEaten = this.totalEaten - this.boardEaten
         if ((outside && outEaten / outside > 0.3) || this.phaseT > 9) this.line('market')
-        if (this.progress > 0.9 || this.phaseT > 30) this.setPhase('vacuum')
+        if (this.progress > 0.9 || this.phaseT > 22) this.setPhase('vacuum')
       }
     } else if (this.phase === 'pause') {
       // The maze is gone. Nothing moves. Then the screen around it starts to give.
@@ -307,7 +307,7 @@ export class Finale {
     const ox = this.x
     const oy = this.y
 
-    if (!this.auto && (this.stuck > 0.35 || (this.idle > 2.5 && this.hungry > 0.8) || (this.lastInput === null && this.t > 1.2))) this.auto = true
+    if (!this.auto && (this.stuck > 0.35 || (this.idle > 2.5 && this.hungry > 0.8) || (this.idle > 1.2 && this.hungry > 2.5) || (this.lastInput === null && this.t > 1.2))) this.auto = true
 
     if (this.auto) {
       this.retarget -= dt
@@ -508,10 +508,15 @@ export class Finale {
   private drawMeter(ctx: CanvasRenderingContext2D): void {
     const { W, H, phone } = this.lay
     const pct = Math.floor(this.progress * 100)
+    // bigger on a phone, where the whole layout is drawn at half size
+    const k = phone ? 1.35 : 1
     const w = 330
     const h = 74
-    const hx = W - w - 16
-    const hy = phone ? 24 : H - h - 22
+    ctx.save()
+    ctx.translate(W - (w + 16) * k, phone ? 20 : H - (h + 22) * k)
+    ctx.scale(k, k)
+    const hx = 0
+    const hy = 0
     fill(ctx, 'rgba(0, 0, 0, 0.82)', hx, hy, w, h)
     fill(ctx, ALERT, hx, hy, 4, h)
     label(ctx, `ACQUIRED // ${String(pct).padStart(3, '0')}%`, hx + 16, hy + 22, 28, ALERT, 'left')
@@ -519,6 +524,7 @@ export class Finale {
     const goal =
       this.phase === 'maze' ? 'TAKE THE BOARD' : this.phase === 'pause' ? (this.phaseT < 2.4 ? 'NOTHING LEFT TO BUY' : 'STILL HUNGRY') : 'TAKE THE MARKET'
     label(ctx, goal, hx + 16, hy + 54, 24, this.phase === 'pause' && blink ? ALERT : ICE, 'left')
+    ctx.restore()
   }
 
   // Captions are typed out in a dark box. They sit low on the screen and move
