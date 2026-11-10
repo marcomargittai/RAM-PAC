@@ -169,7 +169,7 @@ function tape(ctx: CanvasRenderingContext2D, game: Game, x: number, y: number, w
 function surgeBar(ctx: CanvasRenderingContext2D, game: Game, x: number, y: number, w: number, h: number, time: number, k: number): void {
   const surging = game.surge > 0
   const r = clamp(surging ? game.surge / game.surgeMax : game.surgeCharge / SURGE_RAM, 0, 1)
-  label(ctx, surging ? 'SURGE' : `SURGE ${game.surgeCharge}/${SURGE_RAM}`, x, y + h / 2, 15 * k, surging ? ALERT : GLOW, 'left')
+  label(ctx, surging ? `SURGE ${game.surge.toFixed(1)}s` : `SURGE ${game.surgeCharge}/${SURGE_RAM}`, x, y + h / 2, 15 * k, surging ? ALERT : GLOW, 'left')
   const bx = x + 110 * k
   const bw = w - 110 * k
   ctx.strokeStyle = surging ? ALERT : 'rgba(150, 214, 255, 0.5)'

@@ -135,20 +135,14 @@ export const INTERLUDE_2: NewsBeat = {
       note: 'The reason given: AI datacenter demand for memory.',
       url: 'https://www.storagenewsletter.com/2025/12/05/micron-announces-exit-from-crucial-consumer-business/',
     },
-    {
-      outlet: 'PCWorld',
-      date: '2 Nov 2026',
-      text: 'Sam Altman says your PC’s memory should belong to him',
-      url: 'https://pcworld.com/article/3274634/sam-altman-says-your-pcs-memory-should-belong-to-him.html',
-    },
   ],
-  // the RAM-in-your-PC remark sits right before the last era; the compute
-  // quote moved to the ending
+  // Right before the last era, the point in one plain line: the headline
+  // PCWorld ran on Altman's remarks about RAM in home PCs.
   quote: {
-    who: 'Sam Altman',
-    where: 'Cheeky Pint podcast',
-    date: 'Oct 2026',
-    text: 'A lot of people want local inference … But from, like, a global allocation perspective, actually, it’s quite terrible to have everybody … And being used five percent of the time.',
+    who: 'PCWorld',
+    where: 'headline',
+    date: '2 Nov 2026',
+    text: 'Sam Altman says your PC’s memory should belong to him',
     url: 'https://pcworld.com/article/3274634/sam-altman-says-your-pcs-memory-should-belong-to-him.html',
   },
   outro: 'What follows has not happened yet. It is what happens if nobody does anything. Including you.',

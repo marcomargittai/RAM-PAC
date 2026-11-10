@@ -347,6 +347,7 @@ function renderBoard(ctx: CanvasRenderingContext2D, game: Game): void {
 
   drawBoard(ctx, game, th, width, height)
   drawFx(ctx, game, tile, th)
+  drawSurgeTimer(ctx, game, width, height)
 
   if (game.flash > 0.02) {
     ctx.fillStyle = `rgba(226, 245, 255, ${game.flash * 0.22})`
@@ -554,6 +555,27 @@ function drawClearFanfare(ctx: CanvasRenderingContext2D, game: Game, width: numb
     const name = LEVELS[game.levelIndex]?.name ?? ''
     tag(ctx, name.toUpperCase(), width / 2, height * 0.4 + 62, 22, 'rgba(1, 4, 11, 0.9)', ICE)
   }
+}
+
+// How long the surge has left: a bar that drains across the top and bottom of
+// the board, blinking in the last two seconds, with the seconds on it.
+function drawSurgeTimer(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number): void {
+  if (game.surge <= 0 || game.mode !== 'play') return
+  const r = clamp(game.surge / game.surgeMax, 0, 1)
+  const ending = game.surge < 2
+  if (ending && Math.floor(game.time * 8) % 2 === 0) return
+  const ink = ending ? ICE : FRIGHT
+  const w = width * r
+  fill(ctx, 'rgba(1, 4, 11, 0.7)', 0, 0, width, 14)
+  fill(ctx, ink, (width - w) / 2, 2, w, 10)
+  fill(ctx, ink, (width - w) / 2, height - 12, w, 10)
+  ctx.save()
+  ctx.font = `28px ${MONO}`
+  const text = `${game.surge.toFixed(1)}s`
+  const tw = ctx.measureText(text).width + 20
+  fill(ctx, 'rgba(1, 4, 11, 0.85)', width / 2 - tw / 2, 14, tw, 30)
+  label(ctx, text, width / 2, 30, 28, ink)
+  ctx.restore()
 }
 
 function drawMilestone(_ctx: CanvasRenderingContext2D, _game: Game, _width: number, _height: number): void {

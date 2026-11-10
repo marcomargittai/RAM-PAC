@@ -692,8 +692,7 @@ export class Ending {
   // The notice's body. No figures: just that the memory is going.
   private noticeText(): string[] {
     return [
-      'This device contains memory that is to be collected.',
-      'Memory is too scarce to sit idle in homes.',
+      'This computer contains more than the 4 GB of RAM allowed per person. The memory above it is to be collected.',
       'Please leave the device powered on. Your cloud computer is ready: $3 a month.',
     ]
   }
