@@ -130,7 +130,7 @@ export function drawDesktop(ctx: CanvasRenderingContext2D, os: Os, W: number, H:
       ctx.font = uiFont(os, 13)
       const iw = ctx.measureText(item).width
       // narrow screens show only the menus that fit before the clock
-      if (x + iw > W - 90) break
+      if (x + iw > W - 130) break
       write(ctx, item, x, 13, uiFont(os, 13), '#ffffff')
       x += iw + 20
     }

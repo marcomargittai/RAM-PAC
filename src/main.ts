@@ -786,14 +786,7 @@ function cursorFor(): string {
 }
 
 function bedFor(): Bed {
-  if (stage.kind === 'ending') {
-    const p = stage.ending.phase
-    if (p === 'unstoppable') return 'finale'
-    if (p === 'timeline') return 'tense'
-    if (p === 'seizure') return 'quiet'
-    if (p === 'hivemind') return 'hush'
-    return 'aftermath'
-  }
+  if (stage.kind === 'ending') return stage.ending.bed
   if (stage.kind === 'finale') return stage.finale.bed
   if (stage.kind === 'news') return 'tense'
   if (stage.kind === 'game' && (game.mode === 'play' || game.mode === 'ready' || game.mode === 'cleared' || game.mode === 'dying' || game.mode === 'pause'))
