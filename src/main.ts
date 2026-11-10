@@ -247,9 +247,12 @@ function startEnding(): void {
   }
 }
 
+// The ending's last screen is the conclusion, with its own Play again, so a
+// win goes straight back into a new run. The run is still kept on the board.
 function finishEnding(): void {
   document.title = TITLE
-  openEntry(true, LEVELS.length)
+  keep({ name: 'INFINITE LABS', score: game.score, level: LEVELS.length, escaped: true, at: Date.now() })
+  runAgain()
 }
 
 function openEntry(escaped: boolean, level: number): void {
