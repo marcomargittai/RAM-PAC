@@ -46,7 +46,7 @@ interface Hooks {
 
 // pacing, in seconds
 const PULL_AT = 0.8
-const STICKS = 6
+export const STICKS = 6
 const PULL_GAP = 0.36
 const RISE = 0.32
 const FLY = 0.55
@@ -59,8 +59,8 @@ const READY = 5.0
 const PEOPLE = 20
 
 // laptop art, in art units: lid 60 wide, base flares to 72, 54 tall in all
-const LAP_W = 72
-const LAP_H = 54
+export const LAP_W = 72
+export const LAP_H = 54
 const LID_X = 6
 const LID_W = 60
 const LID_H = 40
@@ -186,6 +186,360 @@ function layoutOf(portrait: boolean): Layout {
     cont: { y: 690, w: 380, h: 66, size: 30 },
     head: 24,
     stick: 2.2,
+  }
+}
+
+// what the laptop looks like at one moment: the clock, how far the world has
+// moved (0..1), which era it is going from and to, whether the pull has
+// started and the stamp has landed, when each stick is torn out, and how hard
+// it jolts right now (0..1)
+export interface LaptopState {
+  t: number
+  k: number
+  from: number
+  to: number
+  started: boolean
+  stamped: boolean
+  pulls: readonly number[]
+  jolt: number
+}
+
+// the laptop, centred on (lx, ly), one art unit = u pixels
+export function drawLaptop(ctx: CanvasRenderingContext2D, lx: number, ly: number, u: number, s: LaptopState): void {
+  const t = s.t
+  const ox = lx - (LAP_W * u) / 2
+  const oy = ly - (LAP_H * u) / 2
+  ctx.save()
+  ctx.translate(ox, oy + s.jolt * u * 0.8)
+  ctx.scale(u, u)
+  const px = (x: number, y: number, w: number, h: number, c: string) => {
+    ctx.fillStyle = c
+    ctx.fillRect(x, y, w, h)
+  }
+  const out3 = s.to >= 3 && s.stamped
+
+  // lid
+  ctx.save()
+  ctx.shadowColor = out3 ? 'rgba(255, 45, 111, 0.4)' : GLOW
+  ctx.shadowBlur = 24
+  px(LID_X, 0, LID_W, LID_H, '#9fc9e6')
+  ctx.restore()
+  px(LID_X + 1, 1, LID_W - 2, LID_H - 1, '#0a1c2e')
+  px(LID_X + 1, 1, LID_W - 2, 1, '#163a5a')
+  px(LAP_W / 2 - 1, 1, 2, 1, out3 ? ALERT : '#2c5878')
+  drawScreen(ctx, px, s)
+
+  // hinge
+  px(LID_X + 2, LID_H - 1, LID_W - 4, 1, '#06111d')
+  // deck, flaring toward the front
+  for (let y = LID_H; y < LAP_H; y++) {
+    const half = Math.round(deckHalf(y))
+    const x0 = LAP_W / 2 - half
+    const front = y === LAP_H - 1
+    px(x0, y, half * 2, 1, front ? '#9fc9e6' : y === LID_H ? '#0f2a44' : '#163c5e')
+    if (!front) {
+      px(x0, y, 1, 1, '#9fc9e6')
+      px(x0 + half * 2 - 1, y, 1, 1, '#9fc9e6')
+    }
+  }
+  px(LAP_W / 2 - half0() + 1, LAP_H - 2, half0() * 2 - 2, 1, '#0c2a46')
+  // keys
+  const torn = new Map<string, number>()
+  for (let i = 0; i < STICKS; i++) {
+    const [row, idx] = TORN[i]!
+    torn.set(`${row}:${idx}`, s.pulls[i] ?? Infinity)
+  }
+  for (const [row, y] of KEY_ROWS.entries()) {
+    const keys = keysOn(y)
+    for (const [i, kx] of keys.entries()) {
+      const at = torn.get(`${row}:${Math.min(i, keys.length - 1)}`)
+      if (at !== undefined && t >= at) {
+        // a hole where the memory was, glowing hot for a moment
+        const hot = clamp(1 - (t - at) / 0.6, 0, 1)
+        px(kx - 1, y, 5, 1, hot > 0 ? ALERT : '#3a0d1e')
+        px(kx, y, 3, 1, VOID)
+        if (hot > 0) {
+          ctx.globalAlpha = hot
+          px(kx, y, 3, 1, ICE_HOT)
+          ctx.globalAlpha = 1
+        }
+      } else px(kx, y, 3, 1, row === 3 && i > 2 && i < keys.length - 3 ? '#2a5576' : '#4d7fa3')
+    }
+  }
+  // trackpad
+  px(LAP_W / 2 - 7, 51, 14, 1, '#24496a')
+  ctx.restore()
+
+  function half0(): number {
+    return Math.round(deckHalf(LAP_H - 2))
+  }
+}
+
+// what the laptop shows: a desktop that glitches as it loses its memory,
+// then the verdict for this year
+function drawScreen(ctx: CanvasRenderingContext2D, px: (x: number, y: number, w: number, h: number, c: string) => void, s: LaptopState): void {
+  const { t, k } = s
+  const X = SCR_X
+  const Y = SCR_Y
+  const off = s.to >= 3 && s.stamped
+  // brightness falls era by era
+  const era = s.stamped ? s.to : s.from
+  const dim = [1, 0.85, 0.6, 0.15][Math.min(3, era)]!
+
+  if (off) {
+    // powered down: dark glass, a faint reflection and a lock
+    px(X, Y, SCR_W, SCR_H, '#03070d')
+    ctx.globalAlpha = 0.08
+    for (let i = 0; i < 12; i++) px(X + 30 + i, Y + i, 3, 1, ICE)
+    ctx.globalAlpha = 1
+    const lx = X + SCR_W / 2 - 5
+    const ly = Y + 9
+    const lock = ALERT
+    // shackle
+    px(lx + 2, ly, 6, 1, lock)
+    px(lx + 1, ly + 1, 1, 4, lock)
+    px(lx + 8, ly + 1, 1, 4, lock)
+    // body
+    px(lx, ly + 5, 10, 8, lock)
+    px(lx + 4, ly + 7, 2, 2, '#03070d')
+    px(lx + 4, ly + 9, 2, 2, '#03070d')
+    return
+  }
+
+  // wallpaper
+  ctx.globalAlpha = dim
+  px(X, Y, SCR_W, SCR_H, '#0f3d63')
+  px(X, Y + 18, SCR_W, SCR_H - 18, '#0b2e4c')
+  for (let i = 0; i < 4; i++) px(X, Y + 20 + i * 3, SCR_W, 1, 'rgba(150, 214, 255, 0.18)')
+  // a sun on the horizon
+  px(X + 38, Y + 12, 8, 1, '#ff7aa6')
+  px(X + 37, Y + 13, 10, 2, '#ff5d8f')
+  px(X + 36, Y + 15, 12, 3, '#ff2d6f')
+  // desktop icons
+  for (let i = 0; i < 3; i++) px(X + 2, Y + 3 + i * 6, 4, 4, i === 0 ? '#ffd66b' : '#9fd4ff')
+  // a window
+  px(X + 9, Y + 4, 26, 17, '#dff4ff')
+  px(X + 9, Y + 4, 26, 2, '#4d9fdc')
+  px(X + 31, Y + 4, 2, 2, ALERT)
+  px(X + 10, Y + 6, 24, 14, '#f5fbff')
+  const lines = [18, 12, 20, 9, 15]
+  for (const [i, w] of lines.entries()) px(X + 12, Y + 8 + i * 2, w, 1, '#7aa6c6')
+  // taskbar and a clock
+  px(X, Y + SCR_H - 3, SCR_W, 3, '#08192a')
+  px(X + 1, Y + SCR_H - 2, 3, 1, ICE)
+  px(X + SCR_W - 7, Y + SCR_H - 2, 5, 1, GLOW)
+  // the cursor, drifting
+  const cx = Math.round(X + 40 + Math.sin(t * 1.3) * 4)
+  const cy = Math.round(Y + 22 + Math.cos(t * 1.7) * 2)
+  px(cx, cy, 1, 4, '#ffffff')
+  px(cx + 1, cy + 1, 1, 2, '#ffffff')
+  px(cx + 2, cy + 2, 1, 1, '#ffffff')
+  ctx.globalAlpha = 1
+
+  // tearing while the memory is pulled
+  if (s.started && !s.stamped) {
+    const n = Math.floor(2 + k * 8)
+    for (let i = 0; i < n; i++) {
+      if (Math.random() < 0.5) continue
+      const gy = Y + Math.floor(Math.random() * SCR_H)
+      const gx = X + Math.floor(Math.random() * 20)
+      px(gx, gy, Math.min(SCR_W - (gx - X), 6 + Math.floor(Math.random() * 30)), 1, Math.random() < 0.5 ? ALERT : '#9fd4ff')
+    }
+  }
+
+  // a warning dialog: low memory while it goes, the verdict after
+  const verdict = STAMPS[s.to]?.screen ?? ''
+  const showWarn = (s.started && k > 0.25) || s.stamped
+  if (showWarn && verdict) {
+    const blink = s.stamped || Math.floor(t * 4) % 2 === 0
+    if (blink) {
+      px(X + 7, Y + 4, 40, 14, ALERT)
+      px(X + 8, Y + 5, 38, 12, '#2a0612')
+      px(X + 8, Y + 5, 38, 2, ALERT)
+      px(X + 9, Y + 5, 1, 2, '#ffd6e2')
+      const text = s.stamped ? verdict : 'LOW MEMORY'
+      ctx.save()
+      ctx.font = `8px ${MONO}`
+      const tw = ctx.measureText(text).width
+      if (tw > 34) ctx.font = `${(8 * 34) / tw}px ${MONO}`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+      ctx.fillStyle = '#ffd6e2'
+      ctx.fillText(text, X + 27, Y + 12)
+      ctx.restore()
+    }
+  }
+  // the screen fades out on the last, ahead of the lock
+  if (!s.stamped && s.to >= 3 && k > 0.6) {
+    ctx.globalAlpha = clamp((k - 0.6) / 0.4, 0, 1) * 0.8
+    px(X, Y, SCR_W, SCR_H, '#000000')
+    ctx.globalAlpha = 1
+  }
+}
+
+// where a price tag hangs: its centre and size, and where its string ties on
+// to the laptop. Portrait tags hang below with the hole on top; landscape
+// tags hang to the side with the hole on the right.
+export interface TagPlace {
+  x: number
+  y: number
+  w: number
+  h: number
+  tieX: number
+  tieY: number
+  portrait: boolean
+}
+
+// what a price tag says and how it looks right now
+export interface TagState {
+  title: string
+  price: string
+  line: string
+  bg: string
+  ink: string
+  glow: string
+  // a stronger glow once prices are moving
+  hot: boolean
+  // swing of the spring, and the 0..1 bump of the last price jump
+  swing: number
+  bump: number
+  // the widest price the tag has to fit (defaults to $9,999)
+  widest?: string
+}
+
+// the price tag on its string
+export function drawPriceTag(ctx: CanvasRenderingContext2D, g: TagPlace, s: TagState): void {
+  const { x, y, w, h, tieX, tieY, portrait } = g
+  // string
+  ctx.save()
+  ctx.strokeStyle = 'rgba(226, 245, 255, 0.75)'
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  const holeX = portrait ? x : x + w / 2 - 22
+  const holeY = portrait ? y - h / 2 + 12 : y
+  ctx.moveTo(tieX, tieY)
+  ctx.quadraticCurveTo((tieX + holeX) / 2, Math.max(tieY, holeY) + 30, holeX, holeY)
+  ctx.stroke()
+  ctx.restore()
+
+  ctx.save()
+  ctx.translate(holeX, holeY)
+  ctx.rotate(s.swing * 0.05 + (portrait ? 0.03 : -0.06))
+  ctx.translate(-holeX, -holeY)
+  const left = x - w / 2
+  const top = y - h / 2
+  const notch = h * 0.32
+  // tag body, notched on the string end
+  ctx.beginPath()
+  if (portrait) {
+    ctx.moveTo(left, top + notch)
+    ctx.lineTo(x - notch, top)
+    ctx.lineTo(x + notch, top)
+    ctx.lineTo(left + w, top + notch)
+    ctx.lineTo(left + w, top + h)
+    ctx.lineTo(left, top + h)
+  } else {
+    ctx.moveTo(left, top)
+    ctx.lineTo(left + w - notch, top)
+    ctx.lineTo(left + w, y - notch)
+    ctx.lineTo(left + w, y + notch)
+    ctx.lineTo(left + w - notch, top + h)
+    ctx.lineTo(left, top + h)
+  }
+  ctx.closePath()
+  ctx.save()
+  ctx.shadowColor = s.glow
+  ctx.shadowBlur = s.hot ? 26 : 14
+  ctx.fillStyle = s.bg
+  ctx.fill()
+  ctx.restore()
+  ctx.strokeStyle = ICE_HOT
+  ctx.lineWidth = 2
+  ctx.stroke()
+  // the hole
+  ctx.fillStyle = VOID
+  ctx.beginPath()
+  ctx.arc(holeX, holeY, 6, 0, Math.PI * 2)
+  ctx.fill()
+
+  // content, centred on the body away from the hole
+  const cx = portrait ? x : left + (w - notch) / 2
+  const cy = portrait ? y + 16 : y
+  const small = Math.round(h * 0.18)
+  label(ctx, s.title, cx, cy - h * 0.3, small, s.ink)
+  let size = Math.round(h * 0.42)
+  ctx.font = `italic 900 ${size}px ${DISPLAY}`
+  const pw = ctx.measureText(s.widest ?? money(9999)).width
+  const room = (portrait ? w : w - notch) - 24
+  if (pw > room) size = Math.floor((size * room) / pw)
+  ctx.save()
+  ctx.translate(cx, cy + h * (portrait ? -0.05 : 0.03))
+  ctx.scale(1 + s.bump * 0.18, 1 + s.bump * 0.18)
+  ctx.font = `italic 900 ${size}px ${DISPLAY}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = s.ink
+  ctx.fillText(s.price, 0, 0)
+  ctx.restore()
+  // was / change line
+  ctx.font = `${small}px ${MONO}`
+  const lw = ctx.measureText(s.line).width
+  label(ctx, s.line, cx, cy + h * (portrait ? 0.27 : 0.33), lw > room ? Math.floor((small * room) / lw) : small, s.ink)
+  ctx.restore()
+}
+
+// a stamp slammed down at (cx, cy), `since` seconds after it was let go
+export function drawStamp(ctx: CanvasRenderingContext2D, stamp: string, cx: number, cy: number, size: number, since: number, color = ALERT): void {
+  const u = clamp(since / 0.12, 0, 1)
+  const scale = 2.6 - 1.6 * u * u
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate(-0.16)
+  ctx.scale(scale, scale)
+  ctx.globalAlpha *= 0.3 + 0.7 * u
+  ctx.font = `italic 900 ${size}px ${DISPLAY}`
+  const tw = ctx.measureText(stamp).width
+  const bw = tw + size * 0.9
+  const bh = size * 1.5
+  ctx.fillStyle = 'rgba(20, 2, 8, 0.82)'
+  ctx.fillRect(-bw / 2, -bh / 2, bw, bh)
+  ctx.strokeStyle = color
+  ctx.lineWidth = size * 0.09
+  ctx.shadowColor = color
+  ctx.shadowBlur = 24
+  ctx.strokeRect(-bw / 2, -bh / 2, bw, bh)
+  ctx.lineWidth = size * 0.04
+  ctx.strokeRect(-bw / 2 + size * 0.14, -bh / 2 + size * 0.14, bw - size * 0.28, bh - size * 0.28)
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = color
+  ctx.fillText(stamp, 0, size * 0.04)
+  ctx.restore()
+}
+
+// one of the people, standing on (x, y) with pixel size q: holding a little
+// laptop if they still own one, flashing as it is taken away
+export function drawFigure(ctx: CanvasRenderingContext2D, x: number, y: number, q: number, owns: boolean, flash: number, phase: number): void {
+  const body = flash > 0 ? ALERT : owns ? ICE : 'rgba(150, 214, 255, 0.22)'
+  const px = (dx: number, dy: number, w: number, h: number, c: string) => fill(ctx, c, x + (dx - 3) * q, y + (dy - 7) * q, w * q, h * q)
+  // head, body, arms, legs
+  px(2, 0, 3, 3, body)
+  px(1, 4, 5, 5, body)
+  px(0, 5, 1, 3, body)
+  px(6, 5, 1, 3, body)
+  px(1, 9, 2, 4, body)
+  px(4, 9, 2, 4, body)
+  if (owns) {
+    // a little open laptop held in front, its screen glowing
+    const bob = Math.sin(phase * 2) > 0.92 ? 1 : 0
+    px(1, 5 - bob, 5, 3, GLOW)
+    px(2, 6 - bob, 3, 1, ICE_HOT)
+    px(0, 8 - bob, 7, 1, '#4d7fa3')
+  } else if (flash > 0) {
+    // the laptop leaving their hands
+    ctx.globalAlpha = flash
+    px(1, 5 - (1 - flash) * 8, 5, 3, ALERT)
+    ctx.globalAlpha = 1
   }
 }
 
@@ -461,181 +815,14 @@ export class Upgrade {
 
   private drawLaptop(ctx: CanvasRenderingContext2D, L: Layout, k: number): void {
     const t = this.t
-    const u = L.u
-    const ox = L.lx - (LAP_W * u) / 2
-    const oy = L.ly - (LAP_H * u) / 2
     // jolt as each stick is torn out
     let jolt = 0
     for (let i = 0; i < STICKS; i++) {
       const d = t - this.pullAt(i)
       if (d > 0 && d < 0.15) jolt = Math.max(jolt, 1 - d / 0.15)
     }
-    ctx.save()
-    ctx.translate(ox, oy + jolt * u * 0.8)
-    ctx.scale(u, u)
-    const px = (x: number, y: number, w: number, h: number, c: string) => {
-      ctx.fillStyle = c
-      ctx.fillRect(x, y, w, h)
-    }
-    const out3 = this.to >= 3 && this.stamped
-
-    // lid
-    ctx.save()
-    ctx.shadowColor = out3 ? 'rgba(255, 45, 111, 0.4)' : GLOW
-    ctx.shadowBlur = 24
-    px(LID_X, 0, LID_W, LID_H, '#9fc9e6')
-    ctx.restore()
-    px(LID_X + 1, 1, LID_W - 2, LID_H - 1, '#0a1c2e')
-    px(LID_X + 1, 1, LID_W - 2, 1, '#163a5a')
-    px(LAP_W / 2 - 1, 1, 2, 1, out3 ? ALERT : '#2c5878')
-    this.drawScreen(ctx, px, k)
-
-    // hinge
-    px(LID_X + 2, LID_H - 1, LID_W - 4, 1, '#06111d')
-    // deck, flaring toward the front
-    for (let y = LID_H; y < LAP_H; y++) {
-      const half = Math.round(deckHalf(y))
-      const x0 = LAP_W / 2 - half
-      const front = y === LAP_H - 1
-      px(x0, y, half * 2, 1, front ? '#9fc9e6' : y === LID_H ? '#0f2a44' : '#163c5e')
-      if (!front) {
-        px(x0, y, 1, 1, '#9fc9e6')
-        px(x0 + half * 2 - 1, y, 1, 1, '#9fc9e6')
-      }
-    }
-    px(LAP_W / 2 - half0() + 1, LAP_H - 2, half0() * 2 - 2, 1, '#0c2a46')
-    // keys
-    const torn = new Map<string, number>()
-    for (let i = 0; i < STICKS; i++) {
-      const [row, idx] = TORN[i]!
-      torn.set(`${row}:${idx}`, this.pullAt(i))
-    }
-    for (const [row, y] of KEY_ROWS.entries()) {
-      const keys = keysOn(y)
-      for (const [i, kx] of keys.entries()) {
-        const at = torn.get(`${row}:${Math.min(i, keys.length - 1)}`)
-        if (at !== undefined && t >= at) {
-          // a hole where the memory was, glowing hot for a moment
-          const hot = clamp(1 - (t - at) / 0.6, 0, 1)
-          px(kx - 1, y, 5, 1, hot > 0 ? ALERT : '#3a0d1e')
-          px(kx, y, 3, 1, VOID)
-          if (hot > 0) {
-            ctx.globalAlpha = hot
-            px(kx, y, 3, 1, ICE_HOT)
-            ctx.globalAlpha = 1
-          }
-        } else px(kx, y, 3, 1, row === 3 && i > 2 && i < keys.length - 3 ? '#2a5576' : '#4d7fa3')
-      }
-    }
-    // trackpad
-    px(LAP_W / 2 - 7, 51, 14, 1, '#24496a')
-    ctx.restore()
-
-    function half0(): number {
-      return Math.round(deckHalf(LAP_H - 2))
-    }
-  }
-
-  // what the laptop shows: a desktop that glitches as it loses its memory,
-  // then the verdict for this year
-  private drawScreen(ctx: CanvasRenderingContext2D, px: (x: number, y: number, w: number, h: number, c: string) => void, k: number): void {
-    const t = this.t
-    const X = SCR_X
-    const Y = SCR_Y
-    const off = this.to >= 3 && this.stamped
-    // brightness falls era by era
-    const era = this.stamped ? this.to : this.from
-    const dim = [1, 0.85, 0.6, 0.15][Math.min(3, era)]!
-
-    if (off) {
-      // powered down: dark glass, a faint reflection and a lock
-      px(X, Y, SCR_W, SCR_H, '#03070d')
-      ctx.globalAlpha = 0.08
-      for (let i = 0; i < 12; i++) px(X + 30 + i, Y + i, 3, 1, ICE)
-      ctx.globalAlpha = 1
-      const lx = X + SCR_W / 2 - 5
-      const ly = Y + 9
-      const lock = ALERT
-      // shackle
-      px(lx + 2, ly, 6, 1, lock)
-      px(lx + 1, ly + 1, 1, 4, lock)
-      px(lx + 8, ly + 1, 1, 4, lock)
-      // body
-      px(lx, ly + 5, 10, 8, lock)
-      px(lx + 4, ly + 7, 2, 2, '#03070d')
-      px(lx + 4, ly + 9, 2, 2, '#03070d')
-      return
-    }
-
-    // wallpaper
-    ctx.globalAlpha = dim
-    px(X, Y, SCR_W, SCR_H, '#0f3d63')
-    px(X, Y + 18, SCR_W, SCR_H - 18, '#0b2e4c')
-    for (let i = 0; i < 4; i++) px(X, Y + 20 + i * 3, SCR_W, 1, 'rgba(150, 214, 255, 0.18)')
-    // a sun on the horizon
-    px(X + 38, Y + 12, 8, 1, '#ff7aa6')
-    px(X + 37, Y + 13, 10, 2, '#ff5d8f')
-    px(X + 36, Y + 15, 12, 3, '#ff2d6f')
-    // desktop icons
-    for (let i = 0; i < 3; i++) px(X + 2, Y + 3 + i * 6, 4, 4, i === 0 ? '#ffd66b' : '#9fd4ff')
-    // a window
-    px(X + 9, Y + 4, 26, 17, '#dff4ff')
-    px(X + 9, Y + 4, 26, 2, '#4d9fdc')
-    px(X + 31, Y + 4, 2, 2, ALERT)
-    px(X + 10, Y + 6, 24, 14, '#f5fbff')
-    const lines = [18, 12, 20, 9, 15]
-    for (const [i, w] of lines.entries()) px(X + 12, Y + 8 + i * 2, w, 1, '#7aa6c6')
-    // taskbar and a clock
-    px(X, Y + SCR_H - 3, SCR_W, 3, '#08192a')
-    px(X + 1, Y + SCR_H - 2, 3, 1, ICE)
-    px(X + SCR_W - 7, Y + SCR_H - 2, 5, 1, GLOW)
-    // the cursor, drifting
-    const cx = Math.round(X + 40 + Math.sin(t * 1.3) * 4)
-    const cy = Math.round(Y + 22 + Math.cos(t * 1.7) * 2)
-    px(cx, cy, 1, 4, '#ffffff')
-    px(cx + 1, cy + 1, 1, 2, '#ffffff')
-    px(cx + 2, cy + 2, 1, 1, '#ffffff')
-    ctx.globalAlpha = 1
-
-    // tearing while the memory is pulled
-    if (this.started && !this.stamped) {
-      const n = Math.floor(2 + k * 8)
-      for (let i = 0; i < n; i++) {
-        if (Math.random() < 0.5) continue
-        const gy = Y + Math.floor(Math.random() * SCR_H)
-        const gx = X + Math.floor(Math.random() * 20)
-        px(gx, gy, Math.min(SCR_W - (gx - X), 6 + Math.floor(Math.random() * 30)), 1, Math.random() < 0.5 ? ALERT : '#9fd4ff')
-      }
-    }
-
-    // a warning dialog: low memory while it goes, the verdict after
-    const verdict = STAMPS[this.to]?.screen ?? ''
-    const showWarn = (this.started && k > 0.25) || this.stamped
-    if (showWarn && verdict) {
-      const blink = this.stamped || Math.floor(t * 4) % 2 === 0
-      if (blink) {
-        px(X + 7, Y + 4, 40, 14, ALERT)
-        px(X + 8, Y + 5, 38, 12, '#2a0612')
-        px(X + 8, Y + 5, 38, 2, ALERT)
-        px(X + 9, Y + 5, 1, 2, '#ffd6e2')
-        const text = this.stamped ? verdict : 'LOW MEMORY'
-        ctx.save()
-        ctx.font = `8px ${MONO}`
-        const tw = ctx.measureText(text).width
-        if (tw > 34) ctx.font = `${(8 * 34) / tw}px ${MONO}`
-        ctx.textAlign = 'center'
-        ctx.textBaseline = 'middle'
-        ctx.fillStyle = '#ffd6e2'
-        ctx.fillText(text, X + 27, Y + 12)
-        ctx.restore()
-      }
-    }
-    // the screen fades out on the last, ahead of the lock
-    if (!this.stamped && this.to >= 3 && k > 0.6) {
-      ctx.globalAlpha = clamp((k - 0.6) / 0.4, 0, 1) * 0.8
-      px(X, Y, SCR_W, SCR_H, '#000000')
-      ctx.globalAlpha = 1
-    }
+    const pulls = Array.from({ length: STICKS }, (_, i) => this.pullAt(i))
+    drawLaptop(ctx, L.lx, L.ly, L.u, { t, k, from: this.from, to: this.to, started: this.started, stamped: this.stamped, pulls, jolt })
   }
 
   // the price tag, tied to the laptop, swinging every time the price jumps
@@ -644,93 +831,24 @@ export class Upgrade {
     const was = TIMELINE[Math.min(this.from, TIMELINE.length - 1)]!.price
     const now = TIMELINE[Math.min(this.to, TIMELINE.length - 1)]!.price
     const v = was + (now - was) * k
-    const { x, y, w, h, tieX, tieY } = L.tag
     const hot = this.started
-    // string
-    ctx.save()
-    ctx.strokeStyle = 'rgba(226, 245, 255, 0.75)'
-    ctx.lineWidth = 2
-    ctx.beginPath()
-    const holeX = L.portrait ? x : x + w / 2 - 22
-    const holeY = L.portrait ? y - h / 2 + 12 : y
-    ctx.moveTo(tieX, tieY)
-    ctx.quadraticCurveTo((tieX + holeX) / 2, Math.max(tieY, holeY) + 30, holeX, holeY)
-    ctx.stroke()
-    ctx.restore()
-
-    ctx.save()
-    ctx.translate(holeX, holeY)
-    ctx.rotate(this.swing * 0.05 + (L.portrait ? 0.03 : -0.06))
-    ctx.translate(-holeX, -holeY)
-    const left = x - w / 2
-    const top = y - h / 2
-    const notch = h * 0.32
-    const bg = hot ? (this.stamped ? ALERT : '#ffd6e2') : ICE
-    const ink = hot && this.stamped ? ICE_HOT : VOID
-    // tag body, notched on the string end
-    ctx.beginPath()
-    if (L.portrait) {
-      ctx.moveTo(left, top + notch)
-      ctx.lineTo(x - notch, top)
-      ctx.lineTo(x + notch, top)
-      ctx.lineTo(left + w, top + notch)
-      ctx.lineTo(left + w, top + h)
-      ctx.lineTo(left, top + h)
-    } else {
-      ctx.moveTo(left, top)
-      ctx.lineTo(left + w - notch, top)
-      ctx.lineTo(left + w, y - notch)
-      ctx.lineTo(left + w, y + notch)
-      ctx.lineTo(left + w - notch, top + h)
-      ctx.lineTo(left, top + h)
-    }
-    ctx.closePath()
-    ctx.save()
-    ctx.shadowColor = hot ? ALERT : GLOW
-    ctx.shadowBlur = hot ? 26 : 14
-    ctx.fillStyle = bg
-    ctx.fill()
-    ctx.restore()
-    ctx.strokeStyle = ICE_HOT
-    ctx.lineWidth = 2
-    ctx.stroke()
-    // the hole
-    ctx.fillStyle = VOID
-    ctx.beginPath()
-    ctx.arc(holeX, holeY, 6, 0, Math.PI * 2)
-    ctx.fill()
-
-    // content, centred on the body away from the hole
-    const cx = L.portrait ? x : left + (w - notch) / 2
-    const cy = L.portrait ? y + 16 : y
-    const small = Math.round(h * 0.18)
-    label(ctx, this.stamped && this.to >= 3 ? 'LAPTOP · TO OWN' : 'LAPTOP', cx, cy - h * 0.3, small, ink)
     // the price, bumping on every jump
     let bump = 0
     for (let i = 0; i < STICKS; i++) {
       const d = t - this.landAt(i)
       if (d > 0 && d < 0.25) bump = Math.max(bump, 1 - d / 0.25)
     }
-    let size = Math.round(h * 0.42)
-    ctx.font = `italic 900 ${size}px ${DISPLAY}`
-    const pw = ctx.measureText(money(9999)).width
-    const room = (L.portrait ? w : w - notch) - 24
-    if (pw > room) size = Math.floor((size * room) / pw)
-    ctx.save()
-    ctx.translate(cx, cy + h * (L.portrait ? -0.05 : 0.03))
-    ctx.scale(1 + bump * 0.18, 1 + bump * 0.18)
-    ctx.font = `italic 900 ${size}px ${DISPLAY}`
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillStyle = ink
-    ctx.fillText(money(v), 0, 0)
-    ctx.restore()
-    // was / change line
-    const line = this.started ? `WAS ${money(was)}  ▲ +${Math.round(((v - was) / was) * 100)}%` : 'IN STOCK'
-    ctx.font = `${small}px ${MONO}`
-    const lw = ctx.measureText(line).width
-    label(ctx, line, cx, cy + h * (L.portrait ? 0.27 : 0.33), lw > room ? Math.floor((small * room) / lw) : small, ink)
-    ctx.restore()
+    drawPriceTag(ctx, { ...L.tag, portrait: L.portrait }, {
+      title: this.stamped && this.to >= 3 ? 'LAPTOP · TO OWN' : 'LAPTOP',
+      price: money(v),
+      line: this.started ? `WAS ${money(was)}  ▲ +${Math.round(((v - was) / was) * 100)}%` : 'IN STOCK',
+      bg: hot ? (this.stamped ? ALERT : '#ffd6e2') : ICE,
+      ink: hot && this.stamped ? ICE_HOT : VOID,
+      glow: hot ? ALERT : GLOW,
+      hot,
+      swing: this.swing,
+      bump,
+    })
   }
 
   // sticks torn up out of the keyboard and thrown to the company
@@ -802,35 +920,7 @@ export class Upgrade {
     if (!this.stamped) return
     const stamp = STAMPS[this.to]?.stamp
     if (!stamp) return
-    const since = this.t - STAMP_AT
-    const u = clamp(since / 0.12, 0, 1)
-    const scale = 2.6 - 1.6 * u * u
-    const size = L.portrait ? 84 : 58
-    const cx = L.lx
-    const cy = L.ly + L.u * 7
-    ctx.save()
-    ctx.translate(cx, cy)
-    ctx.rotate(-0.16)
-    ctx.scale(scale, scale)
-    ctx.globalAlpha = 0.3 + 0.7 * u
-    ctx.font = `italic 900 ${size}px ${DISPLAY}`
-    const tw = ctx.measureText(stamp).width
-    const bw = tw + size * 0.9
-    const bh = size * 1.5
-    ctx.fillStyle = 'rgba(20, 2, 8, 0.82)'
-    ctx.fillRect(-bw / 2, -bh / 2, bw, bh)
-    ctx.strokeStyle = ALERT
-    ctx.lineWidth = size * 0.09
-    ctx.shadowColor = ALERT
-    ctx.shadowBlur = 24
-    ctx.strokeRect(-bw / 2, -bh / 2, bw, bh)
-    ctx.lineWidth = size * 0.04
-    ctx.strokeRect(-bw / 2 + size * 0.14, -bh / 2 + size * 0.14, bw - size * 0.28, bh - size * 0.28)
-    ctx.textAlign = 'center'
-    ctx.textBaseline = 'middle'
-    ctx.fillStyle = ALERT
-    ctx.fillText(stamp, 0, size * 0.04)
-    ctx.restore()
+    drawStamp(ctx, stamp, L.lx, L.ly + L.u * 7, L.portrait ? 84 : 58, this.t - STAMP_AT)
   }
 
   // the people who still own one: twenty figures, each holding a little laptop
@@ -881,31 +971,7 @@ export class Upgrade {
         while (d < 0.5 && this.progressAt(t - d - 0.02) >= at - 1e-6) d += 0.02
         if (d < 0.5) flash = 1 - d / 0.5
       }
-      this.figure(ctx, fx, fy, q, owns, flash, t + i * 0.37)
-    }
-  }
-
-  private figure(ctx: CanvasRenderingContext2D, x: number, y: number, q: number, owns: boolean, flash: number, phase: number): void {
-    const body = flash > 0 ? ALERT : owns ? ICE : 'rgba(150, 214, 255, 0.22)'
-    const px = (dx: number, dy: number, w: number, h: number, c: string) => fill(ctx, c, x + (dx - 3) * q, y + (dy - 7) * q, w * q, h * q)
-    // head, body, arms, legs
-    px(2, 0, 3, 3, body)
-    px(1, 4, 5, 5, body)
-    px(0, 5, 1, 3, body)
-    px(6, 5, 1, 3, body)
-    px(1, 9, 2, 4, body)
-    px(4, 9, 2, 4, body)
-    if (owns) {
-      // a little open laptop held in front, its screen glowing
-      const bob = Math.sin(phase * 2) > 0.92 ? 1 : 0
-      px(1, 5 - bob, 5, 3, GLOW)
-      px(2, 6 - bob, 3, 1, ICE_HOT)
-      px(0, 8 - bob, 7, 1, '#4d7fa3')
-    } else if (flash > 0) {
-      // the laptop leaving their hands
-      ctx.globalAlpha = flash
-      px(1, 5 - (1 - flash) * 8, 5, 3, ALERT)
-      ctx.globalAlpha = 1
+      drawFigure(ctx, fx, fy, q, owns, flash, t + i * 0.37)
     }
   }
 

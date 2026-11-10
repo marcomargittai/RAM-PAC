@@ -342,8 +342,14 @@ function drawCaught(ctx: CanvasRenderingContext2D, game: Game, x: number, y: num
   const ny = gy + size / 2 + 40 * k
   ctx.fillText(name, cx, ny, w - 30)
   if (law?.about) {
-    ctx.font = `${Math.round(20 * k)}px ${MONO}`
-    label(ctx, law.about, cx, ny + 36 * k, 20 * k, ICE)
+    // shrink the line until it fits the panel
+    let size = 20 * k
+    ctx.font = `${size}px ${MONO}`
+    while (size > 11 && ctx.measureText(law.about).width > w - 28) {
+      size -= 1
+      ctx.font = `${size}px ${MONO}`
+    }
+    label(ctx, law.about, cx, ny + 36 * k, size, ICE)
   }
   const drop = `INFL \u25BC -${Math.round((1 - CAUGHT_DROP) * 100)}%`
   label(ctx, drop, cx, ny + 76 * k, 30 * k, DOWN)

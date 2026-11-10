@@ -6,8 +6,9 @@
 //   seizure   the CRT drops away; the player's own computer shows a notice that
 //             its memory is being collected. The only answer is Comply.
 //   cost      the tube comes back on: what it cost everyone else (laptop prices
-//             up, computer ownership down), then "This was a game." with the
-//             real price rise and Altman's real quote. CONTINUE.
+//             up, computer ownership down, around the same laptop the
+//             upgrade screens strip), then "This was a game." with the real
+//             price rise and Altman's real quote. CONTINUE.
 //   score     the arcade ending: GAME OVER, the RAM you collected as the high
 //             score, the share bar (you against the consumers), PLAY AGAIN.
 
@@ -17,7 +18,8 @@ import { drawDesktop, drawWindow, family, uiFont, wrapText, type Rect } from './
 import { ALERT, GLOW, ICE, VOID } from './palette'
 import { DISPLAY, MONO } from './render'
 import type { Hit, HitId, View } from './screen'
-import { ALTMAN_RAM_QUOTE, TIMELINE, type Milestone } from './headlines'
+import { TIMELINE, type Milestone } from './headlines'
+import { LAP_H, LAP_W, STICKS, drawFigure, drawLaptop, drawPriceTag, drawStamp, type TagPlace } from './upgrade'
 
 export interface EndingStats {
   score: number
@@ -39,7 +41,8 @@ export interface EndingHooks {
 
 export type EndingPhase = 'timeline' | 'seizure' | 'cost' | 'score'
 
-const AMBER = '#ffb23e'
+// what it costs everyone else is bad news: those numbers are red
+const RED = '#ff2e45'
 const PROJ = '#c9a2ff'
 const DIM = 'rgba(226, 245, 255, 0.55)'
 const FAINT = 'rgba(226, 245, 255, 0.28)'
@@ -133,19 +136,35 @@ function buildItems(): Item[] {
 
 // white fades to black, then the tube comes back on
 const C_ON = 0.9
-// everyone else: what a laptop costs, who still owns a computer
+// everyone else: the laptop's price counts up as its memory is torn out, the
+// stamp lands, then the people who still own a computer grey out
 const C_HEAD = 1.3
 const C_PRICE = 1.6
-const C_OWN = 2.6
-const COUNT = 1.4
+const COUNT = 1.2
+const C_PULL = C_PRICE + 0.35
+const C_STAMP = C_PULL + COUNT + 0.15
+const C_OWN = C_STAMP + 0.1
+const C_NOTE = C_OWN + 0.35 + COUNT + 0.15
 // perspective
-const C_RULE = 4.6
-const C_GAME = 5.0
-const C_REAL = 5.7
-const C_QUOTE = 6.4
-const C_READY = 7.2
+const C_RULE = C_NOTE + 0.2
+const C_GAME = C_RULE + 0.3
+const C_REAL = C_GAME + 0.5
+const C_QUOTE = C_REAL + 0.5
+const C_READY = C_QUOTE + 0.7
 // Enter jumps to the end of the next beat
-const C_BEATS = [C_OWN + COUNT + 0.6, C_READY]
+const C_BEATS = [C_STAMP + 0.3, C_NOTE, C_READY]
+
+// the quote at the end of the cost screen
+const LEX_QUOTE = {
+  who: 'Sam Altman',
+  where: 'Lex Fridman Podcast',
+  date: 'Mar 2024',
+  text: 'I think compute is going to be the currency of the future. I think it’ll be maybe the most precious commodity in the world.',
+  url: 'https://lexfridman.com/sam-altman-2-transcript',
+}
+
+// the row of people, as on the upgrade screens
+const PEOPLE = 20
 
 // ------------------------------------------------------------- score screen timing
 
@@ -336,6 +355,10 @@ export class Ending {
       this.once('on', C_ON, () => {
         this.hooks.hum()
         this.glitch = 0.9
+      })
+      this.once('rent', C_STAMP, () => {
+        this.hooks.stamp()
+        this.glitch = 0.7
       })
       this.once('game', C_GAME, () => {
         this.glitch = 0.6
@@ -820,31 +843,35 @@ export class Ending {
     const a = (at: number, d = 0.5) => ease((t - at) / d)
 
     // --- everyone else
-    this.header(ctx, 'EVERYONE ELSE', 0, L.dw, L.head, AMBER, L.headSize, a(C_HEAD))
-    const money$ = (v: number) => `$${Math.round(v).toLocaleString('en-US')}`
-    this.costRow(ctx, 0, L.dw, L.laptop, L, 'A NEW LAPTOP', C_PRICE, (k) => (k >= 1 ? `${money$(PRICE_NOW)}+` : money$(PRICE_THEN + (PRICE_NOW - PRICE_THEN) * k)), money$(PRICE_THEN))
-    this.costRow(ctx, 0, L.dw, L.own, L, 'PEOPLE WHO OWN A COMPUTER', C_OWN, (k) => `${Math.round(OWN_THEN + (OWN_NOW - OWN_THEN) * k)}%`, `${OWN_THEN}%`)
-    ctx.globalAlpha = a(C_OWN + COUNT + 0.2)
-    write(ctx, '20XX hasn’t happened. Yet.', L.dw, L.note, mono(L.smallSize), FAINT, 'right', 1)
+    this.header(ctx, 'EVERYONE ELSE', L.colX, L.colW, L.head, GLOW, L.headSize, a(C_HEAD))
+    ctx.globalAlpha = a(C_HEAD) * 0.8
+    write(ctx, '2022 → 20XX', L.colX + L.colW, L.head, mono(L.smallSize), DIM, 'right', 1)
+    ctx.globalAlpha = 1
+    this.drawCostLaptop(ctx, L)
+    this.drawCostPeople(ctx, L)
+    ctx.globalAlpha = a(C_NOTE)
+    write(ctx, '20XX hasn’t happened. Yet.', L.colX + L.colW, L.note, mono(L.smallSize), FAINT, 'right', 1)
 
     // --- the step back
     if (t >= C_RULE) {
       ctx.globalAlpha = 1
       ctx.fillStyle = 'rgba(226, 245, 255, 0.35)'
-      const rw = L.dw * ease((t - C_RULE) / 0.5)
-      ctx.fillRect(L.dw / 2 - rw / 2, L.rule, rw, 1.5)
+      const e = ease((t - C_RULE) / 0.5)
+      const r = L.rule
+      if (r.w > r.h) ctx.fillRect(r.x + (r.w * (1 - e)) / 2, r.y, r.w * e, r.h)
+      else ctx.fillRect(r.x, r.y + (r.h * (1 - e)) / 2, r.w, r.h * e)
     }
     ctx.globalAlpha = a(C_GAME, 0.4)
     ctx.save()
     ctx.shadowColor = GLOW
     ctx.shadowBlur = 18
-    const gs = fitSize(ctx, 'THIS WAS A GAME.', (n) => `italic ${display(n)}`, L.gameSize, L.dw - 20)
-    write(ctx, 'THIS WAS A GAME.', L.dw / 2, L.game, `italic ${display(gs)}`, ICE, 'center')
+    const gs = fitSize(ctx, 'THIS WAS A GAME.', (n) => `italic ${display(n)}`, L.gameSize, L.textW - 20)
+    write(ctx, 'THIS WAS A GAME.', L.textX, L.game, `italic ${display(gs)}`, ICE, 'center')
     ctx.restore()
     ctx.globalAlpha = a(C_REAL)
     let ry = L.real
     for (const l of L.realLines) {
-      write(ctx, l, L.dw / 2, ry, mono(L.realSize), ALERT, 'center', 1)
+      write(ctx, l, L.textX, ry, mono(L.realSize), ALERT, 'center', 1)
       ry += L.realSize * 1.1
     }
 
@@ -1060,88 +1087,212 @@ export class Ending {
     ctx.globalAlpha = 1
   }
 
-  // A label with its years, then the 2022 value → the 20XX value, counting.
-  private costRow(
-    ctx: CanvasRenderingContext2D,
-    x: number,
-    w: number,
-    y: number,
-    L: CostLayout,
-    label: string,
-    at: number,
-    now: (k: number) => string,
-    then: string,
-  ): void {
+  // The laptop from the upgrade screens: its price counts up from $899 while
+  // the memory is torn out of its keyboard, its screen goes dark, and RENT
+  // ONLY slams down on it.
+  private drawCostLaptop(ctx: CanvasRenderingContext2D, L: CostLayout): void {
     const t = this.t
-    if (t < at) return
-    ctx.globalAlpha = ease((t - at) / 0.4)
-    write(ctx, label, x, y, mono(L.labSize), ICE, 'left', 2)
-    write(ctx, '2022 → 20XX', x + w, y, mono(L.smallSize), FAINT, 'right', 1)
-    const vy = y + L.rowGap
-    write(ctx, then, x, vy, display(L.thenSize, 700), DIM, 'left')
-    ctx.font = display(L.thenSize, 700)
-    const tw = ctx.measureText(then).width
-    const k = clamp((t - at - 0.35) / COUNT, 0, 1) ** 1.7
-    const s = now(k)
-    ctx.font = display(L.nowSize, 700)
-    const nw = ctx.measureText(`$${PRICE_NOW.toLocaleString('en-US')}+`).width
-    const ax = (x + tw + (x + w - nw)) / 2
-    write(ctx, '→', ax, vy, mono(L.thenSize), FAINT, 'center')
-    ctx.save()
-    if (k >= 1) {
-      ctx.shadowColor = AMBER
-      ctx.shadowBlur = 18
+    const kP = clamp((t - C_PULL) / COUNT, 0, 1) ** 1.7
+    const stamped = t >= C_STAMP
+    const pulls = Array.from({ length: STICKS }, (_, i) => C_PULL + (COUNT * (i + 0.5)) / STICKS)
+    let jolt = 0
+    let bump = 0
+    // the tag's swing: a damped spring kicked by every stick and by the stamp
+    let swing = 0
+    const kick = (at: number, v: number) => {
+      const d = t - at
+      if (d > 0) swing += (v / 7.33) * Math.exp(-2.5 * d) * Math.sin(7.33 * d)
     }
-    write(ctx, s, x + w, vy, display(L.nowSize, 700), AMBER, 'right')
+    for (const [i, at] of pulls.entries()) {
+      const d = t - at
+      if (d > 0 && d < 0.15) jolt = Math.max(jolt, 1 - d / 0.15)
+      if (d > 0 && d < 0.25) bump = Math.max(bump, 1 - d / 0.25)
+      kick(at, 3.2 * (i % 2 ? -1 : 1))
+    }
+    kick(C_STAMP, 4)
+    const since = t - C_STAMP
+    const shake = stamped ? Math.max(0, 1 - (since - 0.12) / 0.4) * (since > 0.12 ? 10 : 0) : 0
+    const { x, y, u } = L.lap
+
+    ctx.save()
+    ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake)
+    // a soft pool of light under it: it is the thing on display
+    const r = LAP_W * u * 0.85
+    const g = ctx.createRadialGradient(x, y, 0, x, y, r)
+    g.addColorStop(0, `rgba(150, 214, 255, ${stamped ? 0.1 : 0.16})`)
+    g.addColorStop(1, 'rgba(150, 214, 255, 0)')
+    ctx.fillStyle = g
+    ctx.fillRect(x - r, y - r, r * 2, r * 2)
+    drawLaptop(ctx, x, y, u, { t, k: kP, from: 0, to: 3, started: false, stamped, pulls, jolt })
+    const price = kP >= 1 ? `$${PRICE_NOW.toLocaleString('en-US')}+` : `$${Math.round(PRICE_THEN + (PRICE_NOW - PRICE_THEN) * kP).toLocaleString('en-US')}`
+    const rise = Math.round(((PRICE_THEN + (PRICE_NOW - PRICE_THEN) * kP) / PRICE_THEN - 1) * 100)
+    drawPriceTag(ctx, L.tag, {
+      title: stamped ? 'LAPTOP · TO OWN' : 'A NEW LAPTOP',
+      price,
+      line: t < C_PULL ? 'IN STOCK' : `WAS $${PRICE_THEN}  ▲ +${rise.toLocaleString('en-US')}%`,
+      bg: stamped ? RED : '#ffd6e2',
+      ink: stamped ? '#ffffff' : RED,
+      glow: RED,
+      hot: t >= C_PULL,
+      swing,
+      bump: bump * 0.5,
+      widest: `$${PRICE_NOW.toLocaleString('en-US')}+`,
+    })
+    if (stamped) drawStamp(ctx, 'RENT ONLY', x, y + u * 7, L.stampSize, since)
     ctx.restore()
-    ctx.globalAlpha = 1
+    // a short flash as the stamp lands
+    const flash = Math.max(0, 1 - (since - 0.1) / 0.35)
+    if (stamped && since > 0.1 && flash > 0) {
+      ctx.globalAlpha = flash * flash * 0.3
+      ctx.fillStyle = '#ffffff'
+      ctx.fillRect(-L.dw, -L.dh, L.dw * 3, L.dh * 3)
+      ctx.globalAlpha = 1
+    }
   }
 
-  // One column, top to bottom; wide screens get a wider column and larger type.
+  // The people who own a computer: 80% of the row, greying out to 3%.
+  private drawCostPeople(ctx: CanvasRenderingContext2D, L: CostLayout): void {
+    const t = this.t
+    if (t < C_HEAD) return
+    const P = L.people
+    const k = clamp((t - C_OWN - 0.35) / COUNT, 0, 1) ** 1.7
+    const nFrom = Math.round(OWN_THEN / (100 / PEOPLE))
+    const nTo = Math.max(1, Math.round(OWN_NOW / (100 / PEOPLE)))
+    const owners = nFrom - Math.floor((nFrom - nTo) * k + 1e-6)
+
+    // heading: the label, then 80% → the share now, in red
+    ctx.globalAlpha = ease((t - C_HEAD) / 0.5)
+    write(ctx, 'PEOPLE WHO OWN A COMPUTER', L.colX, P.head, mono(P.labSize), ICE, 'left', 2)
+    const pct = `${Math.round(OWN_THEN + (OWN_NOW - OWN_THEN) * k)}%`
+    const right = L.colX + L.colW
+    ctx.save()
+    if (k >= 1) {
+      ctx.shadowColor = RED
+      ctx.shadowBlur = 18
+    }
+    write(ctx, pct, right, P.head, `italic ${display(P.numSize)}`, RED, 'right')
+    ctx.restore()
+    ctx.font = `italic ${display(P.numSize)}`
+    const nw = ctx.measureText('80%').width
+    if (t >= C_OWN) write(ctx, `${OWN_THEN}% →`, right - nw - 10, P.head, mono(P.labSize), DIM, 'right', 1)
+    ctx.globalAlpha = 1
+
+    const total = (PEOPLE - 1) * P.pitch
+    for (let i = 0; i < PEOPLE; i++) {
+      const owns = i < owners
+      let flash = 0
+      if (!owns && i < nFrom) {
+        // the moment this one lost theirs
+        const at = C_OWN + 0.35 + COUNT * ((nFrom - i) / (nFrom - nTo)) ** (1 / 1.7)
+        if (t > at && t - at < 0.5) flash = 1 - (t - at) / 0.5
+      }
+      drawFigure(ctx, L.colX + L.colW / 2 - total / 2 + i * P.pitch, P.y, P.q, owns, flash, t + i * 0.37)
+    }
+  }
+
+  // Portrait: one column, laptop on top. Landscape: the laptop and the people
+  // on the left, the step back on the right.
   private costLayout(ctx: CanvasRenderingContext2D, portrait: boolean): CostLayout {
-    const dw = portrait ? 420 : 760
-    const k = portrait ? 1 : 1.2
-    const realSize = 23 * k
-    const realLines = wrapText(ctx, 'The rising prices are real: PCs already cost 15–20% more in 2026.', mono(realSize), dw - 20)
-    const head = 14 * k
-    const laptop = head + 58 * k
-    const rowGap = 40 * k
-    const own = laptop + 92 * k
-    const note = own + rowGap + 46 * k
-    const rule = note + 30 * k
-    const game = rule + 38 * k
-    const real = game + 46 * k
-    const quote = this.quoteBox(ctx, 0, real + realLines.length * realSize * 1.1 + 4 * k, dw, 22 * k, 18 * k, 14 * k)
-    const button = { x: dw / 2 - 140 * k, y: quote.y + quote.h + 22 * k, w: 280 * k, h: 54 * k }
+    if (portrait) {
+      const dw = 420
+      const u = 4.6
+      const lapTop = 46
+      const ly = lapTop + (LAP_H * u) / 2
+      const lapBottom = lapTop + LAP_H * u
+      const th = 104
+      const ty = lapBottom + 22 + th / 2
+      const tag: TagPlace = { x: dw / 2, y: ty, w: 270, h: th, tieX: dw / 2, tieY: lapBottom - 2, portrait: true }
+      const head = ty + th / 2 + 34
+      const people = { head, y: head + 46, q: 2.1, pitch: 20.4, labSize: 18, numSize: 30 }
+      const note = people.y + 34
+      const rule = { x: 0, y: note + 22, w: dw, h: 1.5 }
+      const game = rule.y + 38
+      const realSize = 20
+      const realLines = wrapText(ctx, 'The rising prices are real: PCs already cost 15–20% more in 2026.', mono(realSize), dw - 20)
+      const real = game + 40
+      const quote = this.quoteBox(ctx, 0, real + realLines.length * realSize * 1.1 + 2, dw, 20, 16, 12)
+      const button = { x: dw / 2 - 130, y: quote.y + quote.h + 20, w: 260, h: 52 }
+      return {
+        dw,
+        dh: button.y + button.h + 6,
+        colX: 0,
+        colW: dw,
+        textX: dw / 2,
+        textW: dw,
+        head: 14,
+        headSize: 22,
+        smallSize: 16,
+        lap: { x: dw / 2, y: ly, u },
+        stampSize: 44,
+        tag,
+        people,
+        note,
+        rule,
+        game,
+        gameSize: 38,
+        real,
+        realLines,
+        realSize,
+        quote,
+        button,
+        buttonSize: 22,
+      }
+    }
+    const dw = 1180
+    const colW = 540
+    const u = 5.8
+    const lapTop = 50
+    const ly = lapTop + (LAP_H * u) / 2
+    const lapBottom = lapTop + LAP_H * u
+    const th = 116
+    const ty = lapBottom + 24 + th / 2
+    const tag: TagPlace = { x: colW / 2, y: ty, w: 310, h: th, tieX: colW / 2, tieY: lapBottom - 2, portrait: true }
+    const head = ty + th / 2 + 42
+    const people = { head, y: head + 54, q: 3, pitch: 26.5, labSize: 22, numSize: 36 }
+    const note = people.y + 38
+    const dh = note + 14
+    // the right column, centred on the height
+    const textX0 = colW + 60
+    const textW = dw - textX0
+    const realSize = 23
+    const realLines = wrapText(ctx, 'The rising prices are real: PCs already cost 15–20% more in 2026.', mono(realSize), textW - 60)
+    const quote0 = this.quoteBox(ctx, textX0, 0, textW, 24, 19, 16)
+    const block = 50 + 50 + realLines.length * realSize * 1.1 + 8 + quote0.h + 30 + 60
+    const game = (dh - block) / 2 + 25
+    const real = game + 54
+    const quote = { ...quote0, y: real + realLines.length * realSize * 1.1 + 8 }
+    const button = { x: textX0 + textW / 2 - 150, y: quote.y + quote.h + 30, w: 300, h: 60 }
     return {
       dw,
-      dh: button.y + button.h + 6,
-      headSize: 22 * k,
-      labSize: 19 * k,
-      smallSize: 17 * k,
-      head,
-      laptop,
-      own,
-      rowGap,
-      thenSize: 24 * k,
-      nowSize: 36 * k,
+      dh,
+      colX: 0,
+      colW,
+      textX: textX0 + textW / 2,
+      textW,
+      head: 14,
+      headSize: 26,
+      smallSize: 19,
+      lap: { x: colW / 2, y: ly, u },
+      stampSize: 52,
+      tag,
+      people,
       note,
-      rule,
+      rule: { x: colW + 30, y: 40, w: 1.5, h: dh - 60 },
       game,
-      gameSize: 40 * k,
+      gameSize: 46,
       real,
       realLines,
       realSize,
       quote,
       button,
-      buttonSize: 22 * k,
+      buttonSize: 26,
     }
   }
 
   private quoteBox(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, size: number, attrSize: number, pad: number): QuoteBox {
-    const q = ALTMAN_RAM_QUOTE
+    const q = LEX_QUOTE
     const lines = wrapText(ctx, `“${q.text}”`, mono(size), w - pad * 2 - 6)
-    const attr = wrapText(ctx, `— ${q.who}, ${q.where}, ${q.date} · via PCWorld`, mono(attrSize), w - pad * 2 - 6)
+    const attr = wrapText(ctx, `— ${q.who}, ${q.where}, ${q.date}`, mono(attrSize), w - pad * 2 - 6)
     const lh = size * 1.08
     const h = pad + lines.length * lh + 6 + attr.length * attrSize * 1.15 + pad - 4
     return { x, y, w, h, pad, size, lh, lines, attrSize, attr }
@@ -1165,17 +1316,21 @@ interface QuoteBox {
 interface CostLayout {
   dw: number
   dh: number
-  headSize: number
-  labSize: number
-  smallSize: number
+  // the column with the laptop and the people
+  colX: number
+  colW: number
+  // the centre and width of the step back
+  textX: number
+  textW: number
   head: number
-  laptop: number
-  own: number
-  rowGap: number
-  thenSize: number
-  nowSize: number
+  headSize: number
+  smallSize: number
+  lap: { x: number; y: number; u: number }
+  stampSize: number
+  tag: TagPlace
+  people: { head: number; y: number; q: number; pitch: number; labSize: number; numSize: number }
   note: number
-  rule: number
+  rule: Rect
   game: number
   gameSize: number
   real: number
