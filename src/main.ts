@@ -817,8 +817,8 @@ function frame(now: number): void {
     n.update(dt)
     if (n.done) stage.then()
   } else if (stage.kind === 'upgrade') {
+    // no auto-advance: the player continues with the button or Enter
     stage.up.update(dt)
-    if (stage.up.finished) finishUpgrade()
   } else if (stage.kind === 'finale') {
     const f = stage.finale
     f.update(dt, lastDir)

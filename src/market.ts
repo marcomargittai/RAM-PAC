@@ -99,11 +99,20 @@ function chart(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h
   ctx.closePath()
   ctx.fillStyle = grad
   ctx.fill()
-  ctx.beginPath()
-  history.forEach((v, i) => (i ? ctx.lineTo(px(i), py(v)) : ctx.moveTo(px(i), py(v))))
-  ctx.strokeStyle = history[history.length - 1]! >= history[0]! ? UP : DOWN
+  // each step is coloured by where it goes: green up, red down. A crash after
+  // being caught shows red, and the climb back turns green again.
   ctx.lineWidth = 2.5
-  ctx.stroke()
+  for (let i = 1; i < history.length; i++) {
+    const a = history[i - 1]!
+    const b = history[i]!
+    // the noise wobbles a little; only a real move changes colour
+    const down = b < a * 0.995
+    ctx.beginPath()
+    ctx.moveTo(px(i - 1), py(a))
+    ctx.lineTo(px(i), py(b))
+    ctx.strokeStyle = down ? DOWN : UP
+    ctx.stroke()
+  }
   const lx = px(history.length - 1)
   const ly = py(history[history.length - 1]!)
   ctx.fillStyle = ICE

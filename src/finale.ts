@@ -27,12 +27,14 @@ const GLASS_END = 6.6
 
 // Captions, in story order. Short enough for one line on a phone held upright.
 export const FINALE_LINES = {
-  empty: 'there’s no more RAM to buy.',
-  board: 'so we’ll take the board.',
-  hungry: 'still hungry.',
-  market: 'the market is ours now.',
-  out: 'there’s still memory out there.',
-  yours: 'in your computer.',
+  // Infinite Labs has taken every bit of RAM there is and needs more: it
+  // searches the game itself, finds nothing, and then finds your computer.
+  empty: 'infinite labs needs more RAM. there is none left on the board.',
+  board: 'search everything. eat the board.',
+  hungry: 'nothing. not one byte left in here.',
+  market: 'keep searching. the market. the screen. anything.',
+  out: 'wait. there is more RAM.',
+  yours: 'it’s in your computer.',
 } as const
 type LineKey = keyof typeof FINALE_LINES
 
@@ -519,10 +521,10 @@ export class Finale {
     const hy = 0
     fill(ctx, 'rgba(0, 0, 0, 0.82)', hx, hy, w, h)
     fill(ctx, ALERT, hx, hy, 4, h)
-    label(ctx, `ACQUIRED // ${String(pct).padStart(3, '0')}%`, hx + 16, hy + 22, 28, ALERT, 'left')
+    label(ctx, `SEARCHED // ${String(pct).padStart(3, '0')}%`, hx + 16, hy + 22, 28, ALERT, 'left')
     const blink = Math.floor(this.t * 4) % 2 === 0
     const goal =
-      this.phase === 'maze' ? 'TAKE THE BOARD' : this.phase === 'pause' ? (this.phaseT < 2.4 ? 'NOTHING LEFT TO BUY' : 'STILL HUNGRY') : 'TAKE THE MARKET'
+      this.phase === 'maze' ? 'LOOKING FOR RAM' : this.phase === 'pause' ? (this.phaseT < 2.4 ? 'NO RAM FOUND' : 'NEED MORE RAM') : 'LOOKING FOR RAM'
     label(ctx, goal, hx + 16, hy + 54, 24, this.phase === 'pause' && blink ? ALERT : ICE, 'left')
     ctx.restore()
   }
@@ -535,16 +537,42 @@ export class Finale {
     const { W, H, phone, portrait } = this.lay
     const size = phone || portrait ? 50 : 44
     const lineH = size * 1.15
-    const shown = cap.text.slice(0, Math.floor(cap.age * 32))
-    const lines: Array<{ text: string; color: string }> = [{ text: `> ${shown}${shown.length < cap.text.length && Math.floor(this.t * 6) % 2 ? '_' : ''}`, color: ICE }]
-    if (cap.more && cap.age >= cap.moreAt) {
-      const more = cap.more.slice(0, Math.floor((cap.age - cap.moreAt) * 24))
-      lines.push({ text: `  ${more}`, color: ALERT })
-    }
     ctx.font = `${size}px ${MONO}`
-    const full = Math.max(ctx.measureText(`> ${cap.text}`).width, cap.more ? ctx.measureText(`  ${cap.more}`).width : 0)
+    const maxW = W - 32 - 56
+    // wrap the full text first, then type through the wrapped lines
+    const wrapLines = (text: string, prefix: string): string[] => {
+      const out: string[] = []
+      let line = prefix
+      for (const word of text.split(' ')) {
+        const next = line.trim() ? `${line} ${word}` : `${line}${word}`
+        if (ctx.measureText(next).width > maxW && line.trim()) {
+          out.push(line)
+          line = `  ${word}`
+        } else line = next
+      }
+      out.push(line)
+      return out
+    }
+    const typeInto = (rows: string[], count: number): string[] => {
+      const out: string[] = []
+      let left = count
+      for (const row of rows) {
+        if (left <= 0) break
+        out.push(row.slice(0, left))
+        left -= row.length
+      }
+      return out
+    }
+    const mainRows = wrapLines(cap.text, '> ')
+    const typed = typeInto(mainRows, Math.floor(cap.age * 32) + 2)
+    const lines: Array<{ text: string; color: string }> = typed.map((text) => ({ text, color: ICE }))
+    const moreRows = cap.more ? wrapLines(cap.more, '  ') : []
+    if (cap.more && cap.age >= cap.moreAt) {
+      for (const text of typeInto(moreRows, Math.floor((cap.age - cap.moreAt) * 24) + 2)) lines.push({ text, color: ALERT })
+    }
+    const full = Math.max(...[...mainRows, ...moreRows].map((r) => ctx.measureText(r).width))
     const boxW = Math.min(W - 32, full + 56)
-    const boxH = (cap.more ? 2 : 1) * lineH + 30
+    const boxH = (mainRows.length + moreRows.length) * lineH + 30
     const centred = this.phase === 'glass'
     const low = H - (phone ? 120 : 110) - boxH / 2
     const high = (phone ? 150 : 90) + boxH / 2
@@ -557,7 +585,7 @@ export class Finale {
     fill(ctx, 'rgba(0, 0, 0, 0.86)', bx, cy - boxH / 2, boxW, boxH)
     fill(ctx, ALERT, bx, cy - boxH / 2, 5, boxH)
     const tx = bx + 28
-    let ty = cy - ((lines.length - 1) * lineH) / 2
+    let ty = cy - boxH / 2 + 15 + lineH / 2
     for (const l of lines) {
       label(ctx, l.text, tx, ty, size, l.color, 'left')
       ty += lineH
