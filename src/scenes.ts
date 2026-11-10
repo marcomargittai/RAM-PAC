@@ -139,11 +139,11 @@ export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
       if (art) drawFacing(ctx, art, x, y, 64, 'right', 'right')
     }],
     ['RAM', 'Memory sticks. Eat them and your share price climbs. When the board runs out of RAM, the next era begins.', (x, y) => {
-      ctx.fillStyle = '#cfe9ff'
+      ctx.fillStyle = '#ffb38a'
       ctx.fillRect(x - 33, y - 10, 66, 18)
-      ctx.fillStyle = '#1b3c5c'
+      ctx.fillStyle = '#4a1d12'
       for (const dx of [-27, -9, 9]) ctx.fillRect(x + dx, y - 6, 16, 10)
-      ctx.fillStyle = '#96d6ff'
+      ctx.fillStyle = '#ffd36b'
       for (let dx = -31; dx < 32; dx += 5) ctx.fillRect(x + dx, y + 8, 3, 5)
     }],
     ['CONSUMERS', 'Ordinary people who want RAM too. Slower than you, and safe from you, except during a surge. In the last era they are always fair game.', (x, y) => {

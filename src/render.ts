@@ -395,15 +395,15 @@ function ramStick(): HTMLCanvasElement {
   c.width = 22
   c.height = 12
   const g = c.getContext('2d')!
-  g.fillStyle = '#cfe9ff'
+  g.fillStyle = '#ffb38a'
   g.fillRect(0, 0, 22, 10)
-  g.fillStyle = '#ffffff'
+  g.fillStyle = '#ffe0c8'
   g.fillRect(0, 0, 22, 1)
   // the notch
   g.clearRect(10, 8, 2, 2)
-  g.fillStyle = '#1b3c5c'
+  g.fillStyle = '#4a1d12'
   for (const x of [2, 8, 14]) g.fillRect(x, 2, 5, 5)
-  g.fillStyle = '#96d6ff'
+  g.fillStyle = '#ffd36b'
   for (let x = 1; x < 21; x += 2) if (x < 10 || x > 11) g.fillRect(x, 10, 1, 2)
   stick = c
   return stick
@@ -417,7 +417,7 @@ function drawPellets(ctx: CanvasRenderingContext2D, game: Game, tile: number, th
     const y = dot.y * tile + tile / 2
     const twinkle = 0.78 + 0.22 * Math.sin(game.time * 3.2 + dot.x * 1.7 + dot.y * 2.3)
     ctx.globalAlpha = 0.16 * twinkle
-    ctx.fillStyle = th.pellet
+    ctx.fillStyle = '#ff9a66'
     ctx.fillRect(x - 13, y - 8, 26, 16)
     ctx.globalAlpha = twinkle
     ctx.drawImage(art, Math.round(x - 11), Math.round(y - 6))
@@ -645,7 +645,7 @@ function drawIntro(ctx: CanvasRenderingContext2D, game: Game, th: Theme, def: (t
   }
   panel(ctx, th.line, left, top, boxW, boxH)
   label(ctx, `ERA ${game.levelIndex + 1} OF ${LEVELS.length}`, left + 12, top + 15, 17, th.line, 'left')
-  label(ctx, def?.company ?? '', left + boxW - 12, top + 15, 17, th.line, 'right')
+  label(ctx, 'INFINITE LABS', left + boxW - 12, top + 15, 17, th.line, 'right')
   label(ctx, def?.years ?? '', width / 2, top + 42, 22, ICE)
   fill(ctx, th.line, left + 40, top + 56, boxW - 80, 1)
   headline(ctx, (def?.name ?? '').toUpperCase(), width / 2, top + 82, 28, th.line)

@@ -132,9 +132,9 @@ function tell(beat: NewsBeat, then: () => void): void {
     kind: 'news',
     then,
     news: new NewsPlayer(beat, {
-      type: () => audio.play('type', 0.16, 0.9 + Math.random() * 0.25),
+      // no typing or arrival sounds: the team found them grating
+      type: () => {},
       stamp: () => {
-        audio.play('popup', 0.55, 0.85 + Math.random() * 0.2)
         glitchPulse = 0.35
       },
     }),
@@ -201,7 +201,7 @@ function startFinale(): void {
         audio.chomp()
         navigator.vibrate?.(8)
       },
-      caption: () => audio.play('type', 0.3),
+      caption: () => {},
       shatter: () => {
         audio.play('shatter', 1)
         navigator.vibrate?.([60, 40, 120])
@@ -234,8 +234,8 @@ function startEnding(): void {
     ending: new Ending(
       { score: game.score, ramYou: game.totalYou, ramThem: game.totalThem, minisEaten: game.minisEaten, lawsDisabled: game.lawsEaten },
       {
-        type: () => audio.play('type', 0.18, 0.9 + Math.random() * 0.3),
-        stamp: () => audio.play('popup', 0.5, 0.9 + Math.random() * 0.2),
+        type: () => {},
+        stamp: () => audio.play('click', 0.35),
         alarm: () => {
           audio.play('alarm', 0.8)
           navigator.vibrate?.([80, 40, 200])

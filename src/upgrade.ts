@@ -1,18 +1,32 @@
 // The company grows between boards. RAM streams in from every edge, the old
 // build swallows it, bursts into its own pixels, and a scan beam compiles the
 // next build out of the debris. A flash and a shockwave, then the new build
-// chomps under its name. Text only, no voice.
+// chomps. Under it the timeline ticks forward: the year, what a laptop costs
+// and how many people still own one. Text only, no voice.
 
 import { ALERT, GLOW, ICE, ICE_HOT, theme } from './palette'
 import { DISPLAY, MONO, brackets, clamp, fill, label } from './render'
 import { frameFor } from './scenes'
 import { button, drawBackdrop, wrap, type Hit, type View } from './screen'
-import { FORMS, drawFacing, pacFrameOf } from './sprites'
+import { drawFacing, pacFrameOf } from './sprites'
 
 export const UPGRADE_LINES: Record<number, { text: string }> = {
-  1: { text: 'we raised again. we need more power.' },
-  2: { text: 'the market is cornered. what’s left is in people’s homes.' },
-  3: { text: 'there is nothing left to compete with.' },
+  1: { text: 'more memory for us. less for everyone else.' },
+  2: { text: 'every chip we eat is a laptop nobody gets.' },
+  3: { text: 'nobody owns a computer now. they rent ours.' },
+}
+
+// the world outside, one entry per build: the year, what a laptop costs, and
+// the share of people who still own one
+const TIMELINE = [
+  { year: '2022', price: 899, own: 80 },
+  { year: '2025', price: 1349, own: 74 },
+  { year: '2027', price: 2990, own: 52 },
+  { year: '20XX', price: 9999, own: 6 },
+]
+
+function money(n: number): string {
+  return '$' + String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ',')
 }
 
 interface Hooks {
@@ -57,7 +71,6 @@ const FLASH_AT = BUILD_AT + BUILD
 // how long one pixel takes to fly from the debris to its place
 const FLY = 0.38
 const TYPE_RATE = 34
-const GLYPHS = '01#$%&@*+=<>/\\?ABCDEFGHJKLMNPRSTUVWXYZ'
 
 function ease(t: number): number {
   const u = clamp(t, 0, 1)
@@ -219,8 +232,6 @@ export class Upgrade {
     const H = portrait ? 1560 : 800
     const frame = frameFor(ctx, view, W, H)
     const t = this.t
-    const fromForm = FORMS[this.from]!
-    const toForm = FORMS[this.to]!
     const big = portrait
 
     // header
@@ -245,10 +256,21 @@ export class Upgrade {
     this.drawStage(ctx, cx, cy, box, W, H)
     ctx.restore()
 
-    // the name, decoded in step with the scan beam
-    const rowA = cy + box / 2 + (big ? 90 : 42)
-    const rowB = rowA + (big ? 100 : 68)
-    this.drawName(ctx, W, rowA, rowB, big, fromForm, toForm)
+    // the timeline, rolled forward in step with the scan beam
+    const yearY = cy + box / 2 + (big ? 92 : 62)
+    this.drawYear(ctx, cx, yearY, big ? 120 : 84, W - 90)
+    const was = TIMELINE[Math.min(this.from, TIMELINE.length - 1)]!
+    const now = TIMELINE[Math.min(this.to, TIMELINE.length - 1)]!
+    if (portrait) {
+      const top = yearY + 110
+      this.drawStat(ctx, W * 0.27, top, 330, 1.25, 'LAPTOP PRICE', was.price, now.price, 9999, money, 'up')
+      this.drawStat(ctx, W * 0.73, top, 330, 1.25, 'PEOPLE WHO OWN ONE', was.own, now.own, 100, (n) => `${Math.round(n)}%`, 'down')
+    } else {
+      const side = (W - box) / 4 - 4
+      this.drawStat(ctx, side, cy - 90, 300, 1, 'LAPTOP PRICE', was.price, now.price, 9999, money, 'up')
+      this.drawStat(ctx, W - side, cy - 90, 300, 1, 'PEOPLE WHO OWN ONE', was.own, now.own, 100, (n) => `${Math.round(n)}%`, 'down')
+    }
+    const rowB = portrait ? yearY + 300 : yearY - 6
 
     if (this.flashed) {
       const line = UPGRADE_LINES[this.to]
@@ -257,7 +279,7 @@ export class Upgrade {
         const size = big ? 36 : 28
         ctx.font = `${size}px ${MONO}`
         const lines = wrap(ctx, `> ${line.text}`, W - 120)
-        let ly = rowB + (big ? 110 : 66)
+        let ly = rowB + (big ? 110 : 82)
         let left = shown.length + 2
         const widest = Math.max(...lines.map((l) => ctx.measureText(l).width))
         for (const row of lines) {
@@ -292,82 +314,157 @@ export class Upgrade {
     return frame.hits
   }
 
-  private drawName(
-    ctx: CanvasRenderingContext2D,
-    W: number,
-    rowA: number,
-    rowB: number,
-    big: boolean,
-    fromForm: (typeof FORMS)[number],
-    toForm: (typeof FORMS)[number],
-  ): void {
+  // how far the numbers have rolled: held until the beam starts, then counted
+  // through the build, landing on the flash
+  private get roll(): number {
+    return this.flashed ? 1 : ease((this.t - BUILD_AT) / BUILD)
+  }
+
+  // big display text that pops and splits when the flash lands
+  private shout(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, size: number, color: string, align: CanvasTextAlign): void {
     const t = this.t
-    const cx = W / 2
-    const sa = big ? 38 : 28
-    // row A: old build ▸ new year
-    const yearRoll = (y: string, k: number) => y.replace(/\d|X/g, (ch, i: number) => (i / y.length < k ? ch : String(Math.floor(Math.random() * 10))))
-    const k = clamp((t - BUILD_AT) / BUILD, 0, 1)
-    const left = `${fromForm.name} ${fromForm.version}`
-    const right = t < ABSORB ? '' : this.flashed ? toForm.version : yearRoll(toForm.version, k)
-    ctx.font = `${sa}px ${MONO}`
-    const full = right ? `${left}  ▸  ${right}` : left
-    const w = ctx.measureText(full).width
-    let x = cx - w / 2
-    label(ctx, left, x, rowA, sa, 'rgba(150, 214, 255, 0.7)', 'left')
-    if (this.flashed) {
-      // struck through: that build is gone
-      fill(ctx, 'rgba(255, 45, 111, 0.85)', x - 4, rowA - 1, ctx.measureText(left).width + 8, 3)
-    }
-    if (right) {
-      x += ctx.measureText(`${left}  `).width
-      label(ctx, '▸', x, rowA, sa, ALERT, 'left')
-      x += ctx.measureText('▸  ').width
-      label(ctx, right, x, rowA, sa, this.flashed ? ICE : GLOW, 'left')
-    }
-
-    // row B: the big name, old name scrambles apart and the new one decodes
-    let name: string
-    let color = ICE
-    if (t < ABSORB) {
-      name = fromForm.name
-      color = 'rgba(226, 245, 255, 0.35)'
-    } else if (t < BUILD_AT) {
-      const u = (t - ABSORB) / BREAK
-      name = fromForm.name.replace(/\S/g, (ch) => (Math.random() < u ? GLYPHS[Math.floor(Math.random() * GLYPHS.length)]! : ch))
-      color = 'rgba(255, 45, 111, 0.6)'
-    } else if (!this.flashed) {
-      const n = toForm.name.length
-      name = [...toForm.name].map((ch, i) => (ch === ' ' || i < k * n ? ch : GLYPHS[Math.floor(Math.random() * GLYPHS.length)]!)).join('')
-      color = 'rgba(226, 245, 255, 0.75)'
-    } else name = toForm.name
-
-    let size = big ? 104 : 84
-    ctx.font = `italic 900 ${size}px ${DISPLAY}`
-    const max = W - 90
-    const nw = ctx.measureText(toForm.name.length > name.length ? toForm.name : name).width
-    if (nw > max) size = Math.floor((size * max) / nw)
     const pop = this.flashed ? 1 + 0.35 * Math.max(0, 1 - (t - FLASH_AT) / 0.35) ** 2 : 1
     ctx.save()
-    ctx.translate(cx, rowB)
+    ctx.translate(x, y)
     ctx.scale(pop, pop)
     ctx.font = `italic 900 ${size}px ${DISPLAY}`
-    ctx.textAlign = 'center'
+    ctx.textAlign = align
     ctx.textBaseline = 'middle'
     if (this.flashed) {
       // chromatic split that settles
       const split = 2 + 10 * Math.max(0, 1 - (t - FLASH_AT) / 0.8)
       ctx.globalAlpha = 0.7
       ctx.fillStyle = ALERT
-      ctx.fillText(name, -split, 0)
+      ctx.fillText(text, -split, 0)
       ctx.fillStyle = GLOW
-      ctx.fillText(name, split, 0)
+      ctx.fillText(text, split, 0)
       ctx.globalAlpha = 1
       ctx.shadowColor = GLOW
       ctx.shadowBlur = 24
     }
     ctx.fillStyle = color
-    ctx.fillText(name, 0, 0)
+    ctx.fillText(text, 0, 0)
     ctx.restore()
+  }
+
+  // the year: the old one scrambles apart, the new one rolls in under the beam
+  private drawYear(ctx: CanvasRenderingContext2D, cx: number, y: number, size: number, max: number): void {
+    const t = this.t
+    const from = TIMELINE[Math.min(this.from, TIMELINE.length - 1)]!.year
+    const to = TIMELINE[Math.min(this.to, TIMELINE.length - 1)]!.year
+    const rand = () => String(Math.floor(Math.random() * 10))
+    let year: string
+    let color = ICE
+    if (t < ABSORB) {
+      year = from
+      color = 'rgba(226, 245, 255, 0.35)'
+    } else if (t < BUILD_AT) {
+      const u = (t - ABSORB) / BREAK
+      year = from.replace(/\S/g, (ch) => (Math.random() < u ? rand() : ch))
+      color = 'rgba(255, 45, 111, 0.6)'
+    } else if (!this.flashed) {
+      const k = clamp((t - BUILD_AT) / BUILD, 0, 1)
+      year = to.replace(/./g, (ch, i: number) => (i / to.length < k ? ch : rand()))
+      color = 'rgba(226, 245, 255, 0.75)'
+    } else year = to
+
+    // the old year sits small to the left once the new one starts rolling
+    const small = Math.round(size * 0.42)
+    ctx.font = `${small}px ${MONO}`
+    const prefix = `${from}  ▸  `
+    const pw = ctx.measureText(prefix).width
+    ctx.font = `italic 900 ${size}px ${DISPLAY}`
+    const yw = ctx.measureText('2088').width
+    if (pw + yw > max) size = Math.floor((size * (max - pw)) / yw)
+    const x = cx - (pw + yw) / 2
+    if (t >= BUILD_AT) {
+      ctx.font = `${small}px ${MONO}`
+      const fw = ctx.measureText(from).width
+      label(ctx, from, x, y, small, 'rgba(150, 214, 255, 0.7)', 'left')
+      if (this.flashed) fill(ctx, 'rgba(255, 45, 111, 0.85)', x - 4, y - 1, fw + 8, 3)
+      label(ctx, '▸', x + ctx.measureText(`${from}  `).width, y, small, ALERT, 'left')
+    }
+    this.shout(ctx, year, t >= BUILD_AT ? x + pw + yw / 2 : cx, y, size, color, 'center')
+  }
+
+  // one number of the world outside: a label, the rolling value, a bar and the change
+  private drawStat(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    top: number,
+    width: number,
+    sc: number,
+    name: string,
+    from: number,
+    to: number,
+    full: number,
+    fmt: (n: number) => string,
+    dir: 'up' | 'down',
+  ): void {
+    const t = this.t
+    const k = this.roll
+    const v = from + (to - from) * k
+    const rolling = t >= BUILD_AT && !this.flashed
+    label(ctx, name, x, top, Math.round(24 * sc), GLOW)
+
+    let text = fmt(v)
+    let color = ICE
+    if (t < ABSORB) color = 'rgba(226, 245, 255, 0.55)'
+    else if (t < BUILD_AT) {
+      // the old figure glitches while the build comes apart
+      const u = (t - ABSORB) / BREAK
+      text = text.replace(/\d/g, (ch) => (Math.random() < u * 0.35 ? String(Math.floor(Math.random() * 10)) : ch))
+      color = 'rgba(255, 45, 111, 0.7)'
+    } else if (rolling) color = 'rgba(226, 245, 255, 0.85)'
+    let size = Math.round(64 * sc)
+    ctx.font = `italic 900 ${size}px ${DISPLAY}`
+    const vw = ctx.measureText(fmt(Math.max(from, to))).width
+    if (vw > width) size = Math.floor((size * width) / vw)
+    const vy = top + 30 * sc + size * 0.6
+    this.shout(ctx, text, x, vy, size, color, 'center')
+
+    // a bar: price against the top of the scale, ownership against everyone
+    const bw = width * 0.86
+    const by = vy + size * 0.6 + 12 * sc
+    const bh = Math.round(8 * sc)
+    fill(ctx, 'rgba(150, 214, 255, 0.18)', x - bw / 2, by, bw, bh)
+    const f = clamp(v / full, 0, 1)
+    if (rolling || this.flashed) {
+      // the ghost of where it was
+      fill(ctx, 'rgba(150, 214, 255, 0.35)', x - bw / 2, by, bw * clamp(from / full, 0, 1), bh)
+    }
+    ctx.save()
+    if (rolling) {
+      ctx.shadowColor = ALERT
+      ctx.shadowBlur = 12
+    }
+    fill(ctx, rolling || this.flashed ? ALERT : GLOW, x - bw / 2, by, Math.max(2, bw * f), bh)
+    ctx.restore()
+
+    // the change, once the build has started
+    if (t >= BUILD_AT) {
+      const ds = Math.round(26 * sc)
+      const arrow = dir === 'up' ? '▲' : '▼'
+      const delta =
+        dir === 'up'
+          ? `+${Math.round(((v - from) / from) * 100)}%`
+          : `-${Math.round(from - v)} PTS`
+      const was = `WAS ${fmt(from)}`
+      const change = `${arrow} ${delta}`
+      ctx.font = `${ds}px ${MONO}`
+      const ww = ctx.measureText(`${was}   `).width
+      const cw = ctx.measureText(change).width
+      const ly = by + bh + 24 * sc
+      if (ww + cw <= width) {
+        const lx = x - (ww + cw) / 2
+        label(ctx, was, lx, ly, ds, 'rgba(150, 214, 255, 0.7)', 'left')
+        label(ctx, change, lx + ww, ly, ds, ALERT, 'left')
+      } else {
+        // too narrow for one line: stack the change under the old figure
+        label(ctx, was, x, ly, ds, 'rgba(150, 214, 255, 0.7)')
+        label(ctx, change, x, ly + ds * 1.1, ds, ALERT)
+      }
+    }
   }
 
   private drawStage(ctx: CanvasRenderingContext2D, cx: number, cy: number, box: number, W: number, H: number): void {

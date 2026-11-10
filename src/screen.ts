@@ -6,7 +6,6 @@ import { ALERT, GLOW, ICE, VOID, theme, type Theme } from './palette'
 import { BOARD_PX, DISPLAY, MONO, brackets, clamp, fill, hideActors, label, panel, render, setTextBoost, tag, warning } from './render'
 import type { Game } from './sim'
 import { drawMarket } from './market'
-import { FORMS, pacForm } from './sprites'
 import type { Entry } from './leaderboard'
 
 const HUD = '"Chakra Petch", "Share Tech Mono", sans-serif'
@@ -325,7 +324,6 @@ function drawHeader(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, W: 
   const parts: Array<[string, string, string]> = [
     ['REC', 'LIVE', ALERT],
     ['ERA', era?.years ?? '', th.line],
-    ['BUILD', FORMS[pacForm()]?.name ?? '', th.line],
   ]
   const ry = compact ? 84 : 38
   ctx.font = `22px ${MONO}`

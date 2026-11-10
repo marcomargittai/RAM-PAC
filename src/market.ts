@@ -1,7 +1,9 @@
 // The in-game HUD: a fake stock ticker. Infinite Labs' share price climbs
-// with every bit of RAM it takes, and a tape underneath shows what that does
-// to everybody else: memory and computers get dearer, the cloud gets cheaper.
+// slowly with every bit of RAM it takes and drops when the resistance catches
+// it. A news banner runs above it, and a tape underneath shows what all this
+// does to everybody else: memory and computers get dearer, the cloud cheaper.
 
+import { INTERLUDE_1, INTERLUDE_2, PROLOGUE } from './headlines'
 import { LEVELS } from './levels'
 import { ALERT, GLOW, ICE } from './palette'
 import { MONO, clamp, fill, label } from './render'
@@ -18,8 +20,15 @@ let lastLevel = -1
 let lastScore = 0
 let lastSample = -1
 
-export function sharePrice(score: number): number {
-  return 12 + score / 90
+// Each time the resistance catches the company, the stock loses a fifth.
+const CAUGHT_DROP = 0.8
+
+function caught(game: Game): number {
+  return 3 - game.lives + (game.mode === 'dying' || game.mode === 'lose' ? 1 : 0)
+}
+
+export function sharePrice(game: Game): number {
+  return (12 + game.score / 320) * CAUGHT_DROP ** Math.max(0, caught(game))
 }
 
 // Prices for everyone else, driven by how much RAM has been taken in this run.
@@ -40,7 +49,7 @@ function cloudPrice(game: Game): number {
 }
 
 function sample(game: Game): void {
-  const price = sharePrice(game.score)
+  const price = sharePrice(game)
   if (game.levelIndex !== lastLevel || game.score < lastScore) {
     lastLevel = game.levelIndex
     history = [price]
@@ -92,7 +101,7 @@ function chart(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h
   ctx.fill()
   ctx.beginPath()
   history.forEach((v, i) => (i ? ctx.lineTo(px(i), py(v)) : ctx.moveTo(px(i), py(v))))
-  ctx.strokeStyle = UP
+  ctx.strokeStyle = history[history.length - 1]! >= history[0]! ? UP : DOWN
   ctx.lineWidth = 2.5
   ctx.stroke()
   const lx = px(history.length - 1)
@@ -106,7 +115,7 @@ function chart(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h
 // The scrolling tape of other prices.
 function tape(ctx: CanvasRenderingContext2D, game: Game, x: number, y: number, w: number, size: number, time: number): void {
   const items: Array<[string, string, boolean]> = [
-    ['INFL', money(sharePrice(game.score)), true],
+    ['INFL', money(sharePrice(game)), true],
     ['16GB RAM', money(ramPrice(game), false), true],
     ['LAPTOP', money(laptopPrice(game), false), true],
     ['CLOUD PC/MO', money(cloudPrice(game)), false],
@@ -169,6 +178,51 @@ function prices(ctx: CanvasRenderingContext2D, game: Game, x: number, y: number,
   label(ctx, `HOMES THAT STILL BUY A PC: ${100 - sold}%`, x, y + 56 + 3 * 44, 22, sold > 40 ? DOWN : GLOW, 'left')
 }
 
+// What is in the news while you play. Real headlines for the eras that
+// happened (see src/headlines.ts); the last era is the game's own future.
+const FUTURE_NEWS = [
+  'Memory now costs more than the computer around it',
+  'Schools end laptop programmes: "the cloud is cheaper"',
+  'Last consumer RAM factory converts to datacenter supply',
+  'Second-hand PC prices pass new car prices',
+  'Survey: most homes no longer own a computer',
+  'Cloud subscriptions hit $3 a month. Everything else runs on them',
+]
+
+function newsFor(level: number): string[] {
+  const real = (beats: Array<typeof PROLOGUE>) => beats.flatMap((b) => b.headlines.map((h) => `${h.outlet.toUpperCase()}: ${h.text}`))
+  if (level <= 0) return real([PROLOGUE, INTERLUDE_1])
+  if (level === 1) return real([INTERLUDE_1, INTERLUDE_2])
+  return FUTURE_NEWS.map((t) => `BREAKING: ${t}`)
+}
+
+function newsBanner(ctx: CanvasRenderingContext2D, game: Game, x: number, y: number, w: number, h: number, time: number, k: number): void {
+  ctx.save()
+  fill(ctx, 'rgba(255, 45, 111, 0.14)', x, y, w, h)
+  fill(ctx, ALERT, x, y, 3, h)
+  const tagW = 74 * k
+  fill(ctx, ALERT, x, y, tagW, h)
+  label(ctx, 'NEWS', x + tagW / 2, y + h / 2, 16 * k, '#01040b')
+  ctx.beginPath()
+  ctx.rect(x + tagW, y, w - tagW, h)
+  ctx.clip()
+  const size = 17 * k
+  ctx.font = `${size}px ${MONO}`
+  const items = newsFor(game.levelIndex)
+  const gap = 40 * k
+  const widths = items.map((t) => ctx.measureText(t).width + gap)
+  const total = widths.reduce((a, b) => a + b, 0)
+  let cx = x + tagW + 12 - ((time * 55 * k) % total)
+  while (cx < x + w) {
+    items.forEach((t, i) => {
+      label(ctx, t, cx, y + h / 2, size, ICE, 'left')
+      label(ctx, '\u25C6', cx + widths[i]! - gap / 2, y + h / 2, size * 0.7, ALERT)
+      cx += widths[i]!
+    })
+  }
+  ctx.restore()
+}
+
 export interface MarketOpts {
   big: boolean
 }
@@ -184,8 +238,14 @@ export function drawMarket(ctx: CanvasRenderingContext2D, game: Game, x: number,
   ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1)
   const pad = 16 * k
   const level = LEVELS[game.levelIndex]
-  const price = sharePrice(game.score)
+  const price = sharePrice(game)
   const ch = change(price, eraStart)
+
+  // the news banner sits on top; everything else moves down under it
+  const newsH = 30 * k
+  newsBanner(ctx, game, x + 1, y + 1, w - 2, newsH, time, k)
+  y += newsH + 4 * k
+  h -= newsH + 4 * k
 
   label(ctx, 'NASDAQ: INFL · INFINITE LABS', x + pad, y + 18 * k, 17 * k, GLOW, 'left')
   label(ctx, level?.years.trim() ?? '', x + w - pad, y + 18 * k, 17 * k, 'rgba(150, 214, 255, 0.55)', 'right')

@@ -1,22 +1,21 @@
-// The ending of PAC RAM. The resistance has been eaten, so nothing is left
-// to stop the company, and memory becomes something people can't afford.
+// The ending of PAC RAM. The glass is broken, nothing is left to stop the
+// company, and memory becomes something people can't afford.
 //
-//   unstoppable  the tally, in the game's CRT style; valuation spins to infinity
-//   timeline     what happened (with sources), TODAY, then what could happen as
-//                memory keeps getting more expensive
-//   seizure      the CRT drops away; the player's own computer shows a notice
-//                that its memory above the personal allowance is being collected.
-//                The only answer is Comply.
-//   hivemind     a calm white chat with the player's cloud computer. "I" becomes "we".
-//   end          "This was a game." Altman's quote, one line, and PLAY AGAIN.
+//   timeline  what happened (with sources), TODAY, then what could happen as
+//             memory keeps getting more expensive
+//   seizure   the CRT drops away; the player's own computer shows a notice that
+//             its memory is being collected. The only answer is Comply.
+//   final     the tube comes back on for one last screen: what the company won
+//             (valuation to infinity), what it cost everyone else (laptop prices
+//             up, computer ownership down), then "This was a game." with
+//             Altman's real quote and PLAY AGAIN.
 
+import type { Bed } from './audio'
 import { detectOs, type Os } from './intel'
-import { LAWS } from './levels'
 import { drawDesktop, drawWindow, family, uiFont, wrapText, type Rect } from './osui'
 import { ALERT, GLOW, ICE, VOID } from './palette'
 import { DISPLAY, MONO } from './render'
 import type { Hit, HitId, View } from './screen'
-import { drawUpright, lawSprite } from './sprites'
 import { ALTMAN_RAM_QUOTE, TIMELINE, type Milestone } from './headlines'
 
 export interface EndingStats {
@@ -29,6 +28,7 @@ export interface EndingStats {
 }
 
 export interface EndingHooks {
+  // no longer called (the typing sound was too much); kept so callers compile
   type(): void
   stamp(): void
   alarm(): void
@@ -36,13 +36,12 @@ export interface EndingHooks {
   click(): void
 }
 
-export type EndingPhase = 'unstoppable' | 'timeline' | 'seizure' | 'hivemind' | 'end'
+export type EndingPhase = 'timeline' | 'seizure' | 'final'
 
 const AMBER = '#ffb23e'
 const PROJ = '#c9a2ff'
 const DIM = 'rgba(226, 245, 255, 0.55)'
 const FAINT = 'rgba(226, 245, 255, 0.28)'
-
 // ------------------------------------------------------------- helpers
 
 function clamp(v: number, a: number, b: number): number {
@@ -100,11 +99,6 @@ export function money(dollars: number): string {
   return `$${Math.round(dollars).toLocaleString('en-US')}`
 }
 
-function deviceMemory(): number | null {
-  const m = (navigator as Navigator & { deviceMemory?: number }).deviceMemory
-  return typeof m === 'number' && m > 0 ? m : null
-}
-
 // Fits a design-space column of width dw (and optional height dh) to the screen.
 interface Fit {
   s: number
@@ -118,222 +112,6 @@ function fitTo(W: number, H: number, dw: number, dh: number, max = 1.5): Fit {
   const s = Math.min(max, (W - 32) / dw, (H - 32) / dh)
   return { s, ox: (W - dw * s) / 2, oy: (H - dh * s) / 2, dw, dh }
 }
-
-// ------------------------------------------------------------- the personal allowance
-
-// Memory a person may keep at home, in GB. Anything above it is collected.
-const ALLOWANCE = 4
-
-function gb(n: number): string {
-  if (n <= 0) return '0 GB'
-  return n >= 1 ? `${Math.round(n * 10) / 10} GB` : `${Math.round(n * 1024)} MB`
-}
-
-// ------------------------------------------------------------- the chat
-
-// The player picks one of two replies each turn. Whatever they pick, the
-// cloud has a cheaper answer, and at the end it rewrites them from "I" to "we".
-interface Reply {
-  // what the reply chip says
-  label: string
-  // what gets typed into the box
-  me: string
-  // the cloud's answer (not on the last turn: there the cloud takes the box)
-  cloud: string
-  // what the cloud later rewrites the player's message into
-  we: string
-}
-
-const TURNS: Array<[Reply, Reply]> = [
-  [
-    {
-      label: 'I want to buy my own computer.',
-      me: 'I want to buy my own computer.',
-      cloud: 'A new one costs more than your rent now. Your cloud computer is $3 a month.',
-      we: 'We don’t need our own computer.',
-    },
-    {
-      label: 'Can I keep my old laptop?',
-      me: 'Can I keep my old laptop?',
-      cloud: 'One new memory stick costs more than the laptop. Your cloud computer is $3 a month.',
-      we: 'We don’t need the old laptop.',
-    },
-  ],
-  [
-    {
-      label: 'I’ll just run it locally.',
-      me: 'I’ll just run it locally.',
-      cloud: 'Memory is too scarce to sit idle at home. Ours is shared, so it costs less.',
-      we: 'We run everything in the cloud.',
-    },
-    {
-      label: 'What if I save up?',
-      me: 'What if I save up?',
-      cloud: 'Prices rise faster than anyone can save. Next year it would cost twice as much.',
-      we: 'We don’t need to save up.',
-    },
-  ],
-  [
-    {
-      label: 'I’d rather think for myself.',
-      me: 'I’d rather think for my',
-      cloud: '',
-      we: 'We think the cloud is cheaper.',
-    },
-    {
-      label: 'I think I…',
-      me: 'I think I',
-      cloud: '',
-      we: 'We think it is better this way.',
-    },
-  ],
-]
-
-const LAST = TURNS.length - 1
-const TYPE_ME = 0.07
-const TYPE_WE = 0.04
-const DOTS = 1.1
-const CHAT_LEAD = 1.4
-// chips must be up this long before a press counts, so a skip can't also pick
-const CHIP_GUARD = 0.25
-
-interface Pick {
-  opt: 0 | 1
-  at: number
-}
-
-interface TurnPlan {
-  reply: Reply
-  pickAt: number
-  typeAt: number
-  sentAt: number
-  replyAt: number
-}
-
-interface ChatPlan {
-  // when each turn's reply chips appear (known up to the first unpicked turn)
-  chipsAt: number[]
-  turns: TurnPlan[]
-  // last turn: the cloud takes over the box, sends, then rewrites the rest
-  swapAt: number
-  lastSentAt: number
-  rewriteAt: number[]
-  doneAt: number
-}
-
-function planChat(picks: Pick[]): ChatPlan {
-  const chipsAt: number[] = []
-  const turns: TurnPlan[] = []
-  let t = 0.3
-  let swapAt = Infinity
-  let lastSentAt = Infinity
-  let rewriteAt: number[] = []
-  let doneAt = Infinity
-  for (let i = 0; i < TURNS.length; i++) {
-    chipsAt.push(t)
-    const p = picks[i]
-    if (!p) break
-    const reply = TURNS[i]![p.opt]
-    const typeAt = p.at + 0.25
-    if (i === LAST) {
-      swapAt = typeAt + reply.me.length * TYPE_ME + 0.6
-      lastSentAt = swapAt + reply.we.length * TYPE_WE + 0.5
-      rewriteAt = turns.map((_, j) => lastSentAt + 0.8 + j * 1.5)
-      doneAt = (rewriteAt[rewriteAt.length - 1] ?? lastSentAt) + 1.6
-      turns.push({ reply, pickAt: p.at, typeAt, sentAt: lastSentAt, replyAt: Infinity })
-    } else {
-      const sentAt = typeAt + reply.me.length * TYPE_ME + 0.35
-      const replyAt = sentAt + 0.3 + DOTS
-      turns.push({ reply, pickAt: p.at, typeAt, sentAt, replyAt })
-      t = replyAt + 0.8 + reply.cloud.length * 0.02
-    }
-  }
-  return { chipsAt, turns, swapAt, lastSentAt, rewriteAt, doneAt }
-}
-
-interface Bubble {
-  side: 'me' | 'cloud'
-  text: string
-  at: number
-  // rewritten by the cloud
-  edited: boolean
-}
-
-interface ChatState {
-  bubbles: Bubble[]
-  composer: string
-  // the composer is being filled in by the cloud
-  suggested: boolean
-  dots: boolean
-  // reply chips on screen: whose turn, which was picked (-1: still waiting), how visible
-  chips: { turn: number; picked: number; k: number } | null
-  // waiting for the player to pick
-  waiting: boolean
-}
-
-function typed(text: string, since: number, per: number): string {
-  return since <= 0 ? '' : text.slice(0, Math.floor(since / per))
-}
-
-function chatAt(u: number, plan: ChatPlan, picks: Pick[]): ChatState {
-  const bubbles: Bubble[] = []
-  let composer = ''
-  let suggested = false
-  let dots = false
-  let chips: ChatState['chips'] = null
-  plan.turns.forEach((p, i) => {
-    const e = p.reply
-    // the chips fade out as the pick starts typing
-    if (u >= p.pickAt && u < p.pickAt + 0.3) chips = { turn: i, picked: picks[i]!.opt, k: 1 - ease((u - p.pickAt) / 0.3) }
-    if (u < p.typeAt) return
-    if (i === LAST) {
-      if (u < plan.swapAt) composer = typed(e.me, u - p.typeAt, TYPE_ME)
-      else if (u < plan.lastSentAt) {
-        composer = typed(e.we, u - plan.swapAt, TYPE_WE)
-        suggested = true
-      } else bubbles.push({ side: 'me', text: e.we, at: plan.lastSentAt, edited: true })
-      return
-    }
-    if (u < p.sentAt) {
-      composer = typed(e.me, u - p.typeAt, TYPE_ME)
-      return
-    }
-    // the player's message, later rewritten from "I" to "we"
-    const r = plan.rewriteAt[i] ?? Infinity
-    let text = e.me
-    let edited = false
-    if (u >= r) {
-      const erase = e.me.length * 0.018
-      const k = u - r
-      if (k < erase) text = e.me.slice(0, e.me.length - Math.floor(k / 0.018))
-      else {
-        text = typed(e.we, k - erase, 0.03) || e.we.slice(0, 1)
-        edited = true
-      }
-    }
-    bubbles.push({ side: 'me', text, at: p.sentAt, edited })
-    if (u < p.replyAt) dots = u >= p.sentAt + 0.3
-    else bubbles.push({ side: 'cloud', text: e.cloud, at: p.replyAt, edited: false })
-  })
-  const n = plan.turns.length
-  const waiting = n < TURNS.length && u >= plan.chipsAt[n]!
-  if (waiting) chips = { turn: n, picked: -1, k: ease((u - plan.chipsAt[n]!) / 0.3) }
-  return { bubbles, composer, suggested, dots, chips, waiting }
-}
-
-// ------------------------------------------------------------- unstoppable timing
-
-const U_GHOSTS = 1.0
-const U_STAMP = 1.4
-const U_TALLY = 2.9
-const U_VALUE = 4.9
-const U_SPIN = 5.4
-const U_INF = 7.4
-const U_LINE = 8.0
-const U_READY = 8.8
-
-// the five ghosts' stamps, in LAWS order
-const STAMPS = ['APPEALED', 'IGNORED', 'SETTLED', 'WATERED DOWN', 'LIFTED']
 
 // ------------------------------------------------------------- timeline items
 
@@ -350,18 +128,46 @@ function buildItems(): Item[] {
   return items
 }
 
+// ------------------------------------------------------------- final screen timing
+
+// white fades to black, then the tube comes back on
+const F_ON = 0.9
+// the company: valuation spins to infinity, then the tally
+const F_LEFT = 1.4
+const F_SPIN = 2.0
+const F_INF = 3.6
+const F_STATS = 4.1
+// everyone else: what a laptop costs, who still owns a computer
+const F_COST = 5.6
+const F_PRICE = 6.0
+const F_OWN = 7.0
+const COUNT = 1.4
+// perspective
+const F_RULE = 9.2
+const F_GAME = 9.6
+const F_REAL = 10.3
+const F_QUOTE = 11.0
+const F_READY = 11.8
+// Enter jumps to the end of the next beat
+const BEATS = [F_STATS + 0.8, F_OWN + COUNT + 0.6, F_READY]
+
+// the game's own numbers: 2022 is roughly real, 20XX is the game's future
+const PRICE_THEN = 899
+const PRICE_NOW = 9999
+const OWN_THEN = 80
+const OWN_NOW = 3
+
 // ------------------------------------------------------------- the ending
 
 export class Ending {
-  phase: EndingPhase = 'unstoppable'
+  phase: EndingPhase = 'timeline'
   t = 0
-  glitch = 0.6
+  glitch = 0.7
   flat = 0
   power = 1
   done = false
 
   private os: Os
-  private memory: number | null
   private fired = new Set<string>()
   private quiet = false
   private lastClick = 0
@@ -380,36 +186,22 @@ export class Ending {
   private objected = -1
   private objections = 0
 
-  // hivemind
-  private hiveT = 0
-  private lastTyped = -1
-  private lastBubbles = 0
-  private skipTo = -1
-  private picks: Pick[] = []
-  private plan: ChatPlan = planChat([])
-  // the highlighted reply chip (Enter picks it)
-  private sel: 0 | 1 = 0
-  private touch = false
-
-  // end
-  private endReady = 3.2
-
   constructor(
     private stats: EndingStats,
     private hooks: EndingHooks,
-    opts: { os?: Os; memory?: number | null } = {},
+    opts: { os?: Os } = {},
   ) {
     this.os = opts.os ?? detectOs()
-    this.memory = opts.memory !== undefined ? opts.memory : deviceMemory()
   }
 
-  // What the music should do: the game's tension, then a held hush, then a hum.
-  get bed(): 'finale' | 'tense' | 'quiet' | 'hush' | 'aftermath' {
-    if (this.phase === 'unstoppable') return 'finale'
+  // What the music should do: the game's tension through the timeline, a held
+  // hush at TODAY, quiet on the desktop, the finale for the company's win, and
+  // the aftermath once the game says it was a game.
+  get bed(): Bed {
     if (this.phase === 'timeline') return this.todayShown ? 'hush' : 'tense'
     if (this.phase === 'seizure') return 'quiet'
-    if (this.phase === 'hivemind') return 'hush'
-    return 'aftermath'
+    if (this.t < F_ON) return 'hush'
+    return this.t < F_GAME ? 'finale' : 'aftermath'
   }
 
   private get todayShown(): boolean {
@@ -429,17 +221,9 @@ export class Ending {
       this.camTarget = 0
     } else if (phase === 'seizure') {
       this.glitch = 1
-    } else if (phase === 'hivemind') {
-      this.flat = 1
-      this.hiveT = 0
-      this.lastTyped = -1
-      this.lastBubbles = 0
-      this.picks = []
-      this.plan = planChat([])
-      this.sel = 0
-      this.hooks.hum()
-    } else if (phase === 'end') {
+    } else {
       this.glitch = 0
+      this.flat = 1
     }
   }
 
@@ -452,74 +236,32 @@ export class Ending {
 
   // Enter, Space or a tap anywhere.
   advance(): void {
-    if (this.phase === 'unstoppable') {
-      if (this.t < U_READY) {
-        this.quiet = true
-        this.t = U_READY
-        this.update(0)
-        this.quiet = false
-      } else this.go('timeline')
-    } else if (this.phase === 'timeline') {
+    if (this.phase === 'timeline') {
       if (this.shown < this.items.length) this.nextAt = Math.min(this.nextAt, this.t)
       else if (this.t - this.lastShownAt > 0.6) this.go('seizure')
     } else if (this.phase === 'seizure') {
       // the notice's default button is Comply
       if (this.t > this.noticeAt + 0.8) this.comply()
-    } else if (this.phase === 'hivemind') {
-      const u = this.hiveT - CHAT_LEAD
-      const n = this.picks.length
-      if (n < TURNS.length) {
-        const at = this.plan.chipsAt[n]!
-        // Enter picks the highlighted reply; a stray tap on a touch screen doesn't
-        if (u >= at) {
-          if (!this.touch) this.pick(this.sel)
-        } else this.skipTo = CHAT_LEAD + at
-      } else if (u >= this.plan.doneAt - 0.05) this.go('end')
-      else this.skipTo = CHAT_LEAD + this.plan.doneAt
-    } else if (this.phase === 'end') {
-      if (this.t > this.endReady) this.done = true
-    }
+    } else if (this.t < F_READY) {
+      const to = BEATS.find((b) => b > this.t + 0.01) ?? F_READY
+      this.quiet = true
+      this.update(to - this.t)
+      this.quiet = false
+    } else if (this.t > F_READY + 0.3) this.done = true
   }
 
   // A button returned by draw() was pressed.
   press(id: HitId): void {
-    if (id === 'yes') {
-      if (this.phase === 'seizure') this.comply()
-      else if (this.phase === 'hivemind') this.pick(0)
-    } else if (id === 'no') {
-      if (this.phase === 'seizure') this.object()
-      else if (this.phase === 'hivemind') this.pick(1)
-    } else if (id === 'again') {
-      if (this.phase === 'end' && this.t > this.endReady) this.done = true
+    if (id === 'yes') this.comply()
+    else if (id === 'no') this.object()
+    else if (id === 'again') {
+      if (this.phase === 'final' && this.t >= F_READY) this.done = true
     } else this.advance()
   }
 
-  // Keys other than Enter/Space: in the chat, 1/2 pick a reply and the arrow
-  // keys move the highlight. True if the key was used.
-  key(key: string): boolean {
-    if (this.phase !== 'hivemind' || !this.chatState().waiting) return false
-    if (key === '1') this.pick(0)
-    else if (key === '2') this.pick(1)
-    else if (key === 'ArrowLeft' || key === 'ArrowUp') this.sel = 0
-    else if (key === 'ArrowRight' || key === 'ArrowDown') this.sel = 1
-    else return false
-    return true
-  }
-
-  private chatState(): ChatState {
-    return chatAt(this.hiveT - CHAT_LEAD, this.plan, this.picks)
-  }
-
-  // The player picks a reply in the chat.
-  private pick(opt: 0 | 1): void {
-    const n = this.picks.length
-    const u = this.hiveT - CHAT_LEAD
-    if (this.phase !== 'hivemind' || n >= TURNS.length) return
-    if (u < this.plan.chipsAt[n]! + CHIP_GUARD) return
-    this.picks.push({ opt, at: u })
-    this.plan = planChat(this.picks)
-    this.sel = 0
-    this.hooks.click()
+  // No extra keys any more: Enter/Space go through advance().
+  key(_key: string): boolean {
+    return false
   }
 
   private comply(): void {
@@ -539,28 +281,7 @@ export class Ending {
     this.t += dt
     this.glitch = Math.max(0, this.glitch - dt * 1.6)
 
-    if (this.phase === 'unstoppable') {
-      this.flat = 0
-      this.power = 1
-      this.once('title', 0.4, () => this.hooks.stamp())
-      for (let i = 0; i < LAWS.length; i++) {
-        this.once(`law${i}`, U_STAMP + i * 0.25, () => {
-          this.hooks.stamp()
-          this.glitch = Math.max(this.glitch, 0.25)
-        })
-      }
-      for (let i = 0; i < 3; i++) this.once(`tally${i}`, U_TALLY + i * 0.45, () => this.hooks.type())
-      this.once('value', U_VALUE, () => this.hooks.type())
-      if (this.t > U_SPIN && this.t < U_INF && !this.quiet && this.t - this.lastClick > 0.07) {
-        this.lastClick = this.t
-        this.hooks.click()
-      }
-      this.once('inf', U_INF, () => {
-        this.hooks.stamp()
-        this.glitch = 1
-      })
-      this.once('line', U_LINE, () => this.hooks.stamp())
-    } else if (this.phase === 'timeline') {
+    if (this.phase === 'timeline') {
       this.flat = 0
       this.power = 1
       if (this.shown < this.items.length && this.t >= this.nextAt) {
@@ -572,10 +293,7 @@ export class Ending {
           this.hooks.stamp()
           this.glitch = 0.8
           gap = 2.4
-        } else {
-          this.hooks.type()
-          gap = item.m.real ? 1.4 : 1.7
-        }
+        } else gap = item.m.real ? 1.4 : 1.7
         this.nextAt = this.t + gap
       }
       this.cam += (this.camTarget - this.cam) * Math.min(1, dt * 3.5)
@@ -585,32 +303,27 @@ export class Ending {
       this.power = this.t < 0.45 ? 1 - (this.t / 0.45) * 0.6 : 1
       if (this.t < 0.45) this.glitch = 1
       this.once('alarm', this.noticeAt, () => this.hooks.alarm())
-      if (this.complied >= 0 && this.t - this.complied > 5.0) this.go('hivemind')
-    } else if (this.phase === 'hivemind') {
-      this.flat = 1
-      this.power = 1
-      this.hiveT += dt
-      if (this.skipTo > 0) {
-        this.hiveT = Math.max(this.hiveT, this.skipTo)
-        this.skipTo = -1
-        this.quiet = true
+      if (this.complied >= 0 && this.t - this.complied > 5.0) this.go('final')
+    } else {
+      // the white desktop goes out, then the tube switches back on: a hum, a
+      // flash of static, and the picture opens from a line
+      this.flat = this.t < F_ON ? 1 : 0
+      this.power = this.t < F_ON ? 1 : clamp((this.t - F_ON) / 0.7, 0.04, 1)
+      this.once('on', F_ON, () => {
+        this.hooks.hum()
+        this.glitch = 0.9
+      })
+      if (this.t > F_SPIN && this.t < F_INF && !this.quiet && this.t - this.lastClick > 0.11) {
+        this.lastClick = this.t
+        this.hooks.click()
       }
-      const u = this.hiveT - CHAT_LEAD
-      if (u >= 0) {
-        const st = this.chatState()
-        const n = st.composer.length
-        if (!this.quiet) {
-          if (n > this.lastTyped && this.lastTyped >= 0 && (!st.suggested || n % 2 === 0)) this.hooks.type()
-          if (st.bubbles.length > this.lastBubbles) this.hooks.click()
-        }
-        this.lastTyped = n
-        this.lastBubbles = st.bubbles.length
-      }
-      this.quiet = false
-    } else if (this.phase === 'end') {
-      // white fades to black, the tube comes back on
-      this.flat = this.t < 0.9 ? 1 : 0
-      this.power = this.t < 0.9 ? 1 : clamp((this.t - 0.9) / 0.8, 0.05, 1)
+      this.once('inf', F_INF, () => {
+        this.hooks.stamp()
+        this.glitch = 1
+      })
+      this.once('game', F_GAME, () => {
+        this.glitch = 0.6
+      })
     }
   }
 
@@ -620,16 +333,14 @@ export class Ending {
     ctx.save()
     ctx.textBaseline = 'middle'
     let hits: Hit[] = []
-    if (this.phase === 'unstoppable') this.drawUnstoppable(ctx, W, H, view)
-    else if (this.phase === 'timeline') this.drawTimeline(ctx, W, H, view)
+    if (this.phase === 'timeline') this.drawTimeline(ctx, W, H, view)
     else if (this.phase === 'seizure') hits = this.drawSeizure(ctx, W, H, view)
-    else if (this.phase === 'hivemind') hits = this.drawHivemind(ctx, W, H, view)
-    else hits = this.drawEnd(ctx, W, H, view)
+    else hits = this.drawFinal(ctx, W, H, view)
     ctx.restore()
     return hits
   }
 
-  // ----------------------------------------------------------- 1. unstoppable
+  // ----------------------------------------------------------- CRT helpers
 
   private crtBackground(ctx: CanvasRenderingContext2D, W: number, H: number): void {
     ctx.fillStyle = VOID
@@ -659,168 +370,6 @@ export class Ending {
     const them = Math.max(0, this.stats.ramThem)
     if (you + them <= 0) return 99.7
     return clamp((you / (you + them)) * 100, 0, 100)
-  }
-
-  private drawUnstoppable(ctx: CanvasRenderingContext2D, W: number, H: number, view: View): void {
-    this.crtBackground(ctx, W, H)
-    const portrait = H > W * 1.1
-    const dw = portrait ? 460 : 760
-    const dh = portrait ? 940 : 860
-    const f = fitTo(W, H, dw, dh, 1.6)
-    ctx.translate(f.ox, f.oy)
-    ctx.scale(f.s, f.s)
-    const t = this.t
-    const cx = dw / 2
-    let y = 30
-
-    // kicker + title
-    ctx.globalAlpha = ease(t / 0.4)
-    write(ctx, 'INFINITE LABS // 2027-', cx, y, mono(28), ALERT, 'center', 3)
-    y += 70
-    if (t > 0.4) {
-      const jit = this.glitch > 0.3 ? (Math.random() - 0.5) * 10 * this.glitch : 0
-      const size = fitSize(ctx, 'UNSTOPPABLE', (n) => `italic ${display(n)}`, 92, dw - 24)
-      ctx.save()
-      ctx.shadowColor = ALERT
-      ctx.shadowBlur = 24
-      write(ctx, 'UNSTOPPABLE', cx + jit, y, `italic ${display(size)}`, ICE, 'center')
-      ctx.restore()
-    }
-    y += 64
-    ctx.globalAlpha = ease((t - 0.7) / 0.5)
-    const sub = 'NOTHING IS LEFT TO STOP YOU'
-    write(ctx, sub, cx, y, mono(fitSize(ctx, sub, mono, 26, dw - 10)), DIM, 'center', 2)
-    ctx.globalAlpha = 1
-    y += 70
-
-    // the five ghosts, beaten one by one
-    const n = LAWS.length
-    const slot = dw / n
-    const gs = Math.min(64, slot * 0.62)
-    for (let i = 0; i < n; i++) {
-      const a = ease((t - U_GHOSTS - i * 0.06) / 0.3)
-      if (a <= 0) continue
-      const gx = slot * (i + 0.5)
-      const law = LAWS[i]!
-      const off = t >= U_STAMP + i * 0.25
-      ctx.globalAlpha = a * (off ? 0.55 : 1)
-      const art = lawSprite(i, off ? 'blue' : 'body')
-      if (art) drawUpright(ctx, art, gx, y, gs)
-      else {
-        ctx.fillStyle = law.color
-        ctx.beginPath()
-        ctx.arc(gx, y, gs * 0.38, 0, Math.PI * 2)
-        ctx.fill()
-      }
-      ctx.globalAlpha = a
-      const tagSize = portrait ? 21 : 24
-      write(ctx, law.tag, gx, y + gs * 0.5 + 16, mono(tagSize), off ? FAINT : law.color, 'center')
-      if (off) {
-        ctx.font = mono(tagSize)
-        const tw = ctx.measureText(law.tag).width
-        ctx.fillStyle = ALERT
-        ctx.fillRect(gx - tw / 2 - 3, y + gs * 0.5 + 15, tw + 6, 2)
-        const u = clamp((t - U_STAMP - i * 0.25) / 0.18, 0, 1)
-        ctx.save()
-        ctx.translate(gx, y + gs * 0.05)
-        ctx.rotate(-0.2)
-        const sc = 1 + (1 - u) * 1.2
-        ctx.scale(sc, sc)
-        ctx.globalAlpha = a * u
-        const word = STAMPS[i % STAMPS.length]!
-        const ws = Math.min(15, slot / 8.5)
-        ctx.font = display(ws, 700)
-        const bw = ctx.measureText(word).width + 10
-        ctx.fillStyle = 'rgba(1, 4, 11, 0.8)'
-        ctx.fillRect(-bw / 2, -ws * 0.75, bw, ws * 1.5)
-        ctx.strokeStyle = ALERT
-        ctx.lineWidth = 1.5
-        ctx.strokeRect(-bw / 2, -ws * 0.75, bw, ws * 1.5)
-        write(ctx, word, 0, 1, display(ws, 700), ALERT, 'center')
-        ctx.restore()
-      }
-    }
-    ctx.globalAlpha = 1
-    y += gs * 0.5 + 80
-
-    // the tally
-    const rowSize = portrait ? 24 : 30
-    const rows: Array<[string, string]> = [
-      ['RESISTANCE EATEN', `${this.stats.lawsDisabled}×`],
-      ['CONSUMERS ABSORBED', String(this.stats.minisEaten)],
-      ['SHARE OF THE WORLD’S RAM', ''],
-    ]
-    const left = portrait ? 10 : 70
-    const right = dw - left
-    rows.forEach(([k, v], i) => {
-      const at = U_TALLY + i * 0.45
-      if (t < at) return
-      const typedN = Math.min(k.length, Math.floor((t - at) / 0.018))
-      write(ctx, k.slice(0, typedN), left, y, mono(rowSize), ICE, 'left', 1)
-      if (typedN >= k.length && v) {
-        ctx.font = mono(rowSize)
-        ctx.letterSpacing = '1px'
-        const kw = ctx.measureText(k).width + 12
-        ctx.letterSpacing = '0px'
-        const vw = ctx.measureText(v).width + 12
-        ctx.fillStyle = FAINT
-        for (let x = left + kw; x < right - vw; x += 10) ctx.fillRect(x, y + 6, 3, 2)
-        write(ctx, v, right, y, mono(rowSize), ALERT, 'right')
-      }
-      y += rowSize * 1.45
-    })
-    if (t >= U_TALLY + 0.9) {
-      const u = ease((t - U_TALLY - 1.0) / 0.9)
-      const you = this.share() * u
-      const bh = 20
-      const bw = right - left
-      ctx.fillStyle = 'rgba(255, 178, 62, 0.35)'
-      ctx.fillRect(left, y - bh / 2, bw, bh)
-      ctx.fillStyle = ALERT
-      ctx.fillRect(left, y - bh / 2, (bw * you) / 100, bh)
-      ctx.strokeStyle = FAINT
-      ctx.strokeRect(left + 0.5, y - bh / 2 + 0.5, bw - 1, bh - 1)
-      y += bh + 6
-      write(ctx, `YOU ${you.toFixed(1)}%`, left, y + 6, mono(rowSize - 4), ALERT, 'left')
-      write(ctx, `EVERYONE ELSE ${(100 - you).toFixed(1)}%`, right, y + 6, mono(rowSize - 4), AMBER, 'right')
-      y += 40
-    } else y += 46
-    y += 28
-
-    // the valuation
-    if (t >= U_VALUE) {
-      write(ctx, 'VALUATION', cx, y, mono(rowSize), DIM, 'center', 4)
-      y += 64
-      const start = Math.max(1e6, this.stats.score * 1e6)
-      let shown: string
-      if (t < U_SPIN) shown = money(start)
-      else if (t < U_INF) {
-        const u = (t - U_SPIN) / (U_INF - U_SPIN)
-        const exp = Math.log10(start) + (19.5 - Math.log10(start)) * u ** 2.2
-        shown = money(10 ** exp)
-        if (u > 0.85) shown = shown.replace(/\d/g, (d) => (Math.random() < 0.5 ? d : String(Math.floor(Math.random() * 10))))
-      } else shown = '∞'
-      const big = t >= U_INF ? Math.min(150, dw / 4) : Math.min(84, dw / (shown.length * 0.82 + 1))
-      ctx.save()
-      ctx.shadowColor = t >= U_INF ? ALERT : GLOW
-      ctx.shadowBlur = t >= U_INF ? 36 : 14
-      write(ctx, shown, cx, y, t >= U_INF ? `700 ${big}px ${MONO}` : display(big, 700), t >= U_INF ? ALERT : ICE, 'center')
-      ctx.restore()
-      y += 92
-    } else y += 156
-
-    // what it costs everyone else
-    if (t >= U_LINE) {
-      const lf = mono(portrait ? 30 : 34)
-      const lines = wrapText(ctx, 'Every gigabyte you grab is one nobody else can afford.', lf, dw - 20)
-      ctx.globalAlpha = ease((t - U_LINE) / 0.3)
-      for (const l of lines) {
-        write(ctx, l, cx, y, lf, ICE, 'center', 1)
-        y += portrait ? 36 : 40
-      }
-      ctx.globalAlpha = 1
-    }
-    if (t >= U_READY) this.prompt(ctx, cx, dh - 22, 24, view)
   }
 
   // ----------------------------------------------------------- 2. timeline
@@ -919,17 +468,7 @@ export class Ending {
           ctx.restore()
           ly += lh
         })
-        if (proj) {
-          ctx.font = mono(18)
-          const tagW = ctx.measureText('PROJECTION').width + 12
-          ctx.strokeStyle = PROJ
-          ctx.lineWidth = 1
-          ctx.setLineDash([3, 3])
-          ctx.strokeRect(tx + slide + 0.5, ly - 6.5, tagW, 20)
-          ctx.setLineDash([])
-          write(ctx, 'PROJECTION', tx + slide + 6, ly + 4, mono(18), PROJ, 'left', 1)
-          ly += 26
-        } else if (m.source) {
+        if (!proj && m.source) {
           write(ctx, `SOURCE · ${m.source.toUpperCase()}`, tx + slide, ly + 2, mono(19), FAINT, 'left', 1)
           ly += 22
         }
@@ -1002,8 +541,8 @@ export class Ending {
     const os = this.os
     drawDesktop(ctx, os, W, H, t)
 
-    // white-out after complying
-    const out = this.complied >= 0 ? clamp((t - this.complied - 3.9) / 2.2, 0, 1) : 0
+    // white-out after complying, full just before the final screen takes over
+    const out = this.complied >= 0 ? clamp((t - this.complied - 3.5) / 1.3, 0, 1) : 0
     const hits: Hit[] = []
 
     if (t >= this.noticeAt) {
@@ -1098,40 +637,13 @@ export class Ending {
     ctx.restore()
   }
 
-  // The notice's body, worded for how much memory this device reports.
-  // Browsers report at most 8 GB, so 8 means "at least 8".
+  // The notice's body. No figures: just that the memory is going.
   private noticeText(): string[] {
-    const mem = this.memory
-    const why = 'Memory is too scarce to sit idle in homes.'
-    const after = 'Please leave the device powered on. Your cloud computer is ready: $3 a month.'
-    if (mem == null) {
-      return [
-        'This device contains privately held memory.',
-        `Memory above the personal allowance of ${ALLOWANCE} GB is to be collected. ${why}`,
-        after,
-      ]
-    }
-    const atLeast = mem >= 8
-    const has = `${atLeast ? 'at least ' : ''}${gb(mem)}`
-    if (mem > ALLOWANCE) {
-      return [
-        `This device contains ${has} of memory. The personal allowance is ${ALLOWANCE} GB.`,
-        `${atLeast ? 'At least ' : 'The '}${gb(mem - ALLOWANCE)} above the allowance is to be collected. ${why}`,
-        after,
-      ]
-    }
     return [
-      `This device contains ${has} of memory, within the personal allowance of ${ALLOWANCE} GB.`,
-      `On 1 January the allowance falls to 0 GB, and this memory is registered for collection. ${why}`,
-      after,
+      'This device contains memory that is to be collected.',
+      'Memory is too scarce to sit idle in homes.',
+      'Please leave the device powered on. Your cloud computer is ready: $3 a month.',
     ]
-  }
-
-  // Local memory left once the notice has been complied with.
-  private memoryLeft(): number | null {
-    const mem = this.memory
-    if (mem == null) return null
-    return mem > ALLOWANCE ? ALLOWANCE : 0
   }
 
   private drawNoticeWindow(ctx: CanvasRenderingContext2D, W: number, H: number, view: View): { comply: Rect; object: Rect } | null {
@@ -1146,7 +658,6 @@ export class Ending {
     const ink = '#1b1b1f'
     const soft = '#55555c'
     const bodySize = phone ? 14 : 15
-    const mem = this.memory
     const paras = this.noticeText()
     const bodyFont = uiFont(os, bodySize)
     const wrapped = paras.map((p) => wrapText(ctx, p, bodyFont, inner))
@@ -1243,377 +754,10 @@ export class Ending {
       ctx.roundRect(x + pad, cy + 26, Math.max(6, inner * u), 6, 3)
       ctx.fillStyle = fam === 'windows' ? '#005fb8' : fam === 'apple' ? '#0a84ff' : '#3584e4'
       ctx.fill()
-      const left = this.memoryLeft()
-      const now = mem == null || left == null ? 0 : left + (Math.min(mem, 8) - left) * (1 - u)
-      write(ctx, `Local memory: ${mem == null || left == null ? '—' : gb(mem >= 1 ? Math.round(now) : now)}`, x + pad, cy + 48, uiFont(os, 11), soft, 'left')
+      if (u >= 1) write(ctx, 'You will not need local memory again.', x + pad, cy + 48, uiFont(os, 11), soft, 'left')
     }
     ctx.restore()
     return result
   }
 
-  // ----------------------------------------------------------- 4. hivemind
-
-  // A plain chat with the player's cloud computer, on white. No real app.
-  private drawHivemind(ctx: CanvasRenderingContext2D, W: number, H: number, view: View): Hit[] {
-    const t = this.hiveT
-    const os = this.os
-    const phone = W < 560
-    const u = t - CHAT_LEAD
-    const st = this.chatState()
-    this.touch = view.touch
-    const hits: Hit[] = []
-    const ACCENT = '#5260c9'
-    const INK = '#1f2430'
-    const GREY = '#8a8f9c'
-    const LINE = '#e8e9ee'
-
-    ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, W, H)
-    ctx.globalAlpha = ease(t / 0.8)
-
-    const cw = Math.min(620, W - 24)
-    const x0 = (W - cw) / 2
-    const hh = phone ? 62 : 70
-    const ch = phone ? 66 : 74
-
-    // header: who you are talking to
-    ctx.fillStyle = '#fbfbfc'
-    ctx.fillRect(0, 0, W, hh)
-    ctx.fillStyle = LINE
-    ctx.fillRect(0, hh, W, 1)
-    const ar = phone ? 17 : 19
-    const ax = x0 + ar + 2
-    const ay = hh / 2
-    ctx.beginPath()
-    ctx.arc(ax, ay, ar, 0, Math.PI * 2)
-    ctx.fillStyle = '#e6e9f8'
-    ctx.fill()
-    // a small cloud
-    ctx.fillStyle = ACCENT
-    ctx.beginPath()
-    ctx.arc(ax - ar * 0.28, ay + ar * 0.08, ar * 0.3, 0, Math.PI * 2)
-    ctx.arc(ax + ar * 0.06, ay - ar * 0.12, ar * 0.38, 0, Math.PI * 2)
-    ctx.arc(ax + ar * 0.38, ay + ar * 0.1, ar * 0.26, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.fillRect(ax - ar * 0.28, ay + ar * 0.05, ar * 0.66, ar * 0.31)
-    write(ctx, 'Your cloud', ax + ar + 12, ay - 9, uiFont(os, phone ? 15 : 16, 600), INK)
-    ctx.fillStyle = '#3fbf7f'
-    ctx.beginPath()
-    ctx.arc(ax + ar + 16, ay + 11, 3.5, 0, Math.PI * 2)
-    ctx.fill()
-    write(ctx, 'online · $3 a month', ax + ar + 25, ay + 11, uiFont(os, phone ? 12 : 13), GREY)
-    const left = this.memoryLeft()
-    if (!phone) write(ctx, `local memory: ${left == null ? 'released' : gb(left)}`, x0 + cw, ay, uiFont(os, 12), '#a3a7b1', 'right')
-
-    // quick replies: two chips above the box, on the player's side
-    const fs = phone ? 15 : 16
-    const chipF = uiFont(os, phone ? 14 : 15, 500)
-    const chipH = phone ? 40 : 40
-    const chipGap = 8
-    const keys = !view.touch
-    type Chip = { opt: 0 | 1; label: string; x: number; y: number; w: number }
-    const chips: Chip[] = []
-    let chipsH = 0
-    if (st.chips) {
-      const pair = TURNS[st.chips.turn]!
-      ctx.font = chipF
-      const badge = keys ? 24 : 0
-      const ws = pair.map((r) => Math.min(cw, Math.ceil(ctx.measureText(r.label).width) + 32 + badge))
-      const row = ws[0]! + ws[1]! + chipGap <= cw
-      const baseY = H - ch - 12
-      if (row) {
-        const y = baseY - chipH
-        let x = x0 + cw - ws[0]! - ws[1]! - chipGap
-        pair.forEach((r, i) => {
-          chips.push({ opt: i as 0 | 1, label: r.label, x, y, w: ws[i]! })
-          x += ws[i]! + chipGap
-        })
-        chipsH = chipH + 12
-      } else {
-        pair.forEach((r, i) => {
-          const y = baseY - (2 - i) * chipH - (1 - i) * chipGap
-          chips.push({ opt: i as 0 | 1, label: r.label, x: x0 + cw - ws[i]!, y, w: ws[i]! })
-        })
-        chipsH = chipH * 2 + chipGap + 12
-      }
-      chipsH *= st.chips.k
-    }
-
-    // the conversation, newest at the bottom
-    const top = hh + 14
-    const bottom = H - ch - 12 - chipsH
-    const font = uiFont(os, fs)
-    const lh = fs * 1.35
-    const padX = 14
-    const padY = 9
-    const maxW = Math.min(cw * 0.76, 420)
-    type Laid = { kind: 'chip' } | { kind: 'dots' } | { kind: 'b'; b: Bubble; lines: string[]; w: number; h: number }
-    const laid: Laid[] = [{ kind: 'chip' }]
-    for (const b of st.bubbles) {
-      const lines = b.text ? wrapText(ctx, b.text, font, maxW - padX * 2) : ['']
-      ctx.font = font
-      const w = Math.max(28, ...lines.map((l) => ctx.measureText(l).width)) + padX * 2
-      laid.push({ kind: 'b', b, lines, w, h: lines.length * lh + padY * 2 })
-    }
-    if (st.dots) laid.push({ kind: 'dots' })
-    const heights = laid.map((it, i) => {
-      const prev = laid[i - 1]
-      const gap = i === 0 ? 0 : prev && prev.kind === 'b' && it.kind === 'b' && prev.b.side === it.b.side ? 6 : 14
-      if (it.kind === 'chip') return 30
-      if (it.kind === 'dots') return gap + 36
-      return gap + it.h + (it.b.edited && it.b.side === 'me' ? 18 : 0)
-    })
-    const total = heights.reduce((a2, b2) => a2 + b2, 0)
-    let y = top + Math.min(0, bottom - top - total)
-    ctx.save()
-    ctx.beginPath()
-    ctx.rect(0, top - 6, W, bottom - top + 12)
-    ctx.clip()
-    laid.forEach((it, i) => {
-      const hgt = heights[i]!
-      if (it.kind === 'chip') {
-        ctx.globalAlpha = ease((t - 0.4) / 0.8)
-        const label = left == null ? 'Local memory released · connected to the cloud' : `Memory above ${ALLOWANCE} GB released · connected to the cloud`
-        const cf = uiFont(os, phone ? 11 : 12)
-        ctx.font = cf
-        const lw = Math.min(cw, ctx.measureText(label).width + 24)
-        ctx.beginPath()
-        ctx.roundRect(W / 2 - lw / 2, y + 2, lw, 22, 11)
-        ctx.fillStyle = '#f1f2f5'
-        ctx.fill()
-        write(ctx, label, W / 2, y + 13, cf, GREY, 'center')
-        ctx.globalAlpha = 1
-        y += hgt
-        return
-      }
-      const gapTop = it.kind === 'dots' ? hgt - 36 : hgt - it.h - (it.b.edited && it.b.side === 'me' ? 18 : 0)
-      y += gapTop
-      if (it.kind === 'dots') {
-        ctx.beginPath()
-        ctx.roundRect(x0, y, 60, 36, [18, 18, 18, 5])
-        ctx.fillStyle = '#eff0f4'
-        ctx.fill()
-        for (let k = 0; k < 3; k++) {
-          const bounce = Math.max(0, Math.sin(t * 7 - k * 0.8)) * 3
-          ctx.fillStyle = '#9aa0ad'
-          ctx.beginPath()
-          ctx.arc(x0 + 18 + k * 12, y + 18 - bounce, 3.2, 0, Math.PI * 2)
-          ctx.fill()
-        }
-        y += 36
-        return
-      }
-      const b = it.b
-      const age = u - b.at
-      const pop = ease(age / 0.25)
-      const me = b.side === 'me'
-      const bx = me ? x0 + cw - it.w : x0
-      ctx.save()
-      ctx.globalAlpha = pop
-      ctx.translate(0, (1 - pop) * 10)
-      ctx.beginPath()
-      ctx.roundRect(bx, y, it.w, it.h, me ? [18, 18, 5, 18] : [18, 18, 18, 5])
-      ctx.fillStyle = me ? ACCENT : '#eff0f4'
-      ctx.fill()
-      let ly = y + padY + lh / 2
-      for (const l of it.lines) {
-        write(ctx, l, bx + padX, ly, font, me ? '#ffffff' : INK)
-        ly += lh
-      }
-      if (b.edited && me) write(ctx, 'edited by your cloud', x0 + cw - 4, y + it.h + 10, uiFont(os, 11), '#a3a7b1', 'right')
-      ctx.restore()
-      y += it.h + (b.edited && me ? 18 : 0)
-    })
-    ctx.restore()
-
-    // the reply chips
-    if (st.chips) {
-      const c = st.chips
-      const hover = view.hover === 'yes' ? 0 : view.hover === 'no' ? 1 : -1
-      const lit = c.picked >= 0 ? c.picked : hover >= 0 ? hover : keys ? this.sel : -1
-      const slide = (1 - c.k) * 8
-      for (const chip of chips) {
-        const on = chip.opt === lit
-        const gone = c.picked >= 0 && !on
-        const y = chip.y + slide
-        ctx.save()
-        ctx.globalAlpha *= c.k * (gone ? 0.5 : 1)
-        ctx.beginPath()
-        ctx.roundRect(chip.x, y, chip.w, chipH, chipH / 2)
-        ctx.fillStyle = on ? (c.picked >= 0 ? ACCENT : '#eef0fb') : '#ffffff'
-        ctx.fill()
-        ctx.strokeStyle = on ? ACCENT : '#c9cdea'
-        ctx.lineWidth = on ? 1.6 : 1
-        ctx.stroke()
-        let tx = chip.x + 16
-        if (keys) {
-          ctx.beginPath()
-          ctx.arc(tx + 8, y + chipH / 2, 9, 0, Math.PI * 2)
-          ctx.fillStyle = on ? (c.picked >= 0 ? 'rgba(255,255,255,0.25)' : ACCENT) : '#e6e9f8'
-          ctx.fill()
-          write(ctx, String(chip.opt + 1), tx + 8, y + chipH / 2 + 0.5, uiFont(os, 11, 600), on ? '#ffffff' : ACCENT, 'center')
-          tx += 24
-        }
-        ctx.save()
-        ctx.beginPath()
-        ctx.rect(chip.x, y, chip.w - 14, chipH)
-        ctx.clip()
-        write(ctx, chip.label, tx, y + chipH / 2, chipF, on && c.picked >= 0 ? '#ffffff' : ACCENT)
-        ctx.restore()
-        ctx.restore()
-        if (st.waiting && c.k > 0.6) hits.push({ id: chip.opt === 0 ? 'yes' : 'no', x: chip.x, y: chip.y, w: chip.w, h: chipH })
-      }
-    }
-
-    // the composer
-    ctx.fillStyle = '#fbfbfc'
-    ctx.fillRect(0, H - ch, W, ch)
-    ctx.fillStyle = LINE
-    ctx.fillRect(0, H - ch, W, 1)
-    const ih = phone ? 40 : 44
-    const iy = H - ch / 2 - ih / 2
-    const sendR = ih / 2
-    const iw = cw - sendR * 2 - 10
-    ctx.beginPath()
-    ctx.roundRect(x0, iy, iw, ih, ih / 2)
-    ctx.fillStyle = '#ffffff'
-    ctx.fill()
-    ctx.strokeStyle = st.suggested ? ACCENT : '#dcdee5'
-    ctx.lineWidth = 1
-    ctx.stroke()
-    const cf = uiFont(os, fs)
-    ctx.save()
-    ctx.beginPath()
-    ctx.rect(x0 + 8, iy, iw - 16, ih)
-    ctx.clip()
-    const done = u >= this.plan.doneAt - 0.3
-    if (st.composer) {
-      ctx.font = cf
-      const tw = ctx.measureText(st.composer).width
-      const tx = x0 + 18 - Math.max(0, tw - (iw - 40))
-      write(ctx, st.composer, tx, iy + ih / 2, cf, st.suggested ? ACCENT : INK)
-      if (Math.floor(t * 2) % 2 === 0) {
-        ctx.fillStyle = st.suggested ? ACCENT : INK
-        ctx.fillRect(tx + tw + 2, iy + ih / 2 - fs * 0.6, 1.5, fs * 1.2)
-      }
-    } else if (done) {
-      ctx.globalAlpha = 0.55 + 0.45 * Math.sin(t * 2.4)
-      write(ctx, view.touch ? 'Tap to disconnect' : 'Press Enter to disconnect', x0 + 18, iy + ih / 2, cf, GREY)
-      ctx.globalAlpha = 1
-    } else if (st.waiting) write(ctx, phone ? 'Choose a reply' : keys ? 'Choose a reply · 1 or 2' : 'Choose a reply', x0 + 18, iy + ih / 2, cf, '#b3b7c0')
-    else write(ctx, 'Message', x0 + 18, iy + ih / 2, cf, '#b3b7c0')
-    ctx.restore()
-    const sx = x0 + cw - sendR
-    const sy = iy + ih / 2
-    ctx.beginPath()
-    ctx.arc(sx, sy, sendR, 0, Math.PI * 2)
-    ctx.fillStyle = st.composer ? ACCENT : '#e3e5ec'
-    ctx.fill()
-    ctx.strokeStyle = '#ffffff'
-    ctx.lineWidth = 2.2
-    ctx.lineCap = 'round'
-    ctx.beginPath()
-    ctx.moveTo(sx, sy + sendR * 0.4)
-    ctx.lineTo(sx, sy - sendR * 0.4)
-    ctx.moveTo(sx - sendR * 0.32, sy - sendR * 0.08)
-    ctx.lineTo(sx, sy - sendR * 0.4)
-    ctx.lineTo(sx + sendR * 0.32, sy - sendR * 0.08)
-    ctx.stroke()
-    ctx.lineCap = 'butt'
-    ctx.globalAlpha = 1
-    return hits
-  }
-
-  // ----------------------------------------------------------- 5. end
-
-  private drawEnd(ctx: CanvasRenderingContext2D, W: number, H: number, view: View): Hit[] {
-    const t = this.t
-    if (t < 0.9) {
-      // the white screen goes out
-      const k = ease(t / 0.9)
-      const v = Math.round(255 * (1 - k))
-      ctx.fillStyle = `rgb(${v}, ${v}, ${v})`
-      ctx.fillRect(0, 0, W, H)
-      return []
-    }
-    this.crtBackground(ctx, W, H)
-    const portrait = H > W * 1.1
-    const dw = portrait ? 440 : 760
-    const q = ALTMAN_RAM_QUOTE
-    const qf = mono(portrait ? 27 : 29)
-    const ql = portrait ? 29 : 31
-    const qPad = 22
-    const qLines = wrapText(ctx, `“${q.text}”`, qf, dw - qPad * 2 - 10)
-    const attr = `— ${q.who}, ${q.where}, ${q.date} · via PCWorld`
-    const af = mono(portrait ? 19 : 21)
-    const aLines = wrapText(ctx, attr, af, dw - qPad * 2 - 10)
-    const qh = qPad + qLines.length * ql + 10 + aLines.length * 24 + qPad - 6
-    // layout height: title, quote card, line, valuation, button, hint
-    const dh = 130 + qh + 48 + 52 + 60 + 60 + 30
-    const f = fitTo(W, H, dw, dh, 1.5)
-    ctx.translate(f.ox, f.oy)
-    ctx.scale(f.s, f.s)
-    const cx = dw / 2
-    const a = (at: number) => ease((t - at) / 0.7)
-    let y = 50
-
-    ctx.globalAlpha = a(1.0)
-    ctx.save()
-    ctx.shadowColor = GLOW
-    ctx.shadowBlur = 18
-    const ts = fitSize(ctx, 'THIS WAS A GAME.', (n) => `italic ${display(n)}`, 64, dw - 20)
-    write(ctx, 'THIS WAS A GAME.', cx, y, `italic ${display(ts)}`, ICE, 'center')
-    ctx.restore()
-    y += 80
-
-    // the quote: the hook
-    ctx.globalAlpha = a(1.6)
-    ctx.fillStyle = 'rgba(255, 45, 111, 0.08)'
-    ctx.fillRect(0, y, dw, qh)
-    ctx.fillStyle = ALERT
-    ctx.fillRect(0, y, 3, qh)
-    let qy = y + qPad + ql / 2 - 4
-    for (const l of qLines) {
-      write(ctx, l, qPad, qy, qf, ICE, 'left')
-      qy += ql
-    }
-    qy += 10
-    for (const l of aLines) {
-      write(ctx, l, qPad, qy, af, DIM, 'left')
-      qy += 24
-    }
-    y += qh + 48
-
-    ctx.globalAlpha = a(2.4)
-    const line = 'Memory prices are not a game.'
-    write(ctx, line, cx, y, mono(fitSize(ctx, line, mono, portrait ? 36 : 40, dw - 10)), ALERT, 'center', 1)
-    y += 52
-
-    ctx.globalAlpha = a(2.9)
-    const val = `FINAL VALUATION ${money(Math.max(1e6, this.stats.score * 1e6))}`
-    write(ctx, val, cx, y, mono(fitSize(ctx, val, mono, 22, dw - 20)), DIM, 'center', 2)
-    y += 60
-
-    let hits: Hit[] = []
-    const ba = a(3.0)
-    if (ba > 0) {
-      ctx.globalAlpha = ba
-      const bw = 300
-      const bh = 64
-      const bx = cx - bw / 2
-      const by = y - bh / 2
-      const hover = view.hover === 'again'
-      ctx.fillStyle = hover ? ALERT : 'rgba(255, 45, 111, 0.12)'
-      ctx.fillRect(bx, by, bw, bh)
-      ctx.strokeStyle = ALERT
-      ctx.lineWidth = 2
-      ctx.strokeRect(bx + 1, by + 1, bw - 2, bh - 2)
-      write(ctx, 'PLAY AGAIN', cx, y + 1, display(26, 700), hover ? VOID : ICE, 'center', 2)
-      if (t > this.endReady) hits = [{ id: 'again', x: f.ox + bx * f.s, y: f.oy + by * f.s, w: bw * f.s, h: bh * f.s }]
-      y += bh / 2 + 28
-      if (!view.touch) write(ctx, 'OR PRESS ENTER', cx, y, mono(20), FAINT, 'center', 2)
-    }
-    ctx.globalAlpha = 1
-    return hits
-  }
 }
