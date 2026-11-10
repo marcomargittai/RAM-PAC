@@ -142,12 +142,14 @@ export const INTERLUDE_2: NewsBeat = {
       url: 'https://pcworld.com/article/3274634/sam-altman-says-your-pcs-memory-should-belong-to-him.html',
     },
   ],
+  // the RAM-in-your-PC remark sits right before the last era; the compute
+  // quote moved to the ending
   quote: {
     who: 'Sam Altman',
-    where: 'Lex Fridman Podcast',
-    date: 'Mar 2024',
-    text: 'I think compute is going to be the currency of the future. I think it’ll be maybe the most precious commodity in the world.',
-    url: 'https://lexfridman.com/sam-altman-2-transcript',
+    where: 'Cheeky Pint podcast',
+    date: 'Oct 2026',
+    text: 'A lot of people want local inference … But from, like, a global allocation perspective, actually, it’s quite terrible to have everybody … And being used five percent of the time.',
+    url: 'https://pcworld.com/article/3274634/sam-altman-says-your-pcs-memory-should-belong-to-him.html',
   },
   outro: 'What follows has not happened yet. It is what happens if nobody does anything. Including you.',
 }

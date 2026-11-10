@@ -796,7 +796,7 @@ for (let level = 0; level < 2; level++) {
   if (mini.stash !== 5 || game.ramThem < 5 || game.totalThem < 5) fail(`level ${level} touching a consumer moved its RAM`)
 }
 
-// Levels 0-1 during a surge: consumers can be eaten, and their RAM becomes the player's.
+// Levels 0-1 during a surge: consumers are still safe.
 for (let level = 0; level < 2; level++) {
   const game = reachLevel(level)
   park(game)
@@ -826,8 +826,8 @@ for (let level = 0; level < 2; level++) {
     game.player.progress = 0
     ate = update(game, 1 / 60, IDLE).ateMini || ate
   }
-  if (!ate || game.minisEaten < 1) fail(`level ${level}: a consumer could not be eaten during a surge`)
-  if (game.ramYou < 4) fail(`level ${level}: eating a consumer during a surge did not hand over its RAM`)
+  // consumers help clear the board, so a surge does not make them edible
+  if (ate || game.minisEaten !== 0) fail(`level ${level}: a consumer was eaten during a surge`)
 }
 
 // Last level: the player eats consumers and takes their RAM.
@@ -909,7 +909,7 @@ for (let level = 0; level < 3; level++) {
   park(game)
   pinInWall(game)
   const starts = game.minis.map((mini) => `${mini.x},${mini.y}`)
-  for (let i = 0; i < 240; i++) {
+  for (let i = 0; i < 437; i++) {
     park(game)
     pinInWall(game)
     update(game, 1 / 60, IDLE)

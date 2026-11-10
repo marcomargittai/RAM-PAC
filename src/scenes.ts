@@ -146,7 +146,7 @@ export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
       ctx.fillStyle = '#ffd36b'
       for (let dx = -31; dx < 32; dx += 5) ctx.fillRect(x + dx, y + 8, 3, 5)
     }],
-    ['CONSUMERS', 'Ordinary people who want RAM too. Slower than you, and safe from you, except during a surge. In the last era they are always fair game.', (x, y) => {
+    ['CONSUMERS', 'Ordinary people who want RAM too. Slower than you, and they help clear the board. In the last era they are fair game.', (x, y) => {
       for (let i = 0; i < 3; i++) {
         const art = miniFrame(t * 7 + i)
         if (art) drawFacing(ctx, art, x - 28 + i * 28, y, 24, 'right', 'right')
@@ -158,7 +158,7 @@ export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
         if (art) drawUpright(ctx, art, x - 30 + i * 30, y + Math.sin(t * 6 + i) * 2, 30)
       }
     }],
-    ['SURGE', 'Eat 25 RAM to fill the surge bar. For a few seconds the resistance turns blue: eat it and it is sent back to base. You can eat consumers then too.', (x, y) => {
+    ['SURGE', 'Eat 25 RAM to fill the surge bar. For a few seconds the resistance turns blue: eat it and it is sent back to base.', (x, y) => {
       ctx.strokeStyle = GLOW
       ctx.strokeRect(x - 44.5, y - 9.5, 88, 18)
       ctx.fillStyle = ICE

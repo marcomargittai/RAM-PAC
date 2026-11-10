@@ -407,6 +407,8 @@ function moveActor(maze: Maze, actor: Actor, dt: number, whoFor: () => Who, pick
 }
 
 function loadLevel(game: Game, index: number): void {
+  // every era starts with a full set of lives
+  game.lives = 3
   const def = levelDef(index)
   const parsed = parseMaze(def.rows)
   game.levelIndex = index
@@ -698,7 +700,8 @@ function minisEatRam(game: Game): void {
 }
 
 export function minisEdibleNow(game: Game): boolean {
-  return levelDef(game.levelIndex).minisEdible || game.surge > 0
+  // only on the last board: earlier on, consumers help clear the RAM
+  return levelDef(game.levelIndex).minisEdible
 }
 
 function playerEatsMinis(game: Game, events: GameEvents): void {

@@ -4,11 +4,11 @@
 // does to everybody else: memory and computers get dearer, the cloud cheaper.
 
 import { INTERLUDE_1, INTERLUDE_2, PROLOGUE } from './headlines'
-import { LEVELS } from './levels'
+import { LAWS, LEVELS } from './levels'
 import { ALERT, GLOW, ICE } from './palette'
-import { MONO, clamp, fill, label } from './render'
+import { DISPLAY, MONO, brackets, clamp, fill, label } from './render'
 import { SURGE_RAM, type Game } from './sim'
-import { lawSprite } from './sprites'
+import { drawUpright, lawSprite } from './sprites'
 
 const UP = '#3dff9a'
 const DOWN = '#ff4d6a'
@@ -23,8 +23,23 @@ let lastSample = -1
 // Each time the resistance catches the company, the stock loses a fifth.
 const CAUGHT_DROP = 0.8
 
-function caught(game: Game): number {
-  return 3 - game.lives + (game.mode === 'dying' || game.mode === 'lose' ? 1 : 0)
+// How often the company has been caught this run. Lives reset every era, so
+// the count is kept here: it goes up once each time a catch starts.
+let caughtCount = 0
+let caughtAt = 0
+let lastMode = ''
+
+function caught(_game: Game): number {
+  return caughtCount
+}
+
+function watchCatches(game: Game): void {
+  if (game.mode === 'dying' && lastMode !== 'dying') {
+    caughtCount++
+    caughtAt = game.time
+  }
+  if (game.mode === 'ready' && game.levelIndex === 0 && game.score === 0) caughtCount = 0
+  lastMode = game.mode
 }
 
 export function sharePrice(game: Game): number {
@@ -238,6 +253,7 @@ export interface MarketOpts {
 
 // The whole panel. Height is flexible: the chart takes what is left.
 export function drawMarket(ctx: CanvasRenderingContext2D, game: Game, x: number, y: number, w: number, h: number, time: number, opts: MarketOpts = { big: false }): void {
+  watchCatches(game)
   sample(game)
   const k = opts.big ? 1.45 : 1
   ctx.fillStyle = 'rgba(150, 214, 255, 0.035)'
@@ -293,4 +309,45 @@ export function drawMarket(ctx: CanvasRenderingContext2D, game: Game, x: number,
   const edible = level?.minisEdible
   label(ctx, `MARKET SHARE ${Math.round(share * 100)}%`, x + w - pad, fy, 20 * k, edible ? '#ffc94a' : ICE, 'right')
   if (game.surge > 0) fill(ctx, ALERT, x, y, 3, h)
+  if (game.mode === 'dying' || game.mode === 'lose') drawCaught(ctx, game, x, y, w, h, time, k)
 }
+
+// Caught: the part of the resistance that got you takes over the panel, big.
+function drawCaught(ctx: CanvasRenderingContext2D, game: Game, x: number, y: number, w: number, h: number, time: number, k: number): void {
+  const ghost = game.ghosts.find((g) => g.name === game.caughtName)
+  const law = ghost ? LAWS[ghost.law] : undefined
+  const ink = law?.color ?? ALERT
+  const t = game.time - caughtAt
+  fill(ctx, 'rgba(8, 0, 3, 0.94)', x, y, w, h)
+  fill(ctx, ALERT, x, y, 3, h)
+  const cx = x + w / 2
+  // the ghost slams in, then bobs
+  const slam = clamp(t / 0.25, 0, 1)
+  const size = Math.min(w * 0.55, h * 0.42) * (1 + (1 - slam) * (1 - slam) * 0.8)
+  const gy = y + h * 0.36 + Math.sin(time * 5) * 4 * k
+  const glow = ctx.createRadialGradient(cx, gy, size * 0.1, cx, gy, size * 0.9)
+  glow.addColorStop(0, `${ink}55`)
+  glow.addColorStop(1, `${ink}00`)
+  ctx.fillStyle = glow
+  ctx.fillRect(cx - size, gy - size, size * 2, size * 2)
+  const art = ghost ? lawSprite(ghost.law, 'body') : null
+  if (art) drawUpright(ctx, art, cx, gy, size)
+  brackets(ctx, ALERT, cx - size / 2 - 12, gy - size / 2 - 12, size + 24, size + 24, 18 * k, 2)
+  label(ctx, 'STOPPED BY', cx, y + 30 * k, 22 * k, ALERT)
+  ctx.font = `italic 900 ${Math.round(34 * k)}px ${DISPLAY}`
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillStyle = ink
+  const name = (law?.name ?? game.caughtName).toUpperCase()
+  const ny = gy + size / 2 + 40 * k
+  ctx.fillText(name, cx, ny, w - 30)
+  if (law?.about) {
+    ctx.font = `${Math.round(20 * k)}px ${MONO}`
+    label(ctx, law.about, cx, ny + 36 * k, 20 * k, ICE)
+  }
+  const drop = `INFL \u25BC -${Math.round((1 - CAUGHT_DROP) * 100)}%`
+  label(ctx, drop, cx, ny + 76 * k, 30 * k, DOWN)
+  label(ctx, game.mode === 'lose' ? 'NO LIVES LEFT' : `${Math.max(0, game.lives - 1)} LIVES LEFT THIS ERA`, cx, ny + 112 * k, 20 * k, GLOW)
+}
+
+

@@ -662,21 +662,6 @@ function drawLose(ctx: CanvasRenderingContext2D, game: Game, width: number, heig
   const pos = visual(game.player)
   const px = snap(pos.x * tile + tile / 2)
   const py = snap(pos.y * tile + tile / 2)
-  const law = game.ghosts.find((ghost) => ghost.name === game.caughtName)
-  const ink = law?.color ?? ALERT
-  const caught = lawSprite(law?.law ?? 0, 'body')
-  const big = actorSize(game.levelIndex) * 3.2
-  if (caught) drawUpright(ctx, caught, px, py, big)
-  brackets(ctx, ALERT, px - big / 2 - 10, py - big / 2 - 10, big + 20, big + 20, 16, 2)
-  tag(ctx, law?.tag ?? 'LAW', px, py - big / 2 - 26, 18, ink, VOID)
-
-  const plateW = 360
-  const plateH = game.caughtName ? 92 : 64
-  const plateY = py < height * 0.42 ? height - plateH - 22 : 22
-  const plateX = snap(width / 2 - plateW / 2)
-  panel(ctx, ALERT, plateX, plateY, plateW, plateH)
-  warning(ctx, plateX + 40, plateY + 34, 40, ALERT)
-  headline(ctx, 'ERROR', plateX + 196, plateY + 28, 30, ALERT)
-  label(ctx, 'A LAW CAUGHT YOU', plateX + 196, plateY + 56, 18, ICE)
-  if (game.caughtName) label(ctx, game.caughtName.toUpperCase(), plateX + 196, plateY + 78, 18, ink)
+  // the ghost that caught you is shown big in the side panel, not here
+  brackets(ctx, ALERT, px - 30, py - 30, 60, 60, 12, 2)
 }
