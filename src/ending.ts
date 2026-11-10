@@ -5,10 +5,11 @@
 //             memory keeps getting more expensive
 //   seizure   the CRT drops away; the player's own computer shows a notice that
 //             its memory is being collected. The only answer is Comply.
-//   final     the tube comes back on for one last screen: what the company won
-//             (valuation to infinity), what it cost everyone else (laptop prices
-//             up, computer ownership down), then "This was a game." with
-//             Altman's real quote and PLAY AGAIN.
+//   cost      the tube comes back on: what it cost everyone else (laptop prices
+//             up, computer ownership down), then "This was a game." with the
+//             real price rise and Altman's real quote. CONTINUE.
+//   score     the arcade ending: GAME OVER, the RAM you collected as the high
+//             score, the share bar (you against the consumers), PLAY AGAIN.
 
 import type { Bed } from './audio'
 import { detectOs, type Os } from './intel'
@@ -36,7 +37,7 @@ export interface EndingHooks {
   click(): void
 }
 
-export type EndingPhase = 'timeline' | 'seizure' | 'final'
+export type EndingPhase = 'timeline' | 'seizure' | 'cost' | 'score'
 
 const AMBER = '#ffb23e'
 const PROJ = '#c9a2ff'
@@ -128,34 +129,42 @@ function buildItems(): Item[] {
   return items
 }
 
-// ------------------------------------------------------------- final screen timing
+// ------------------------------------------------------------- cost screen timing
 
 // white fades to black, then the tube comes back on
-const F_ON = 0.9
-// the company: valuation spins to infinity, then the tally
-const F_LEFT = 1.4
-const F_SPIN = 2.0
-const F_INF = 3.6
-const F_STATS = 4.1
+const C_ON = 0.9
 // everyone else: what a laptop costs, who still owns a computer
-const F_COST = 5.6
-const F_PRICE = 6.0
-const F_OWN = 7.0
+const C_HEAD = 1.3
+const C_PRICE = 1.6
+const C_OWN = 2.6
 const COUNT = 1.4
 // perspective
-const F_RULE = 9.2
-const F_GAME = 9.6
-const F_REAL = 10.3
-const F_QUOTE = 11.0
-const F_READY = 11.8
+const C_RULE = 4.6
+const C_GAME = 5.0
+const C_REAL = 5.7
+const C_QUOTE = 6.4
+const C_READY = 7.2
 // Enter jumps to the end of the next beat
-const BEATS = [F_STATS + 0.8, F_OWN + COUNT + 0.6, F_READY]
+const C_BEATS = [C_OWN + COUNT + 0.6, C_READY]
+
+// ------------------------------------------------------------- score screen timing
+
+const S_HEAD = 0.25
+const S_BAR = 0.7
+const S_FILL = 1.5
+const S_SHARE = S_BAR + S_FILL + 0.25
+const S_STATS = S_SHARE + 0.6
+const S_READY = S_STATS + 0.7
+const S_BEATS = [S_SHARE + 0.3, S_READY]
 
 // the game's own numbers: 2022 is roughly real, 20XX is the game's future
 const PRICE_THEN = 899
 const PRICE_NOW = 9999
 const OWN_THEN = 80
 const OWN_NOW = 3
+
+// the consumers' colour, as on the HUD
+const CONSUMER = '#ffc94a'
 
 // ------------------------------------------------------------- the ending
 
@@ -195,13 +204,13 @@ export class Ending {
   }
 
   // What the music should do: the game's tension through the timeline, a held
-  // hush at TODAY, quiet on the desktop, the finale for the company's win, and
-  // the aftermath once the game says it was a game.
+  // hush at TODAY, quiet on the desktop, a hush as the tube comes back, the
+  // aftermath over what it cost, and the finale for the score.
   get bed(): Bed {
     if (this.phase === 'timeline') return this.todayShown ? 'hush' : 'tense'
     if (this.phase === 'seizure') return 'quiet'
-    if (this.t < F_ON) return 'hush'
-    return this.t < F_GAME ? 'finale' : 'aftermath'
+    if (this.phase === 'cost') return this.t < C_ON ? 'hush' : 'aftermath'
+    return 'finale'
   }
 
   private get todayShown(): boolean {
@@ -221,9 +230,14 @@ export class Ending {
       this.camTarget = 0
     } else if (phase === 'seizure') {
       this.glitch = 1
-    } else {
+    } else if (phase === 'cost') {
+      // straight from the flat white desktop: the tube is off until C_ON
       this.glitch = 0
       this.flat = 1
+    } else {
+      this.glitch = 0.8
+      this.flat = 0
+      this.power = 1
     }
   }
 
@@ -242,12 +256,19 @@ export class Ending {
     } else if (this.phase === 'seizure') {
       // the notice's default button is Comply
       if (this.t > this.noticeAt + 0.8) this.comply()
-    } else if (this.t < F_READY) {
-      const to = BEATS.find((b) => b > this.t + 0.01) ?? F_READY
-      this.quiet = true
-      this.update(to - this.t)
-      this.quiet = false
-    } else if (this.t > F_READY + 0.3) this.done = true
+    } else if (this.phase === 'cost') {
+      if (this.t < C_READY) this.skipTo(C_BEATS, C_READY)
+      else if (this.t > C_READY + 0.3) this.go('score')
+    } else if (this.t < S_READY) this.skipTo(S_BEATS, S_READY)
+    else if (this.t > S_READY + 0.3) this.done = true
+  }
+
+  // Jump to the end of the next beat, without the sounds on the way.
+  private skipTo(beats: number[], ready: number): void {
+    const to = beats.find((b) => b > this.t + 0.01) ?? ready
+    this.quiet = true
+    this.update(to - this.t)
+    this.quiet = false
   }
 
   // A button returned by draw() was pressed.
@@ -255,7 +276,10 @@ export class Ending {
     if (id === 'yes') this.comply()
     else if (id === 'no') this.object()
     else if (id === 'again') {
-      if (this.phase === 'final' && this.t >= F_READY) this.done = true
+      if (this.phase === 'score' && this.t >= S_READY) this.done = true
+    } else if (id === 'action' && this.phase === 'cost') {
+      if (this.t >= C_READY) this.go('score')
+      else this.advance()
     } else this.advance()
   }
 
@@ -303,26 +327,30 @@ export class Ending {
       this.power = this.t < 0.45 ? 1 - (this.t / 0.45) * 0.6 : 1
       if (this.t < 0.45) this.glitch = 1
       this.once('alarm', this.noticeAt, () => this.hooks.alarm())
-      if (this.complied >= 0 && this.t - this.complied > 5.0) this.go('final')
-    } else {
+      if (this.complied >= 0 && this.t - this.complied > 5.0) this.go('cost')
+    } else if (this.phase === 'cost') {
       // the white desktop goes out, then the tube switches back on: a hum, a
       // flash of static, and the picture opens from a line
-      this.flat = this.t < F_ON ? 1 : 0
-      this.power = this.t < F_ON ? 1 : clamp((this.t - F_ON) / 0.7, 0.04, 1)
-      this.once('on', F_ON, () => {
+      this.flat = this.t < C_ON ? 1 : 0
+      this.power = this.t < C_ON ? 1 : clamp((this.t - C_ON) / 0.7, 0.04, 1)
+      this.once('on', C_ON, () => {
         this.hooks.hum()
         this.glitch = 0.9
       })
-      if (this.t > F_SPIN && this.t < F_INF && !this.quiet && this.t - this.lastClick > 0.11) {
+      this.once('game', C_GAME, () => {
+        this.glitch = 0.6
+      })
+    } else {
+      this.flat = 0
+      this.power = 1
+      // the high score counts up with a ticker, then the verdict lands
+      if (this.t > S_BAR && this.t < S_BAR + S_FILL && !this.quiet && this.t - this.lastClick > 0.09) {
         this.lastClick = this.t
         this.hooks.click()
       }
-      this.once('inf', F_INF, () => {
+      this.once('share', S_SHARE, () => {
         this.hooks.stamp()
-        this.glitch = 1
-      })
-      this.once('game', F_GAME, () => {
-        this.glitch = 0.6
+        this.glitch = 0.7
       })
     }
   }
@@ -335,7 +363,8 @@ export class Ending {
     let hits: Hit[] = []
     if (this.phase === 'timeline') this.drawTimeline(ctx, W, H, view)
     else if (this.phase === 'seizure') hits = this.drawSeizure(ctx, W, H, view)
-    else hits = this.drawFinal(ctx, W, H, view)
+    else if (this.phase === 'cost') hits = this.drawCost(ctx, W, H, view)
+    else hits = this.drawScore(ctx, W, H, view)
     ctx.restore()
     return hits
   }
@@ -760,17 +789,16 @@ export class Ending {
     return result
   }
 
-  // ----------------------------------------------------------- 3. final
+  // ----------------------------------------------------------- 4. cost
 
-  // One last screen, built up in beats. What the company won (valuation to
-  // infinity, the tally), what it cost everyone else (a laptop, owning a
-  // computer at all), then the step back: this was a game, the prices are
-  // real, here is what he said. PLAY AGAIN.
-  private drawFinal(ctx: CanvasRenderingContext2D, W: number, H: number, view: View): Hit[] {
+  // What it cost everyone else (a laptop, owning a computer at all), then the
+  // step back: this was a game, the prices are real, here is what he said.
+  // CONTINUE goes on to the score.
+  private drawCost(ctx: CanvasRenderingContext2D, W: number, H: number, view: View): Hit[] {
     const t = this.t
-    if (t < F_ON) {
+    if (t < C_ON) {
       // the white desktop goes out
-      const k = ease(t / F_ON)
+      const k = ease(t / C_ON)
       const v = Math.round(246 * (1 - k))
       ctx.fillStyle = `rgb(${v}, ${v}, ${Math.round(243 * (1 - k))})`
       ctx.fillRect(0, 0, W, H)
@@ -778,63 +806,42 @@ export class Ending {
     }
     this.crtBackground(ctx, W, H)
     // the tube opens from a bright line across the middle
-    const on = t - F_ON
+    const on = t - C_ON
     const open = ease((on - 0.08) / 0.45)
     ctx.save()
     ctx.beginPath()
     ctx.rect(0, H / 2 - (H * open) / 2, W, H * open)
     ctx.clip()
 
-    const portrait = H > W * 1.1
-    const L = portrait ? this.portraitLayout(ctx) : this.landscapeLayout(ctx)
+    const L = this.costLayout(ctx, H > W * 1.1)
     const f = fitTo(W, H, L.dw, L.dh, 1.25)
     ctx.translate(f.ox, f.oy)
     ctx.scale(f.s, f.s)
     const a = (at: number, d = 0.5) => ease((t - at) / d)
 
-    // --- the company
-    this.header(ctx, 'INFINITE LABS', L.co.x, L.co.w, L.co.head, ALERT, L.headSize, a(F_LEFT))
-    if (L.valLabel > 0) {
-      ctx.globalAlpha = a(F_LEFT + 0.2)
-      write(ctx, 'VALUATION', L.co.x + L.co.w / 2, L.valLabel, mono(L.labSize), DIM, 'center', 4)
-    }
-    ctx.globalAlpha = a(F_LEFT + 0.2)
-    this.valuation(ctx, L.co.x + L.co.w / 2, L.val, L.co.w, L.infSize)
-    if (t >= F_INF) {
-      ctx.globalAlpha = a(F_INF + 0.15, 0.4)
-      const size = fitSize(ctx, 'INFINITE PROFIT', (n) => `italic ${display(n)}`, L.profitSize, L.co.w - 10)
-      ctx.save()
-      ctx.shadowColor = ALERT
-      ctx.shadowBlur = 20
-      const jit = this.glitch > 0.3 ? (Math.random() - 0.5) * 8 * this.glitch : 0
-      write(ctx, 'INFINITE PROFIT', L.co.x + L.co.w / 2 + jit, L.profit, `italic ${display(size)}`, ICE, 'center')
-      ctx.restore()
-    }
-    this.tally(ctx, L.co.x, L.co.w, L.stats, L.statSize, L.smallSize)
-
     // --- everyone else
-    this.header(ctx, 'EVERYONE ELSE', L.them.x, L.them.w, L.them.head, AMBER, L.headSize, a(F_COST))
+    this.header(ctx, 'EVERYONE ELSE', 0, L.dw, L.head, AMBER, L.headSize, a(C_HEAD))
     const money$ = (v: number) => `$${Math.round(v).toLocaleString('en-US')}`
-    this.costRow(ctx, L.them.x, L.them.w, L.laptop, L, 'A NEW LAPTOP', F_PRICE, (k) => (k >= 1 ? `${money$(PRICE_NOW)}+` : money$(PRICE_THEN + (PRICE_NOW - PRICE_THEN) * k)), money$(PRICE_THEN))
-    this.costRow(ctx, L.them.x, L.them.w, L.own, L, 'PEOPLE WHO OWN A COMPUTER', F_OWN, (k) => `${Math.round(OWN_THEN + (OWN_NOW - OWN_THEN) * k)}%`, `${OWN_THEN}%`)
-    ctx.globalAlpha = a(F_OWN + COUNT + 0.2)
-    write(ctx, '20XX hasn’t happened. Yet.', L.them.x + (portrait ? 0 : L.them.w), L.note, mono(L.smallSize), FAINT, portrait ? 'left' : 'right', 1)
+    this.costRow(ctx, 0, L.dw, L.laptop, L, 'A NEW LAPTOP', C_PRICE, (k) => (k >= 1 ? `${money$(PRICE_NOW)}+` : money$(PRICE_THEN + (PRICE_NOW - PRICE_THEN) * k)), money$(PRICE_THEN))
+    this.costRow(ctx, 0, L.dw, L.own, L, 'PEOPLE WHO OWN A COMPUTER', C_OWN, (k) => `${Math.round(OWN_THEN + (OWN_NOW - OWN_THEN) * k)}%`, `${OWN_THEN}%`)
+    ctx.globalAlpha = a(C_OWN + COUNT + 0.2)
+    write(ctx, '20XX hasn’t happened. Yet.', L.dw, L.note, mono(L.smallSize), FAINT, 'right', 1)
 
     // --- the step back
-    if (t >= F_RULE) {
+    if (t >= C_RULE) {
       ctx.globalAlpha = 1
       ctx.fillStyle = 'rgba(226, 245, 255, 0.35)'
-      const rw = L.dw * ease((t - F_RULE) / 0.5)
+      const rw = L.dw * ease((t - C_RULE) / 0.5)
       ctx.fillRect(L.dw / 2 - rw / 2, L.rule, rw, 1.5)
     }
-    ctx.globalAlpha = a(F_GAME, 0.4)
+    ctx.globalAlpha = a(C_GAME, 0.4)
     ctx.save()
     ctx.shadowColor = GLOW
     ctx.shadowBlur = 18
     const gs = fitSize(ctx, 'THIS WAS A GAME.', (n) => `italic ${display(n)}`, L.gameSize, L.dw - 20)
     write(ctx, 'THIS WAS A GAME.', L.dw / 2, L.game, `italic ${display(gs)}`, ICE, 'center')
     ctx.restore()
-    ctx.globalAlpha = a(F_REAL)
+    ctx.globalAlpha = a(C_REAL)
     let ry = L.real
     for (const l of L.realLines) {
       write(ctx, l, L.dw / 2, ry, mono(L.realSize), ALERT, 'center', 1)
@@ -843,7 +850,7 @@ export class Ending {
 
     // the quote
     const q = L.quote
-    ctx.globalAlpha = a(F_QUOTE, 0.7)
+    ctx.globalAlpha = a(C_QUOTE, 0.7)
     ctx.fillStyle = 'rgba(255, 45, 111, 0.08)'
     ctx.fillRect(q.x, q.y, q.w, q.h)
     ctx.fillStyle = ALERT
@@ -859,23 +866,14 @@ export class Ending {
       qy += q.attrSize * 1.15
     }
 
-    // play again
+    // continue
     let hits: Hit[] = []
     const b = L.button
-    const ba = a(F_READY - 0.3, 0.4)
+    const ba = a(C_READY - 0.3, 0.4)
     if (ba > 0) {
       ctx.globalAlpha = ba
-      const hover = view.hover === 'again'
-      ctx.fillStyle = hover ? ALERT : 'rgba(255, 45, 111, 0.12)'
-      ctx.fillRect(b.x, b.y, b.w, b.h)
-      ctx.strokeStyle = ALERT
-      ctx.lineWidth = 2
-      ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2)
-      write(ctx, 'PLAY AGAIN', b.x + b.w / 2, b.y + b.h / 2 + 1, display(L.buttonSize, 700), hover ? VOID : ICE, 'center', 2)
-      if (t >= F_READY) {
-        hits = [{ id: 'again', x: f.ox + b.x * f.s, y: f.oy + b.y * f.s, w: b.w * f.s, h: b.h * f.s }]
-        if (!view.touch) write(ctx, 'OR PRESS ENTER', b.x + b.w / 2, b.y + b.h + L.smallSize, mono(L.smallSize), FAINT, 'center', 2)
-      }
+      this.button(ctx, b, 'CONTINUE ▸', L.buttonSize, view.hover === 'action', GLOW)
+      if (t >= C_READY) hits = [{ id: 'action', ...this.toScreen(f, b) }]
     } else if (t > 1.6 && !view.touch && Math.floor(view.time * 2) % 2 === 1) {
       ctx.globalAlpha = 0.6
       write(ctx, 'ENTER ▸▸', L.dw, L.dh - 4, mono(L.smallSize), FAINT, 'right', 2)
@@ -897,6 +895,161 @@ export class Ending {
     return hits
   }
 
+  // ----------------------------------------------------------- 5. score
+
+  // The arcade ending: GAME OVER, the RAM you collected as the high score,
+  // the share bar of the whole run (you against the consumers), a few numbers,
+  // PLAY AGAIN.
+  private drawScore(ctx: CanvasRenderingContext2D, W: number, H: number, view: View): Hit[] {
+    const t = this.t
+    this.crtBackground(ctx, W, H)
+    const wide = H <= W * 1.1
+    const dw = wide ? 760 : 380
+    const k = wide ? 1.3 : 1
+    const a = (at: number, d = 0.4) => ease((t - at) / d)
+
+    // design-space positions, top to bottom
+    const over = 22 * k
+    const label = over + 66 * k
+    const big = label + 70 * k
+    const barLabel = big + 82 * k
+    const bar = { x: 0, y: barLabel + 22 * k, w: dw, h: 54 * k }
+    const counts = bar.y + bar.h + 24 * k
+    const share = counts + 58 * k
+    const stats = share + (wide ? 74 : 92) * k
+    const button = { x: dw / 2 - 150 * k, y: stats + (wide ? 64 : 82) * k, w: 300 * k, h: 58 * k }
+    const dh = button.y + button.h + (wide ? 34 : 30) * k
+    const f = fitTo(W, H, dw, dh, 1.2)
+    ctx.save()
+    ctx.translate(f.ox, f.oy)
+    ctx.scale(f.s, f.s)
+
+    // GAME OVER
+    ctx.globalAlpha = a(S_HEAD - 0.2)
+    ctx.save()
+    ctx.shadowColor = ALERT
+    ctx.shadowBlur = 22
+    const jit = this.glitch > 0.3 ? (Math.random() - 0.5) * 10 * this.glitch : 0
+    write(ctx, 'GAME OVER', dw / 2 + jit, over + 14 * k, `italic ${display(fitSize(ctx, 'GAME OVER', (n) => `italic ${display(n)}`, 52 * k, dw - 40))}`, ALERT, 'center', 4)
+    ctx.restore()
+
+    // the high score: the RAM you took
+    const you = Math.max(0, Math.round(this.stats.ramYou))
+    const them = Math.max(0, Math.round(this.stats.ramThem))
+    const fill = ease((t - S_BAR) / S_FILL)
+    ctx.globalAlpha = a(S_HEAD)
+    write(ctx, 'HIGH SCORE · RAM COLLECTED', dw / 2, label, mono(22 * k), DIM, 'center', 3)
+    ctx.globalAlpha = a(S_BAR - 0.2)
+    ctx.save()
+    ctx.shadowColor = GLOW
+    ctx.shadowBlur = 24
+    const youNow = Math.round(you * fill)
+    write(ctx, youNow.toLocaleString('en-US'), dw / 2, big, display(84 * k, 900), ICE, 'center', 2)
+    ctx.restore()
+
+    // the share bar: you against the consumers, over the whole run
+    const pct = this.share()
+    ctx.globalAlpha = a(S_BAR)
+    write(ctx, 'INFINITE LABS', 0, barLabel, mono(21 * k), ALERT, 'left', 2)
+    write(ctx, 'CONSUMERS', dw, barLabel, mono(21 * k), CONSUMER, 'right', 2)
+    ctx.fillStyle = 'rgba(226, 245, 255, 0.06)'
+    ctx.fillRect(bar.x, bar.y, bar.w, bar.h)
+    const yw = (bar.w * pct * fill) / 100
+    const tw = (bar.w * (100 - pct) * fill) / 100
+    ctx.save()
+    ctx.shadowColor = ALERT
+    ctx.shadowBlur = 18
+    ctx.fillStyle = ALERT
+    ctx.fillRect(bar.x, bar.y, yw, bar.h)
+    ctx.shadowColor = CONSUMER
+    ctx.fillStyle = CONSUMER
+    ctx.fillRect(bar.x + bar.w - tw, bar.y, tw, bar.h)
+    ctx.restore()
+    // the seam
+    if (fill >= 1) {
+      ctx.fillStyle = VOID
+      ctx.fillRect(bar.x + yw - 1.5, bar.y, 3, bar.h)
+    }
+    ctx.strokeStyle = 'rgba(226, 245, 255, 0.4)'
+    ctx.lineWidth = 1.5
+    ctx.strokeRect(bar.x, bar.y, bar.w, bar.h)
+    const pYou = `${Math.round(pct * fill)}%`
+    const pThem = `${Math.round((100 - pct) * fill)}%`
+    const pf = display(28 * k, 900)
+    ctx.font = pf
+    if (yw > ctx.measureText(pYou).width + 24 * k) write(ctx, pYou, bar.x + 14 * k, bar.y + bar.h / 2 + 1, pf, VOID, 'left')
+    if (tw > ctx.measureText(pThem).width + 24 * k) write(ctx, pThem, bar.x + bar.w - 14 * k, bar.y + bar.h / 2 + 1, pf, VOID, 'right')
+    write(ctx, `${youNow.toLocaleString('en-US')} RAM`, 0, counts, mono(22 * k), ICE, 'left', 1)
+    write(ctx, `${Math.round(them * fill).toLocaleString('en-US')} RAM`, dw, counts, mono(22 * k), ICE, 'right', 1)
+
+    // the verdict
+    if (t >= S_SHARE) {
+      const pop = 1 + (1 - ease((t - S_SHARE) / 0.25)) * 0.35
+      ctx.globalAlpha = a(S_SHARE, 0.2)
+      // one line on wide screens, two on phones
+      const verdict = wide ? [`YOU TOOK ${Math.round(pct)}% OF THE WORLD’S RAM`] : [`YOU TOOK ${Math.round(pct)}%`, 'OF THE WORLD’S RAM']
+      ctx.save()
+      ctx.translate(dw / 2, share + (wide ? 0 : 14))
+      ctx.scale(pop, pop)
+      ctx.shadowColor = ALERT
+      ctx.shadowBlur = 16
+      verdict.forEach((v, i) => {
+        const vs = fitSize(ctx, v, (n) => `italic ${display(n)}`, (wide ? 30 : i ? 24 : 38) * k, dw - 8)
+        write(ctx, v, 0, wide ? 0 : i ? 20 : -16, `italic ${display(vs)}`, ICE, 'center')
+      })
+      ctx.restore()
+    }
+
+    // three small numbers
+    const cells: Array<[string, string, string]> = [
+      [money(Math.max(1e6, this.stats.score * 1e6)), 'FINAL', 'VALUATION'],
+      [`${Math.round(this.stats.lawsDisabled)}×`, 'RESISTANCE', 'EATEN'],
+      [String(Math.round(this.stats.minisEaten)), 'CONSUMERS', 'EATEN'],
+    ]
+    const cw = dw / cells.length
+    const small = (wide ? 16 : 15) * k
+    cells.forEach(([n, l1, l2], i) => {
+      const at = S_STATS + i * 0.15
+      if (t < at) return
+      ctx.globalAlpha = a(at, 0.3)
+      const cx = cw * (i + 0.5)
+      write(ctx, n, cx, stats, display(fitSize(ctx, n, (s) => display(s, 700), 28 * k, cw - 12), 700), ICE, 'center')
+      if (wide) write(ctx, `${l1} ${l2}`, cx, stats + 30 * k, mono(small * 1.2), DIM, 'center', 1)
+      else {
+        write(ctx, l1, cx, stats + 30, mono(17), DIM, 'center', 1)
+        write(ctx, l2, cx, stats + 48, mono(17), DIM, 'center', 1)
+      }
+    })
+
+    // play again
+    let hits: Hit[] = []
+    const ba = a(S_READY - 0.3)
+    if (ba > 0) {
+      ctx.globalAlpha = ba
+      this.button(ctx, button, 'PLAY AGAIN', 24 * k, view.hover === 'again', ALERT)
+      if (t >= S_READY) {
+        hits = [{ id: 'again', ...this.toScreen(f, button) }]
+        if (!view.touch) write(ctx, 'OR PRESS ENTER', dw / 2, button.y + button.h + 18 * k, mono(17 * k), FAINT, 'center', 2)
+      }
+    }
+    ctx.restore()
+    ctx.globalAlpha = 1
+    return hits
+  }
+
+  private toScreen(f: Fit, r: Rect): Rect {
+    return { x: f.ox + r.x * f.s, y: f.oy + r.y * f.s, w: r.w * f.s, h: r.h * f.s }
+  }
+
+  private button(ctx: CanvasRenderingContext2D, b: Rect, text: string, size: number, hover: boolean, color: string): void {
+    ctx.fillStyle = hover ? color : color === ALERT ? 'rgba(255, 45, 111, 0.12)' : 'rgba(150, 214, 255, 0.1)'
+    ctx.fillRect(b.x, b.y, b.w, b.h)
+    ctx.strokeStyle = color
+    ctx.lineWidth = 2
+    ctx.strokeRect(b.x + 1, b.y + 1, b.w - 2, b.h - 2)
+    write(ctx, text, b.x + b.w / 2, b.y + b.h / 2 + 1, display(size, 700), hover ? VOID : ICE, 'center', 2)
+  }
+
   private header(ctx: CanvasRenderingContext2D, text: string, x: number, w: number, y: number, color: string, size: number, alpha: number): void {
     if (alpha <= 0) return
     ctx.globalAlpha = alpha
@@ -907,64 +1060,13 @@ export class Ending {
     ctx.globalAlpha = 1
   }
 
-  // The valuation: the score in dollars, spinning up until it is ∞.
-  private valuation(ctx: CanvasRenderingContext2D, cx: number, y: number, w: number, infSize: number): void {
-    const t = this.t
-    if (t < F_LEFT + 0.2) return
-    const start = Math.max(1e6, this.stats.score * 1e6)
-    if (t < F_INF) {
-      let shown = money(start)
-      if (t >= F_SPIN) {
-        const u = (t - F_SPIN) / (F_INF - F_SPIN)
-        shown = money(10 ** (Math.log10(start) + (19.5 - Math.log10(start)) * u ** 2.2))
-        if (u > 0.8) shown = shown.replace(/\d/g, (d) => (Math.random() < 0.5 ? d : String(Math.floor(Math.random() * 10))))
-      }
-      const size = fitSize(ctx, '$888.8QN', (n) => display(n, 700), infSize * 0.5, w - 20)
-      ctx.save()
-      ctx.shadowColor = GLOW
-      ctx.shadowBlur = 14
-      write(ctx, shown, cx, y, display(size, 700), ICE, 'center')
-      ctx.restore()
-      return
-    }
-    const pop = 1 + (1 - ease((t - F_INF) / 0.25)) * 0.5
-    ctx.save()
-    ctx.translate(cx, y)
-    ctx.scale(pop, pop)
-    ctx.shadowColor = ALERT
-    ctx.shadowBlur = 36
-    write(ctx, '∞', 0, 0, `700 ${infSize}px ${MONO}`, ALERT, 'center')
-    ctx.restore()
-  }
-
-  // Three numbers from the run, counted up in turn.
-  private tally(ctx: CanvasRenderingContext2D, x: number, w: number, y: number, size: number, small: number): void {
-    const cells: Array<[number, (v: number) => string, string, string]> = [
-      [this.stats.lawsDisabled, (v) => `${Math.round(v)}×`, 'RESISTANCE', 'EATEN'],
-      [this.stats.minisEaten, (v) => String(Math.round(v)), 'CONSUMERS', 'ABSORBED'],
-      [this.share(), (v) => `${v.toFixed(1)}%`, 'OF THE WORLD’S', 'RAM'],
-    ]
-    const cw = w / cells.length
-    cells.forEach(([n, fmt, l1, l2], i) => {
-      const at = F_STATS + i * 0.2
-      if (this.t < at) return
-      const k = ease((this.t - at) / 0.6)
-      const cx = x + cw * (i + 0.5)
-      ctx.globalAlpha = ease((this.t - at) / 0.3)
-      write(ctx, fmt(n * k), cx, y, display(size, 700), ALERT, 'center')
-      write(ctx, l1, cx, y + size * 0.62 + small * 0.7, mono(small), DIM, 'center', 1)
-      write(ctx, l2, cx, y + size * 0.62 + small * 1.75, mono(small), DIM, 'center', 1)
-    })
-    ctx.globalAlpha = 1
-  }
-
   // A label with its years, then the 2022 value → the 20XX value, counting.
   private costRow(
     ctx: CanvasRenderingContext2D,
     x: number,
     w: number,
     y: number,
-    L: FinalLayout,
+    L: CostLayout,
     label: string,
     at: number,
     now: (k: number) => string,
@@ -995,84 +1097,44 @@ export class Ending {
     ctx.globalAlpha = 1
   }
 
-  // Wide screens: the company and everyone else side by side, the step back below.
-  private landscapeLayout(ctx: CanvasRenderingContext2D): FinalLayout {
-    const dw = 1040
-    const colW = 470
-    const smallSize = 20
-    const quote = this.quoteBox(ctx, 0, 506, 660, 26, 21, 20)
-    const button = { x: 730, y: quote.y + quote.h / 2 - 40, w: 310, h: 64 }
+  // One column, top to bottom; wide screens get a wider column and larger type.
+  private costLayout(ctx: CanvasRenderingContext2D, portrait: boolean): CostLayout {
+    const dw = portrait ? 420 : 760
+    const k = portrait ? 1 : 1.2
+    const realSize = 23 * k
+    const realLines = wrapText(ctx, 'The rising prices are real: PCs already cost 15–20% more in 2026.', mono(realSize), dw - 20)
+    const head = 14 * k
+    const laptop = head + 58 * k
+    const rowGap = 40 * k
+    const own = laptop + 92 * k
+    const note = own + rowGap + 46 * k
+    const rule = note + 30 * k
+    const game = rule + 38 * k
+    const real = game + 46 * k
+    const quote = this.quoteBox(ctx, 0, real + realLines.length * realSize * 1.1 + 4 * k, dw, 22 * k, 18 * k, 14 * k)
+    const button = { x: dw / 2 - 140 * k, y: quote.y + quote.h + 22 * k, w: 280 * k, h: 54 * k }
     return {
       dw,
-      dh: quote.y + quote.h + 8,
-      headSize: 26,
-      labSize: 22,
-      smallSize,
-      co: { x: 0, w: colW, head: 28 },
-      them: { x: dw - colW, w: colW, head: 28 },
-      valLabel: 86,
-      val: 148,
-      infSize: 120,
-      profit: 214,
-      profitSize: 46,
-      stats: 290,
-      statSize: 34,
-      laptop: 86,
-      own: 196,
-      rowGap: 54,
-      thenSize: 30,
-      nowSize: 48,
-      note: 300,
-      rule: 372,
-      game: 414,
-      gameSize: 50,
-      real: 462,
-      realLines: ['The rising prices are real: PCs already cost 15–20% more in 2026.'],
-      realSize: 27,
-      quote,
-      button,
-      buttonSize: 26,
-    }
-  }
-
-  // Phones: one column, top to bottom.
-  private portraitLayout(ctx: CanvasRenderingContext2D): FinalLayout {
-    const dw = 420
-    const realSize = 23
-    const realLines = wrapText(ctx, 'The rising prices are real: PCs already cost 15–20% more in 2026.', mono(realSize), dw - 40)
-    const real = 588
-    const quote = this.quoteBox(ctx, 0, real + realLines.length * realSize * 1.1 + 6, dw, 22, 18, 14)
-    const button = { x: dw / 2 - 140, y: quote.y + quote.h + 18, w: 280, h: 54 }
-    return {
-      dw,
-      dh: button.y + button.h + 36,
-      headSize: 22,
-      labSize: 19,
-      smallSize: 17,
-      co: { x: 0, w: dw, head: 14 },
-      them: { x: 0, w: dw, head: 278 },
-      valLabel: 0,
-      val: 78,
-      infSize: 96,
-      profit: 140,
-      profitSize: 38,
-      stats: 188,
-      statSize: 28,
-      laptop: 316,
-      own: 404,
-      rowGap: 40,
-      thenSize: 24,
-      nowSize: 36,
-      note: 486,
-      rule: 512,
-      game: 548,
-      gameSize: 40,
+      dh: button.y + button.h + 6,
+      headSize: 22 * k,
+      labSize: 19 * k,
+      smallSize: 17 * k,
+      head,
+      laptop,
+      own,
+      rowGap,
+      thenSize: 24 * k,
+      nowSize: 36 * k,
+      note,
+      rule,
+      game,
+      gameSize: 40 * k,
       real,
       realLines,
       realSize,
       quote,
       button,
-      buttonSize: 22,
+      buttonSize: 22 * k,
     }
   }
 
@@ -1099,23 +1161,14 @@ interface QuoteBox {
   attr: string[]
 }
 
-// Where everything on the final screen goes, in design units.
-interface FinalLayout {
+// Where everything on the cost screen goes, in design units.
+interface CostLayout {
   dw: number
   dh: number
   headSize: number
   labSize: number
   smallSize: number
-  co: { x: number; w: number; head: number }
-  them: { x: number; w: number; head: number }
-  // 0: no "VALUATION" label
-  valLabel: number
-  val: number
-  infSize: number
-  profit: number
-  profitSize: number
-  stats: number
-  statSize: number
+  head: number
   laptop: number
   own: number
   rowGap: number
