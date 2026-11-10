@@ -318,7 +318,10 @@ function drawHeader(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, W: 
   const by = compact ? 24 : 18
   button(ctx, frame, 'mute', frame.view.muted ? 'SOUND OFF' : 'SOUND ON', W - 24 - bw, by, bw, bh, th.line, 13)
   button(ctx, frame, 'pause', game.mode === 'pause' ? 'RESUME' : 'PAUSE', W - 24 - bw * 2 - 10, by, bw, bh, th.line, 13)
+  const fullW = frame.view.full ? 0 : 74
   if (!frame.view.full) button(ctx, frame, 'full', 'FULL', W - 24 - bw * 2 - 10 - 74, by, 64, bh, ALERT, 13)
+  // test mode (?dev): skip the board, up here where it can't be missed
+  if (DEV) button(ctx, frame, 'skip', 'SKIP LEVEL \u25B8', W - 24 - bw * 2 - 10 - fullW - 150, by, 140, bh, ALERT, 13)
 
   const era = LEVELS[game.levelIndex]
   const parts: Array<[string, string, string]> = [
@@ -429,12 +432,6 @@ function drawCard(ctx: CanvasRenderingContext2D, frame: Frame, card: Card, th: T
   })
 }
 
-function drawSkip(ctx: CanvasRenderingContext2D, frame: Frame, x: number, y: number): void {
-  if (!DEV) return
-  ctx.globalAlpha = 0.8
-  button(ctx, frame, 'skip', 'TEST \u00B7 SKIP BOARD \u25B8', x, y - 4, 200, 26, ALERT, 11)
-  ctx.globalAlpha = 1
-}
 
 function drawLandscape(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: Theme, W: number): void {
   drawHeader(ctx, game, frame, W, th, false)
@@ -442,7 +439,6 @@ function drawLandscape(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, 
   const px = 836
   drawMarket(ctx, game, px, 96, W - 24 - px, 776, frame.view.time)
   label(ctx, 'ARROWS/WASD MOVE \u00B7 P PAUSE \u00B7 M MUTE', 36 + 380, 884, 15, 'rgba(150, 214, 255, 0.3)')
-  drawSkip(ctx, frame, 36, 872)
 }
 
 // Cards on a phone are drawn larger, around the board's centre. The frame is
@@ -539,7 +535,7 @@ function drawPhone(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: 
   drawMarket(ctx, game, 20, y0, W - 40, PHONE_H - y0 - 14, view.time, { big: true })
   if (DEV) {
     ctx.globalAlpha = 0.8
-    button(ctx, frame, 'skip', 'SKIP \u25B8', W - 20 - 130, 92, 130, 30, ALERT, 15)
+    button(ctx, frame, 'skip', 'SKIP LEVEL \u25B8', W - 20 - 210, 92, 210, 44, ALERT, 20)
     ctx.globalAlpha = 1
   }
 }
@@ -548,5 +544,4 @@ function drawPortrait(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, t
   drawHeader(ctx, game, frame, W, th, true)
   drawField(ctx, game, frame, th, 20, 138)
   drawMarket(ctx, game, 20, 916, W - 40, 254, frame.view.time)
-  drawSkip(ctx, frame, 20, 1180)
 }
