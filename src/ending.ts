@@ -1,11 +1,11 @@
 // The ending of PAC RAM. The glass is broken, nothing is left to stop the
 // company, and memory becomes something people can't afford.
 //
-//   timeline  what happened (with sources), TODAY, then what could happen as
-//             memory keeps getting more expensive
 //   seizure   the CRT drops away; the player's own computer shows a notice that
 //             its memory is being collected. The only answer is Comply.
-//   cost      the tube comes back on: what it cost everyone else (laptop prices
+//   timeline  the tube comes back on: what happened (with sources), TODAY,
+//             then what could happen as memory keeps getting more expensive
+//   cost      what it cost everyone else (laptop prices
 //             up, computer ownership down, around the same laptop the
 //             upgrade screens strip), then "This was a game." with the real
 //             price rise and Altman's real quote. CONTINUE.
@@ -188,9 +188,12 @@ const CONSUMER = '#ffc94a'
 // ------------------------------------------------------------- the ending
 
 export class Ending {
-  phase: EndingPhase = 'timeline'
+  // Straight after the glass breaks, the company takes your computer's RAM:
+  // the notice comes first, then the timeline of how it got here, then what
+  // it cost, then the score.
+  phase: EndingPhase = 'seizure'
   t = 0
-  glitch = 0.7
+  glitch = 1
   flat = 0
   power = 1
   done = false
@@ -226,7 +229,7 @@ export class Ending {
   // hush at TODAY, quiet on the desktop, a hush as the tube comes back, the
   // aftermath over what it cost, and the finale for the score.
   get bed(): Bed {
-    if (this.phase === 'timeline') return this.todayShown ? 'hush' : 'tense'
+    if (this.phase === 'timeline') return this.t < C_ON ? 'hush' : this.todayShown ? 'hush' : 'tense'
     if (this.phase === 'seizure') return 'quiet'
     if (this.phase === 'cost') return this.t < C_ON ? 'hush' : 'aftermath'
     return 'finale'
@@ -242,17 +245,21 @@ export class Ending {
     this.t = 0
     this.fired.clear()
     if (phase === 'timeline') {
-      this.glitch = 0.7
+      // straight from the flat white desktop: the tube is off until C_ON
+      this.glitch = 0
+      this.flat = 1
       this.shown = 0
-      this.nextAt = 0.7
+      this.nextAt = C_ON + 0.9
       this.cam = 0
       this.camTarget = 0
     } else if (phase === 'seizure') {
       this.glitch = 1
     } else if (phase === 'cost') {
-      // straight from the flat white desktop: the tube is off until C_ON
-      this.glitch = 0
-      this.flat = 1
+      // from the timeline the tube is already on: skip the white fade
+      this.glitch = 0.5
+      this.flat = 0
+      this.t = C_ON + 0.6
+      this.fired.add('on')
     } else {
       this.glitch = 0.8
       this.flat = 0
@@ -271,7 +278,7 @@ export class Ending {
   advance(): void {
     if (this.phase === 'timeline') {
       if (this.shown < this.items.length) this.nextAt = Math.min(this.nextAt, this.t)
-      else if (this.t - this.lastShownAt > 0.6) this.go('seizure')
+      else if (this.t - this.lastShownAt > 0.6) this.go('cost')
     } else if (this.phase === 'seizure') {
       // the notice's default button is Comply
       if (this.t > this.noticeAt + 0.8) this.comply()
@@ -325,8 +332,13 @@ export class Ending {
     this.glitch = Math.max(0, this.glitch - dt * 1.6)
 
     if (this.phase === 'timeline') {
-      this.flat = 0
-      this.power = 1
+      // the white desktop goes out, then the tube switches back on
+      this.flat = this.t < C_ON ? 1 : 0
+      this.power = this.t < C_ON ? 1 : clamp((this.t - C_ON) / 0.7, 0.04, 1)
+      this.once('on', C_ON, () => {
+        this.hooks.hum()
+        this.glitch = 0.9
+      })
       if (this.shown < this.items.length && this.t >= this.nextAt) {
         const item = this.items[this.shown]!
         this.shown++
@@ -346,7 +358,7 @@ export class Ending {
       this.power = this.t < 0.45 ? 1 - (this.t / 0.45) * 0.6 : 1
       if (this.t < 0.45) this.glitch = 1
       this.once('alarm', this.noticeAt, () => this.hooks.alarm())
-      if (this.complied >= 0 && this.t - this.complied > 5.0) this.go('cost')
+      if (this.complied >= 0 && this.t - this.complied > 5.0) this.go('timeline')
     } else if (this.phase === 'cost') {
       // the white desktop goes out, then the tube switches back on: a hum, a
       // flash of static, and the picture opens from a line
@@ -427,7 +439,27 @@ export class Ending {
   // ----------------------------------------------------------- 2. timeline
 
   private drawTimeline(ctx: CanvasRenderingContext2D, W: number, H: number, view: View): void {
+    const t0 = this.t
+    if (t0 < C_ON) {
+      // the white desktop goes out
+      const k = ease(t0 / C_ON)
+      const v = Math.round(246 * (1 - k))
+      ctx.fillStyle = `rgb(${v}, ${v}, ${Math.round(243 * (1 - k))})`
+      ctx.fillRect(0, 0, W, H)
+      return
+    }
     this.crtBackground(ctx, W, H)
+    // the tube opens from a bright line across the middle
+    const open = ease((t0 - C_ON - 0.08) / 0.45)
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(0, H / 2 - (H * open) / 2, W, H * open)
+    ctx.clip()
+    this.drawTimelineBody(ctx, W, H, view)
+    ctx.restore()
+  }
+
+  private drawTimelineBody(ctx: CanvasRenderingContext2D, W: number, H: number, view: View): void {
     const portrait = H > W * 1.1
     const dw = portrait ? 480 : 860
     const s = Math.min(1.3, (W - 32) / dw, H / 720)
