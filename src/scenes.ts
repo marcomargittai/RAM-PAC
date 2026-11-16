@@ -2,9 +2,9 @@
 // entry for the leaderboard, and the leaderboard itself.
 
 import { countdown, type Entry } from './leaderboard'
-import { ALERT, GLOW, ICE, VOID, theme } from './palette'
+import { ALERT, FRIGHT, GLOW, ICE, VOID, theme } from './palette'
 import { MONO, brackets, fill, label, panel, tag } from './render'
-import { button, drawBackdrop, hit, logo, text, wrap, type Frame, type Hit, type View } from './screen'
+import { button, drawBackdrop, hit, logo, text, type Frame, type Hit, type View } from './screen'
 import { drawFacing, drawUpright, lawSprite, miniFrame, pacFrame } from './sprites'
 import { LEVELS } from './levels'
 import { valuation } from './sim'
@@ -119,7 +119,75 @@ export function drawLeaderboard(ctx: CanvasRenderingContext2D, view: View, board
   return frame.hits
 }
 
-// Shown once after the prologue: what everything on the board is.
+// Shown once after the prologue: who is who on the board, told with pictures.
+const CONSUMER = '#ffc94a'
+
+// A RAM stick drawn like the board's pickups (22x12 pixel art), centred on x, y at scale s.
+function briefStick(ctx: CanvasRenderingContext2D, x: number, y: number, s: number): void {
+  const ox = Math.round(x - 11 * s)
+  const oy = Math.round(y - 6 * s)
+  const px = (color: string, a: number, b: number, w: number, h: number) => {
+    ctx.fillStyle = color
+    ctx.fillRect(ox + a * s, oy + b * s, w * s, h * s)
+  }
+  px('#ffb38a', 0, 0, 22, 10)
+  px('#ffe0c8', 0, 0, 22, 1)
+  px(VOID, 10, 8, 2, 2)
+  for (const a of [2, 8, 14]) px('#4a1d12', a, 2, 5, 5)
+  for (let a = 1; a < 21; a += 2) if (a < 10 || a > 11) px('#ffd36b', a, 10, 1, 2)
+}
+
+interface Box {
+  x: number
+  y: number
+  w: number
+  h: number
+}
+
+// One vignette: a big title, an animated picture, and at most one short line.
+function briefCard(
+  ctx: CanvasRenderingContext2D,
+  box: Box,
+  tone: string,
+  title: string,
+  line: string,
+  big: number,
+  small: number,
+  scene: (area: Box) => void,
+): void {
+  const { x, y, w, h } = box
+  ctx.fillStyle = 'rgba(150, 214, 255, 0.035)'
+  ctx.fillRect(x, y, w, h)
+  ctx.strokeStyle = 'rgba(150, 214, 255, 0.18)'
+  ctx.lineWidth = 1
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1)
+  brackets(ctx, tone, x, y, w, h, 16, 2)
+  label(ctx, title, x + w / 2, y + big * 0.8, big, tone)
+  label(ctx, line, x + w / 2, y + h - small * 0.95, small, GLOW)
+  const area = { x: x + 6, y: y + big * 1.5, w: w - 12, h: h - big * 1.5 - small * 1.8 }
+  ctx.save()
+  ctx.beginPath()
+  ctx.rect(area.x, area.y, area.w, area.h)
+  ctx.clip()
+  scene(area)
+  ctx.restore()
+}
+
+// RAM sticks sliding in from the right and vanishing into a mouth at `mouth`.
+function briefFeed(ctx: CanvasRenderingContext2D, a: Box, y: number, mouth: number, scale: number, gap: number, t: number, speed: number): void {
+  const shift = (t * speed) % gap
+  for (let sx = mouth + gap - shift; sx < a.x + a.w + gap; sx += gap) if (sx > mouth + 4) briefStick(ctx, sx, y, scale)
+}
+
+// A soft light behind the player so "you" reads first.
+function briefHalo(ctx: CanvasRenderingContext2D, x: number, y: number, r: number): void {
+  const g = ctx.createRadialGradient(x, y, 0, x, y, r)
+  g.addColorStop(0, 'rgba(226, 245, 255, 0.28)')
+  g.addColorStop(1, 'rgba(226, 245, 255, 0)')
+  ctx.fillStyle = g
+  ctx.fillRect(x - r, y - r, r * 2, r * 2)
+}
+
 export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
   ctx.save()
   fill(ctx, VOID, 0, 0, view.width, view.height)
@@ -129,60 +197,184 @@ export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
   const H = portrait ? 1300 : 860
   const frame = frameFor(ctx, view, W, H)
   const t = view.time
+  const loop = (period: number, offset = 0) => (((t + offset) % period) + period) % period / period
   panel(ctx, GLOW, 30, 30, W - 60, H - 60)
-  tag(ctx, 'MISSION BRIEFING', W / 2, 78, 26, 'rgba(1, 4, 11, 0.95)', ICE, ALERT)
-  logo(ctx, 'HOW TO PLAY PAC RAM', W / 2, 140, portrait ? 40 : 44, ICE, 'center')
+  logo(ctx, 'HOW TO PLAY', W / 2, portrait ? 110 : 92, portrait ? 52 : 46, ICE, 'center')
 
-  const rows: Array<[string, string, (x: number, y: number) => void]> = [
-    ['YOU · INFINITE LABS', 'An AI company. You need RAM for your datacenters. Your goal: infinite profit.', (x, y) => {
-      const art = pacFrame(t * 8)
-      if (art) drawFacing(ctx, art, x, y, 64, 'right', 'right')
-    }],
-    ['RAM', 'Memory sticks. Eat them and your share price climbs. When the board runs out of RAM, the next era begins.', (x, y) => {
-      ctx.fillStyle = '#ffb38a'
-      ctx.fillRect(x - 33, y - 10, 66, 18)
-      ctx.fillStyle = '#4a1d12'
-      for (const dx of [-27, -9, 9]) ctx.fillRect(x + dx, y - 6, 16, 10)
-      ctx.fillStyle = '#ffd36b'
-      for (let dx = -31; dx < 32; dx += 5) ctx.fillRect(x + dx, y + 8, 3, 5)
-    }],
-    ['CONSUMERS', 'Ordinary people who want RAM too. Slower than you, and they help clear the board. In the last era they are fair game.', (x, y) => {
-      for (let i = 0; i < 3; i++) {
-        const art = miniFrame(t * 7 + i)
-        if (art) drawFacing(ctx, art, x - 28 + i * 28, y, 24, 'right', 'right')
-      }
-    }],
-    ['THE RESISTANCE', 'Regulators, residents, courts and lawmakers. If one touches you, you lose a life.', (x, y) => {
-      for (let i = 0; i < 3; i++) {
-        const art = lawSprite(i, 'body')
-        if (art) drawUpright(ctx, art, x - 30 + i * 30, y + Math.sin(t * 6 + i) * 2, 30)
-      }
-    }],
-    ['SURGE', 'Eat 25 RAM to fill the surge bar. For a few seconds the resistance turns blue: eat it and it is sent back to base.', (x, y) => {
-      ctx.strokeStyle = GLOW
-      ctx.strokeRect(x - 44.5, y - 9.5, 88, 18)
-      ctx.fillStyle = ICE
-      ctx.fillRect(x - 42, y - 7, 84 * ((t * 0.4) % 1), 14)
-    }],
-  ]
-  const iconX = portrait ? 110 : 150
-  const textX = portrait ? 200 : 260
-  const textW = W - textX - 70
-  let y = portrait ? 240 : 205
-  for (const [name, desc, icon] of rows) {
-    brackets(ctx, 'rgba(150, 214, 255, 0.5)', iconX - 56, y - 44, 112, 88, 12, 1)
-    icon(iconX, y)
-    const body = portrait ? 29 : 23
-    label(ctx, name, textX, y - 26, portrait ? 40 : 32, name === 'THE RESISTANCE' ? ALERT : name === 'CONSUMERS' ? '#ffc94a' : ICE, 'left')
-    ctx.font = `${body}px ${MONO}`
-    const lines = wrap(ctx, desc, textW)
-    lines.forEach((line, i) => label(ctx, line, textX, y + 12 + i * (body + 2), body, GLOW, 'left'))
-    y += portrait ? 172 : 108
+  const big = portrait ? 50 : 38
+  const small = portrait ? 34 : 26
+  const gap = 20
+  const left = portrait ? 60 : 50
+  const inner = W - left * 2
+  const rowH = portrait ? 270 : 262
+  const top = portrait ? 180 : 148
+  const row = (i: number) => top + i * (rowH + gap)
+  let you: Box, ram: Box, consumers: Box, resistance: Box, surge: Box
+  if (portrait) {
+    const yw = 400
+    you = { x: left, y: row(0), w: yw, h: rowH }
+    ram = { x: left + yw + gap, y: row(0), w: inner - yw - gap, h: rowH }
+    consumers = { x: left, y: row(1), w: inner, h: rowH }
+    const half = (inner - gap) / 2
+    resistance = { x: left, y: row(2), w: half, h: rowH }
+    surge = { x: left + half + gap, y: row(2), w: half, h: rowH }
+  } else {
+    const yw = 300
+    const rw = 200
+    you = { x: left, y: row(0), w: yw, h: rowH }
+    ram = { x: left + yw + gap, y: row(0), w: rw, h: rowH }
+    consumers = { x: left + yw + rw + gap * 2, y: row(0), w: inner - yw - rw - gap * 2, h: rowH }
+    const half = (inner - gap) / 2
+    resistance = { x: left, y: row(1), w: half, h: rowH }
+    surge = { x: left + half + gap, y: row(1), w: half, h: rowH }
   }
-  label(ctx, view.touch ? 'MOVE: SWIPE ANYWHERE' : 'MOVE: ARROWS · WASD · SWIPE', W / 2, H - 150, portrait ? 32 : 26, ICE)
+
+  const pacSize = 104
+  const pacBody = pacSize * 0.27
+
+  briefCard(ctx, you, ICE, 'YOU', 'INFINITE LABS', big, small, (a) => {
+    const cy = a.y + a.h / 2
+    const px = a.x + a.w * 0.3 + Math.sin(t * 2) * 6
+    briefFeed(ctx, a, cy, px + pacBody * 0.3, 2.2, 66, t, 120)
+    briefHalo(ctx, px, cy, pacBody * 2)
+    const art = pacFrame(t * 10)
+    if (art) drawFacing(ctx, art, px, cy, pacSize, 'right', 'right')
+  })
+
+  briefCard(ctx, ram, '#ffb38a', 'RAM', 'eat it all', big, small, (a) => {
+    const bob = Math.sin(t * 3) * 5
+    const s = Math.min(5, (a.w - 30) / 26)
+    ctx.save()
+    ctx.globalAlpha = 0.35 + 0.25 * Math.sin(t * 4)
+    ctx.fillStyle = 'rgba(255, 154, 102, 0.35)'
+    ctx.beginPath()
+    ctx.ellipse(a.x + a.w / 2, a.y + a.h / 2 + bob, 15 * s, 10 * s, 0, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+    briefStick(ctx, a.x + a.w / 2, a.y + a.h / 2 + bob, s)
+  })
+
+  briefCard(ctx, consumers, CONSUMER, 'CONSUMERS', 'they want RAM too', big, small, (a) => {
+    const cy = a.y + a.h / 2
+    // left: you, crossed out against them
+    const vsW = 150
+    const youX = a.x + 46
+    const you = pacFrame(t * 6)
+    briefHalo(ctx, youX, cy - 6, 50)
+    if (you) {
+      ctx.save()
+      ctx.globalAlpha = 0.75
+      drawFacing(ctx, you, youX, cy - 6, 84, 'right', 'right')
+      ctx.restore()
+    }
+    label(ctx, 'YOU', youX, cy + 38, portrait ? 24 : 20, GLOW)
+    const nx = a.x + vsW - 34
+    ctx.strokeStyle = ALERT
+    ctx.lineWidth = 4
+    ctx.beginPath()
+    ctx.moveTo(nx - 14, cy - 8)
+    ctx.lineTo(nx + 14, cy - 8)
+    ctx.moveTo(nx - 14, cy + 6)
+    ctx.lineTo(nx + 14, cy + 6)
+    ctx.moveTo(nx + 9, cy - 20)
+    ctx.lineTo(nx - 9, cy + 18)
+    ctx.stroke()
+    // right: a conga line of consumers eating their own row of RAM
+    const lane = { x: a.x + vsW, y: a.y, w: a.w - vsW, h: a.h }
+    ctx.save()
+    ctx.beginPath()
+    ctx.rect(lane.x, lane.y, lane.w, lane.h)
+    ctx.clip()
+    const spacing = 56
+    const lead = lane.x + Math.min(200, Math.max(150, lane.w * 0.55)) + Math.sin(t * 1.6) * 8
+    briefFeed(ctx, lane, cy, lead + 10, 1.9, 58, t, 90)
+    for (let i = 0; i < 3; i++) {
+      const art = miniFrame(t * 9 + i)
+      if (art) drawFacing(ctx, art, lead - i * spacing, cy + Math.sin(t * 8 + i * 2) * 2, 62, 'right', 'right')
+    }
+    ctx.restore()
+  })
+
+  briefCard(ctx, resistance, ALERT, 'RESISTANCE', 'don’t get caught', big, small, (a) => {
+    const cy = a.y + a.h / 2
+    const gapG = 58
+    // the floor scrolls left so everyone reads as running right
+    ctx.fillStyle = 'rgba(150, 214, 255, 0.35)'
+    const shift = (t * 220) % 40
+    for (let fx = a.x - shift; fx < a.x + a.w; fx += 40) ctx.fillRect(fx, cy + 40, 20, 3)
+    const head = a.x + a.w - 60 + Math.sin(t * 1.3) * 10
+    briefHalo(ctx, head, cy, pacBody * 1.8)
+    const art = pacFrame(t * 10)
+    if (art) drawFacing(ctx, art, head, cy, pacSize * 0.9, 'right', 'right')
+    for (let i = 0; i < 3; i++) {
+      const g = lawSprite(i, 'body')
+      const gx = head - 80 - i * gapG + Math.sin(t * 2.2 + i * 0.9) * 14
+      if (g) drawUpright(ctx, g, gx, cy + Math.sin(t * 7 + i * 1.7) * 4, 56, 'right')
+    }
+  })
+
+  briefCard(ctx, surge, FRIGHT, 'SURGE', '25 RAM = eat them', big, small, (a) => {
+    const P = 5.6
+    const p = loop(P) * P
+    const fillPhase = 2.4
+    const barW = Math.min(a.w - 40, 320)
+    const barH = 24
+    const bx = a.x + (a.w - barW) / 2
+    const by = a.y + 8
+    const laneY = a.y + a.h * 0.64
+    const level = p < fillPhase ? p / fillPhase : Math.max(0, 1 - (p - fillPhase) / (P - fillPhase))
+    const count = p < fillPhase ? Math.floor(25 * level) : 25
+    const full = p >= fillPhase
+    ctx.strokeStyle = full ? ICE : GLOW
+    ctx.lineWidth = 2
+    ctx.strokeRect(bx + 1, by + 1, barW - 2, barH - 2)
+    const lit = full && Math.floor(t * 8) % 2 === 0
+    ctx.fillStyle = lit ? ICE : full ? FRIGHT : '#ffb38a'
+    ctx.fillRect(bx + 4, by + 4, (barW - 8) * level, barH - 8)
+    label(ctx, `${count}/25`, bx + barW / 2, by + barH + 18, portrait ? 26 : 22, full ? ICE : GLOW)
+    const startX = a.x + 52
+    if (!full) {
+      // the pac sits still while RAM slides into its mouth
+      const art = pacFrame(t * 12)
+      const feed = (t * 150) % 60
+      for (let sx = startX + 40 - feed; sx < a.x + a.w; sx += 60) if (sx > startX + 8) briefStick(ctx, sx, laneY, 1.8)
+      if (art) drawFacing(ctx, art, startX, laneY, pacSize * 0.85, 'right', 'right')
+      return
+    }
+    const q = p - fillPhase
+    const meetT = 1.3
+    const travel = a.w - 80 - 44
+    const pacX = startX + Math.min(q, P) * (travel / meetT) * 0.55
+    const ghostX = a.x + a.w - 40 - Math.min(q, meetT) * (travel / meetT) * 0.45
+    const art = pacFrame(t * 12)
+    if (q < meetT) {
+      const look = q < 0.35 ? 'body' : 'blue'
+      const g = lawSprite(1, look)
+      if (g) drawUpright(ctx, g, ghostX, laneY + Math.sin(t * 9) * 3, 56, 'left')
+    } else {
+      // eaten: the eyes fly home and a burst marks the bite
+      const k = q - meetT
+      const eyes = lawSprite(1, 'eyes')
+      ctx.save()
+      ctx.globalAlpha = Math.max(0, 1 - k / 1.4)
+      if (eyes) drawUpright(ctx, eyes, ghostX + k * 90, laneY - k * 70, 56, 'right')
+      ctx.fillStyle = ICE
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2
+        const r = 20 + k * 70
+        ctx.fillRect(ghostX + Math.cos(ang) * r - 3, laneY + Math.sin(ang) * r - 3, 6, 6)
+      }
+      ctx.restore()
+    }
+    if (art) drawFacing(ctx, art, pacX, laneY, pacSize * 0.85, 'right', 'right')
+  })
+
+  label(ctx, view.touch ? 'SWIPE TO MOVE' : 'ARROWS · WASD · SWIPE', W / 2, portrait ? H - 200 : H - 128, portrait ? 34 : 28, ICE)
   const pulse = 0.6 + 0.4 * Math.sin(t * 5.5)
   ctx.globalAlpha = pulse
-  button(ctx, frame, 'action', 'START GROWING', W / 2 - 150, H - 120, 300, 56, ICE, 18)
+  const bw = portrait ? 360 : 300
+  const bh = portrait ? 84 : 58
+  button(ctx, frame, 'action', 'START', W / 2 - bw / 2, portrait ? H - 160 : H - 104, bw, bh, ICE, portrait ? 28 : 22)
   ctx.globalAlpha = 1
   ctx.restore()
   return frame.hits
