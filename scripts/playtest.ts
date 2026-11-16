@@ -17,7 +17,7 @@ import {
 
 const DIRS: Dir[] = ['up', 'left', 'down', 'right']
 const IDLE = { dir: null, start: false, pause: false }
-const SIZES = [15, 19, 25]
+const SIZES = [15, 19, 21]
 const LAW_COUNTS = [2, 4, 5]
 const MINI_COUNTS = [3, 4, 6]
 
@@ -286,6 +286,127 @@ for (let level = 0; level < 3; level++) {
   if (game.ramYou !== 0 || game.ramThem !== 0) fail(`level ${level} did not reset the RAM count`)
   if (game.maze.rows.some((row) => row.includes('o'))) fail(`level ${level} still has a surge pickup`)
 }
+
+// ---- maze rules: Pac-Man style corridors ----
+// Every board is built from 1-tile corridors: no open 2x2 area (also across
+// the tunnel wrap), no dead ends, no straight run over 9 tiles, mirror
+// symmetric, at most two tunnel rows near mid-height and no other openings on
+// the edge columns, a RAM-free ring around the house, and the start below it.
+
+const MAX_RUN = 9
+const OPEN = new Set(['.', ' ', 'P'])
+
+function mazeStats(rows: string[]): { maxRun: number; open2x2: number; deadEnds: number; tunnels: number[] } {
+  const h = rows.length
+  const w = rows[0]!.length
+  const open = (x: number, y: number) => y >= 0 && y < h && OPEN.has(rows[y]![((x % w) + w) % w]!)
+  const tunnels = rows.flatMap((row, y) => (row[0] !== '#' || row[w - 1] !== '#' ? [y] : []))
+  let open2x2 = 0
+  for (let y = 0; y < h - 1; y++) {
+    for (let x = 0; x < w; x++) {
+      if (open(x, y) && open(x + 1, y) && open(x, y + 1) && open(x + 1, y + 1)) open2x2++
+    }
+  }
+  let deadEnds = 0
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (!open(x, y)) continue
+      let n = 0
+      for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+        const nx = x + dx
+        if ((nx < 0 || nx >= w) && !tunnels.includes(y)) continue
+        if (open(nx, y + dy)) n++
+      }
+      if (n < 2) deadEnds++
+    }
+  }
+  let maxRun = 0
+  for (let y = 0; y < h; y++) {
+    // a tunnel row wraps, so count the run through the edge as one
+    const wraps = tunnels.includes(y)
+    let run = 0
+    for (let i = 0; i < (wraps ? w * 2 : w); i++) {
+      run = open(i, y) ? run + 1 : 0
+      maxRun = Math.max(maxRun, Math.min(run, w))
+    }
+  }
+  for (let x = 0; x < w; x++) {
+    let run = 0
+    for (let y = 0; y < h; y++) {
+      run = open(x, y) ? run + 1 : 0
+      maxRun = Math.max(maxRun, run)
+    }
+  }
+  return { maxRun, open2x2, deadEnds, tunnels }
+}
+
+const MAZE_STATS = LEVELS.map((def, i) => {
+  const rows = def.rows
+  const h = rows.length
+  const w = rows[0]!.length
+  const stats = mazeStats(rows)
+  if (stats.open2x2 > 0) fail(`level ${i} has ${stats.open2x2} open 2x2 areas`)
+  if (stats.deadEnds > 0) fail(`level ${i} has ${stats.deadEnds} dead ends`)
+  if (stats.maxRun > MAX_RUN) fail(`level ${i} has a straight run of ${stats.maxRun} tiles`)
+  if (stats.tunnels.length < 1 || stats.tunnels.length > 2) fail(`level ${i} has ${stats.tunnels.length} tunnel rows`)
+  for (const y of stats.tunnels) {
+    if (Math.abs(y - (h - 1) / 2) > h / 6) fail(`level ${i} tunnel row ${y} is not at mid-height`)
+    if (!OPEN.has(rows[y]![0]!) || !OPEN.has(rows[y]![w - 1]!)) fail(`level ${i} tunnel row ${y} is open on one side only`)
+  }
+  rows.forEach((row, y) => {
+    if (row !== [...row].reverse().join('')) fail(`level ${i} row ${y} is not mirror symmetric`)
+  })
+  // every open tile is reachable from the start
+  const start = rows.findIndex((row) => row.includes('P'))
+  const sx = rows[start]!.indexOf('P')
+  const seen = new Set([`${sx},${start}`])
+  const queue = [[sx, start] as [number, number]]
+  while (queue.length) {
+    const [x, y] = queue.pop()!
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]] as const) {
+      const nx = (x + dx + w) % w
+      const ny = y + dy
+      if (ny < 0 || ny >= h || !OPEN.has(rows[ny]![nx]!) || seen.has(`${nx},${ny}`)) continue
+      seen.add(`${nx},${ny}`)
+      queue.push([nx, ny])
+    }
+  }
+  rows.forEach((row, y) => {
+    for (let x = 0; x < w; x++) if (OPEN.has(row[x]!) && !seen.has(`${x},${y}`)) fail(`level ${i} tile ${x},${y} cannot be reached`)
+  })
+  // the house: centred, a RAM-free ring around it, the start below it
+  let doorX = -1
+  let doorY = -1
+  let minX = w
+  let maxX = -1
+  let minY = h
+  let maxY = -1
+  rows.forEach((row, y) => {
+    for (let x = 0; x < w; x++) {
+      if (row[x] === 'd') {
+        doorX = x
+        doorY = y
+      }
+      if (row[x] === 'G' || row[x] === 'd') {
+        minX = Math.min(minX, x)
+        maxX = Math.max(maxX, x)
+        minY = Math.min(minY, y)
+        maxY = Math.max(maxY, y)
+      }
+    }
+  })
+  if (doorX !== (w - 1) / 2) fail(`level ${i} house door is not centred`)
+  // the door sits in the house's top wall, so the ring is one row above it
+  for (let y = minY - 1; y <= maxY + 2; y++) {
+    for (let x = minX - 2; x <= maxX + 2; x++) {
+      const ring = y === minY - 1 || y === maxY + 2 || x === minX - 2 || x === maxX + 2
+      if (ring && rows[y]?.[x] !== ' ') fail(`level ${i} house ring at ${x},${y} is "${rows[y]?.[x]}", not open and RAM-free`)
+    }
+  }
+  if (rows[doorY - 1]![doorX] !== ' ') fail(`level ${i} has RAM at the house door`)
+  if (sx !== doorX || start <= maxY) fail(`level ${i} start is not centred below the house`)
+  return stats
+})
 
 // ---- helpers ----
 
@@ -932,5 +1053,6 @@ console.log('playtest ok', {
   score: run.score,
   valuation: valuation(run.score),
   levels: LEVELS.map((level) => level.name),
+  mazes: MAZE_STATS.map((m, i) => `${LEVELS[i]!.rows[0]!.length}x${LEVELS[i]!.rows.length} run<=${m.maxRun} 2x2=${m.open2x2} dead=${m.deadEnds} tunnel=${m.tunnels.join('/')}`),
   pacing,
 })
