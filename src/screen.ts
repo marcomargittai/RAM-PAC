@@ -325,7 +325,6 @@ function drawHeader(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, W: 
 
   const era = LEVELS[game.levelIndex]
   const parts: Array<[string, string, string]> = [
-    ['REC', 'LIVE', ALERT],
     ['ERA', era?.years ?? '', th.line],
   ]
   const ry = compact ? 84 : 38
@@ -333,12 +332,6 @@ function drawHeader(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, W: 
   const widths = parts.map(([k, v]) => ctx.measureText(`${k} ${v}`).width)
   const total = widths.reduce((a, b) => a + b, 0) + 26 * (parts.length - 1) + 14
   let x = compact ? W / 2 - total / 2 : 620 - total / 2 + 30
-  if (Math.floor(frame.view.time * 1.6) % 2 === 0) {
-    ctx.fillStyle = ALERT
-    ctx.beginPath()
-    ctx.arc(x + 5, ry, 5, 0, Math.PI * 2)
-    ctx.fill()
-  }
   x += 14
   parts.forEach(([k, v, tone], i) => {
     label(ctx, k, x, ry, 22, tone, 'left')

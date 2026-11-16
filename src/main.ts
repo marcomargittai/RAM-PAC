@@ -292,11 +292,15 @@ function saveEntry(skip: boolean): void {
   stage = { kind: 'board', mine, from: 'run' }
 }
 
+// After a run (won or lost) the game starts over completely: back to the
+// title, and the next START plays the intro news and the how-to-play again.
 function runAgain(): void {
   document.title = TITLE
   told = new Set()
   grown = 0
+  seenPrologue = false
   startRun(game)
+  game.mode = 'title'
   play()
 }
 
@@ -478,6 +482,7 @@ function enterFullscreen(): void {
 function quitToTitle(): void {
   if (stage.kind !== 'game') return
   told = new Set()
+  seenPrologue = false
   grown = 0
   startRun(game)
   game.mode = 'title'

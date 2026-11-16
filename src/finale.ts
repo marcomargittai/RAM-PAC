@@ -31,7 +31,7 @@ export const FINALE_LINES = {
   // searches the game itself, finds nothing, and then finds your computer.
   empty: 'infinite labs needs more RAM. there is none left on the board.',
   board: 'search everything. eat the board.',
-  hungry: 'nothing. not one byte left in here.',
+  hungry: 'nothing. no RAM left in here.',
   market: 'keep searching. the market. the screen. anything.',
   out: 'wait. there is more RAM.',
   yours: 'it’s in your computer.',
@@ -239,15 +239,15 @@ export class Finale {
         if (this.phaseT > 0.6) this.line('empty')
         const readEmpty = this.said.has('empty') && (!this.caption || this.caption.age > 2.4)
         if (readEmpty && (boardDone > 0.2 || this.phaseT > 4.2)) this.line('board')
-        if (boardDone > 0.72 || this.phaseT > 18) {
+        if (boardDone > 0.6 || this.phaseT > 12) {
           this.setPhase('pause')
           this.rumbled = false
         }
       } else {
         const outside = this.totalInk - this.boardInk
         const outEaten = this.totalEaten - this.boardEaten
-        if ((outside && outEaten / outside > 0.3) || this.phaseT > 9) this.line('market')
-        if (this.progress > 0.9 || this.phaseT > 22) this.setPhase('vacuum')
+        if ((outside && outEaten / outside > 0.25) || this.phaseT > 6) this.line('market')
+        if (this.progress > 0.75 || this.phaseT > 14) this.setPhase('vacuum')
       }
     } else if (this.phase === 'pause') {
       // The maze is gone. Nothing moves. Then the screen around it starts to give.

@@ -1,7 +1,7 @@
 // The in-game HUD: a fake stock ticker. Infinite Labs' share price climbs
-// slowly with every bit of RAM it takes and drops when the resistance catches
-// it. A news banner runs above it, and a tape underneath shows what all this
-// does to everybody else: memory and computers get dearer, the cloud cheaper.
+// slowly with every bit of RAM it takes. A news banner runs above it, and a
+// tape underneath shows what all this does to everybody else: memory and
+// computers get dearer, the cloud cheaper.
 
 import { INTERLUDE_1, INTERLUDE_2, PROLOGUE } from './headlines'
 import { LAWS, LEVELS } from './levels'
@@ -20,30 +20,19 @@ let lastLevel = -1
 let lastScore = 0
 let lastSample = -1
 
-// Each time the resistance catches the company, the stock loses a fifth.
-const CAUGHT_DROP = 0.8
-
-// How often the company has been caught this run. Lives reset every era, so
-// the count is kept here: it goes up once each time a catch starts.
-let caughtCount = 0
+// When the current catch started, for the caught panel's slam-in.
 let caughtAt = 0
 let lastMode = ''
 
-function caught(_game: Game): number {
-  return caughtCount
-}
-
 function watchCatches(game: Game): void {
   if (game.mode === 'dying' && lastMode !== 'dying') {
-    caughtCount++
     caughtAt = game.time
   }
-  if (game.mode === 'ready' && game.levelIndex === 0 && game.score === 0) caughtCount = 0
   lastMode = game.mode
 }
 
 export function sharePrice(game: Game): number {
-  return (12 + game.score / 320) * CAUGHT_DROP ** Math.max(0, caught(game))
+  return 12 + game.score / 320
 }
 
 // Prices for everyone else, driven by how much RAM has been taken in this run.
@@ -351,9 +340,7 @@ function drawCaught(ctx: CanvasRenderingContext2D, game: Game, x: number, y: num
     }
     label(ctx, law.about, cx, ny + 36 * k, size, ICE)
   }
-  const drop = `INFL \u25BC -${Math.round((1 - CAUGHT_DROP) * 100)}%`
-  label(ctx, drop, cx, ny + 76 * k, 30 * k, DOWN)
-  label(ctx, game.mode === 'lose' ? 'NO LIVES LEFT' : `${Math.max(0, game.lives - 1)} LIVES LEFT THIS ERA`, cx, ny + 112 * k, 20 * k, GLOW)
+  label(ctx, game.mode === 'lose' ? 'NO LIVES LEFT' : `${Math.max(0, game.lives - 1)} LIVES LEFT THIS ERA`, cx, ny + 80 * k, 22 * k, GLOW)
 }
 
 

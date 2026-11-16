@@ -136,13 +136,13 @@ export const INTERLUDE_2: NewsBeat = {
       url: 'https://www.storagenewsletter.com/2025/12/05/micron-announces-exit-from-crucial-consumer-business/',
     },
   ],
-  // Right before the last era, the point in one plain line: the headline
-  // PCWorld ran on Altman's remarks about RAM in home PCs.
+  // Right before the last era: Altman's own words on RAM in home PCs, as
+  // reported from the Cheeky Pint episode of 29 Oct 2026.
   quote: {
-    who: 'PCWorld',
-    where: 'headline',
-    date: '2 Nov 2026',
-    text: 'Sam Altman says your PC’s memory should belong to him',
+    who: 'Sam Altman',
+    where: 'Cheeky Pint podcast',
+    date: 'Oct 2026',
+    text: 'From a global allocation perspective, actually, it’s quite terrible to have everybody have a bunch of the world’s limited supply of DRAM sitting in their own computer.',
     url: 'https://pcworld.com/article/3274634/sam-altman-says-your-pcs-memory-should-belong-to-him.html',
   },
   outro: 'What follows has not happened yet. It is what happens if nobody does anything. Including you.',
