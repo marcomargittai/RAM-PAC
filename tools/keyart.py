@@ -336,7 +336,8 @@ def og():
     card = Image.alpha_composite(card, glow.filter(ImageFilter.GaussianBlur(28)))
     card.alpha_composite(big, (tx, ty))
     sprites = os.path.join(root, 'sprites')
-    cast = ['pac4-open', 'mini-open', 'ghost-act', 'ghost-ban', 'ghost-bill', 'ghost-cap', 'ghost-protest']
+    mini = 'mini-walk1' if os.path.exists(os.path.join(sprites, 'mini-walk1.png')) else 'mini-open'
+    cast = ['pac4-open', mini, 'ghost-act', 'ghost-ban', 'ghost-bill', 'ghost-cap', 'ghost-protest']
     ims = [Image.open(os.path.join(sprites, n + '.png')).convert('RGBA') for n in cast if os.path.exists(os.path.join(sprites, n + '.png'))]
     step = 120
     x0 = (W - (len(ims) - 1) * step - 96) // 2
