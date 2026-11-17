@@ -457,22 +457,28 @@ function drawPlayer(ctx: CanvasRenderingContext2D, game: Game, tile: number, th:
   }
 }
 
+// which way each consumer last faced, so walking up or down doesn't flip them
+const miniFacing = new Map<number, 'left' | 'right'>()
+
 function drawMinis(ctx: CanvasRenderingContext2D, game: Game, tile: number): void {
   const moving = game.mode === 'play'
   const edible = minisEdibleNow(game)
-  const size = Math.max(16, Math.round(actorSize(game.levelIndex) * 0.8))
+  // consumers are little people: upright, mirrored to face where they walk, a touch smaller than you
+  const size = Math.max(20, Math.round(actorSize(game.levelIndex) * 0.95))
   for (const mini of game.minis) {
     const pos = visual(mini)
-    const open = moving ? game.time * 7 + mini.id * 0.9 : 0.4
+    const step = moving ? game.time * 8 + mini.id * 1.3 : 1
     const x = pos.x * tile + tile / 2
     const y = pos.y * tile + tile / 2
     // on the last board they are prey, and they shake
     const jitter = edible && moving ? Math.sin(game.time * 22 + mini.id) * 1.2 : 0
-    const art = miniFrame(open)
-    if (art) drawFacing(ctx, art, x + jitter, y, size, mini.dir, 'right')
+    const art = miniFrame(step)
+    if (mini.dir === 'left' || mini.dir === 'right') miniFacing.set(mini.id, mini.dir)
+    const face = miniFacing.get(mini.id) ?? 'right'
+    if (art) drawUpright(ctx, art, x + jitter, y - size * 0.04, size, face)
     if (mini.stash > 0 || edible) {
       const text = edible ? `${mini.stash} RAM` : String(mini.stash)
-      label(ctx, text, x, y - size / 2 - 7, 15, edible ? '#ffc94a' : 'rgba(255, 201, 74, 0.6)')
+      label(ctx, text, x, y - size / 2 - 6, 15, edible ? '#ffc94a' : 'rgba(255, 201, 74, 0.7)')
     }
   }
 }

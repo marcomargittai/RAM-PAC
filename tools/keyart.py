@@ -68,16 +68,20 @@ def glyph(ch):
         chamfer(0, 0, 1, 1, CH + 5)
         chamfer(0, Hh - 1, 1, -1, CH + 5)
     elif ch == 'R':
+        # the bowl of a P, then a diagonal leg kicking out to the bottom right,
+        # so R never reads as A (which has two straight legs)
         box(0, 0, T - 1, Hh - 1)
         box(0, 0, W - 1, T - 1)
         box(W - T, 0, W - 1, mid + T - 1)
         box(0, mid, W - 1, mid + T - 1)
-        box(W - T, mid + T, W - 1, Hh - 1)
         chamfer(W - 1, 0, -1, 1, CH + 3)
-        # a notch so R never reads as A
-        for y in range(mid + T, mid + T + 7):
-            for x in range(W - T, W - T + 7 - (y - mid - T)):
-                px.discard((x, y))
+        chamfer(W - 1, mid + T - 1, -1, -1, CH + 3)
+        y0, y1 = mid + T - 2, Hh - 1
+        x0, x1 = W // 2 - 5, W - T - 1
+        for y in range(y0, y1 + 1):
+            f = (y - y0) / (y1 - y0)
+            left = int(round(x0 + f * (x1 - x0)))
+            box(left, y, min(W - 1, left + T + 1), y)
     elif ch == 'G':
         box(0, 0, T - 1, Hh - 1)
         box(0, 0, W - 1, T - 1)

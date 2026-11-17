@@ -117,7 +117,8 @@ function ghostSet(source: CanvasImageSource, tint: string | null): GhostSet {
 
 // One sprite per kind of resistance, in the order of LAWS: FINE, PROTEST, LAWSUIT, AI ACT, BAN.
 const LAW_FILES = ['ghost-ban.png', 'ghost-protest.png', 'ghost-act.png', 'ghost-bill.png', 'ghost-cap.png']
-const MINI_FILES = ['mini-closed.png', 'mini-half.png', 'mini-open.png']
+// The consumers: a little person walking with a RAM stick, frames stride, pass, stride.
+const MINI_FILES = ['mini-walk1.png', 'mini-walk2.png', 'mini-walk3.png']
 
 export function loadSprites(): Promise<void> {
   const frames = FORMS.flatMap((f) => ['closed', 'half', 'open'].map((m) => loadImage(`${f.file}-${m}.png`)))
@@ -152,10 +153,11 @@ export function pacFrameOf(index: number, open: number): HTMLCanvasElement | nul
   return forms[index]?.[step === 3 ? 1 : step] ?? null
 }
 
-export function miniFrame(open: number): HTMLCanvasElement | null {
+/** A consumer's walk frame: `step` advances the cycle stride, pass, stride, pass (any number, wraps). */
+export function miniFrame(step: number): HTMLCanvasElement | null {
   if (!ready) return null
-  const step = Math.floor(open) % 4
-  return minis[step === 3 ? 1 : step] ?? null
+  const i = ((Math.floor(step) % 4) + 4) % 4
+  return minis[i === 3 ? 1 : i] ?? null
 }
 
 export function lawSprite(index: number, look: GhostLook): HTMLCanvasElement | null {

@@ -254,9 +254,9 @@ export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
     briefStick(ctx, a.x + a.w / 2, a.y + a.h / 2 + bob, s)
   })
 
-  briefCard(ctx, consumers, CONSUMER, 'CONSUMERS', 'they want RAM too', big, small, (a) => {
+  briefCard(ctx, consumers, CONSUMER, 'CONSUMERS', 'people who want RAM too', big, small, (a) => {
     const cy = a.y + a.h / 2
-    // left: you, crossed out against them
+    // left: you, set apart from them
     const vsW = 150
     const youX = a.x + 46
     const you = pacFrame(t * 6)
@@ -279,19 +279,38 @@ export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
     ctx.moveTo(nx + 9, cy - 20)
     ctx.lineTo(nx - 9, cy + 18)
     ctx.stroke()
-    // right: a conga line of consumers eating their own row of RAM
+    // right: little people walking along, each picking up the RAM sticks in front of them
     const lane = { x: a.x + vsW, y: a.y, w: a.w - vsW, h: a.h }
     ctx.save()
     ctx.beginPath()
     ctx.rect(lane.x, lane.y, lane.w, lane.h)
     ctx.clip()
-    const spacing = 56
-    const lead = lane.x + Math.min(200, Math.max(150, lane.w * 0.55)) + Math.sin(t * 1.6) * 8
-    briefFeed(ctx, lane, cy, lead + 10, 1.9, 58, t, 90)
-    for (let i = 0; i < 3; i++) {
-      const art = miniFrame(t * 9 + i)
-      if (art) drawFacing(ctx, art, lead - i * spacing, cy + Math.sin(t * 8 + i * 2) * 2, 62, 'right', 'right')
+    const man = Math.min(96, lane.h * 0.66)
+    const floor = cy + man * 0.47
+    // the floor scrolls left so they read as walking right
+    ctx.fillStyle = 'rgba(255, 201, 74, 0.28)'
+    const shift = (t * 90) % 36
+    for (let fx = lane.x - shift; fx < lane.x + lane.w; fx += 36) ctx.fillRect(fx, floor, 18, 3)
+    const count = lane.w > 400 ? 3 : 2
+    const spacing = Math.min(130, (lane.w - 40) / count)
+    const lead = lane.x + 20 + spacing * (count - 0.5)
+    const gap = 70
+    const speed = 90
+    // sticks lie on the floor ahead and vanish into the lead's hands
+    const hand = lead + man * 0.3
+    const roll = (t * speed) % gap
+    for (let sx = hand + gap - roll; sx < lane.x + lane.w + gap; sx += gap) briefStick(ctx, sx, floor - 9, 1.5)
+    for (let i = 0; i < count; i++) {
+      const px = lead - i * spacing
+      const art = miniFrame(t * 7 + i * 1.5)
+      if (art) drawUpright(ctx, art, px, cy, man, 'right')
     }
+    // a "+1 RAM" rises each time one is picked up
+    const k = roll / gap
+    ctx.save()
+    ctx.globalAlpha = Math.max(0, 1 - k * 1.3)
+    label(ctx, '+1 RAM', hand - 4, cy - man * 0.5 - k * 26, portrait ? 24 : 20, CONSUMER)
+    ctx.restore()
     ctx.restore()
   })
 
