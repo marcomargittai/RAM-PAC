@@ -474,28 +474,40 @@ function drawClose(ctx: CanvasRenderingContext2D, news: NewsPlayer, x: number, w
   const inQuote = step.kind === 'quote'
   const avail = bottom - top
   const mark = portrait ? 120 : 100
-  const photo = quote?.photo
-  // landscape: a column on the right; portrait: beside the byline
-  const pw = photo ? (portrait ? 150 : 210) : 0
-  const ph = Math.round((pw * 4) / 3)
+  let photo = quote?.photo
+  // landscape: a column on the right; portrait: beside the byline, sized to
+  // what is left once the outro has its room (and dropped if that is too little)
+  const byPw = 150
+  let pw = photo ? (portrait ? byPw : 210) : 0
+  let ph = Math.round((pw * 4) / 3)
   const side = photo && !portrait ? pw + 30 : 0
   const qW = w - 40 - side
   const qFont = (s: number) => `italic 400 ${s}px ${HUD}`
   const q = quote ? fit(ctx, quote.text, qW, portrait ? 7 : 6, portrait ? 46 : 38, 24, qFont) : null
   const whoSize = portrait ? 28 : 24
-  const byW = photo && portrait ? w - 40 - pw - 20 : qW
+  const byW = photo && portrait ? w - 40 - byPw - 20 : qW
   setFont(ctx, `${whoSize}px ${MONO}`)
-  const whoRows = quote ? wrap(ctx, `— ${quote.who}, ${quote.where}, ${quote.date}`, byW) : []
+  let whoRows = quote ? wrap(ctx, `— ${quote.who}, ${quote.where}, ${quote.date}`, byW) : []
   const credit = photo ? creditRows(ctx, photo, portrait ? byW : pw, portrait ? 21 : 17) : null
   const creditH = credit ? 6 + credit.rows.length * credit.size : 0
   const oFont = (s: number) => `${s}px ${MONO}`
   const o = fit(ctx, beat.outro, w - 20, 4, portrait ? 46 : 40, 26, oFont)
 
-  const whoH = whoRows.length * whoSize * 1.1
-  const textH = q ? mark * 0.55 + q.rows.length * q.size * 1.22 + 16 + (photo && portrait ? Math.max(ph, whoH + 10 + creditH) : whoH) : 0
-  const quoteH = q ? Math.max(textH, photo && !portrait ? ph + creditH : 0) : 0
   const outroH = o.rows.length * o.size * 1.1 + 40
   const gap = q ? (portrait ? 70 : 50) : 0
+  const quoteText = q ? mark * 0.55 + q.rows.length * q.size * 1.22 + 16 : 0
+  if (photo && portrait && q) {
+    ph = Math.min(ph, Math.floor(avail - quoteText - gap - outroH))
+    pw = Math.round((ph * 3) / 4)
+    if (ph < 110) {
+      photo = undefined
+      setFont(ctx, `${whoSize}px ${MONO}`)
+      whoRows = quote ? wrap(ctx, `— ${quote.who}, ${quote.where}, ${quote.date}`, qW) : []
+    }
+  }
+  const whoH = whoRows.length * whoSize * 1.1
+  const textH = q ? quoteText + (photo && portrait ? Math.max(ph, whoH + 10 + creditH) : whoH) : 0
+  const quoteH = q ? Math.max(textH, photo && !portrait ? ph + creditH : 0) : 0
   const total = quoteH + gap + outroH
   let y = top + Math.max(0, (avail - total) / 2)
 

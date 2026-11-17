@@ -52,12 +52,14 @@ export const PROLOGUE: NewsBeat = {
       text: 'Italy temporarily blocks ChatGPT over privacy concerns',
       note: 'The first Western country to do it. The service was back within a month.',
       url: 'https://www.pbs.org/newshour/science/italy-temporarily-blocks-chatgpt-over-privacy-concerns',
+      photo: { file: 'garante-rome.jpg', credit: 'Photo: Carlo Dani, CC BY-SA 4.0 (Wikimedia Commons)' },
     },
     {
       outlet: 'Reuters',
       date: '24 May 2023',
       text: 'OpenAI may leave the EU if regulations bite - CEO',
       url: 'https://m.investing.com/news/stock-market-news/openai-may-leave-the-eu-if-regulations-bite--ceo-3090283',
+      photo: { file: 'eu-flags.jpg', credit: 'Photo: Amio Cajander, CC BY-SA 2.0 (Wikimedia Commons)' },
     },
     {
       outlet: 'Reuters',
@@ -88,6 +90,7 @@ export const INTERLUDE_1: NewsBeat = {
       text: 'Their Water Taps Ran Dry When Meta Built Next Door',
       note: 'Newton County, Georgia.',
       url: 'https://www.nytimes.com/2025/07/14/technology/meta-data-center-water.html',
+      photo: { file: 'meta-datacenter.jpg', credit: 'Photo: Intel Free Press, CC BY 2.0 (Wikimedia Commons)' },
     },
     {
       outlet: 'E&E News',
@@ -95,6 +98,7 @@ export const INTERLUDE_1: NewsBeat = {
       text: '‘How come I can’t breathe?’: Musk’s data company draws a backlash in Memphis',
       note: 'About 35 gas turbines, running without permits, in South Memphis.',
       url: 'https://www.eenews.net/articles/elon-musks-xai-in-memphis-35-gas-turbines-no-air-pollution-permits/',
+      photo: { file: 'memphis-plant.jpg', credit: 'Photo: TVA Web Team, CC BY 2.0 (Wikimedia Commons)' },
     },
     {
       outlet: 'The Guardian',
@@ -102,6 +106,7 @@ export const INTERLUDE_1: NewsBeat = {
       text: '‘It’s pillage’: thirsty Uruguayans decry Google’s plan to exploit water supply',
       note: 'During the worst drought in 74 years.',
       url: 'https://www.theguardian.com/world/2023/jul/11/uruguay-drought-water-google-data-center',
+      photo: { file: 'uruguay-reservoir.jpg', credit: 'Photo: NASA, Public domain (Wikimedia Commons)' },
     },
     {
       outlet: 'The Irish Times',
@@ -109,6 +114,7 @@ export const INTERLUDE_1: NewsBeat = {
       text: 'Data centres now account for 21% of all electricity consumption',
       note: 'More than every urban home in Ireland combined.',
       url: 'https://www.irishtimes.com/business/2024/07/23/electricity-consumption-by-data-centres-rises-to-21-eclipsing-urban-households',
+      photo: { file: 'ireland-datacentre.jpg', credit: 'Photo: Thomas Nugent, CC BY-SA 2.0 (Wikimedia Commons)' },
     },
   ],
   quote: {
@@ -117,6 +123,7 @@ export const INTERLUDE_1: NewsBeat = {
     date: 'Aug 2025',
     text: 'We have residential customers providing massive subsidies to some of the wealthiest corporations in the world to support their data centers.',
     url: 'https://tr.tradingview.com/news/reuters.com,2025:newsml_L1N3TP0R8:0-power-costs-soar-in-pjm-region-as-data-center-demand-spikes/',
+    photo: { file: 'maryland-lines.jpg', credit: 'Photo: Tonyglen14, CC BY 2.0 (Wikimedia Commons)' },
   },
   outro: 'The towns are organising. The courts and the lawmakers have joined in. Build anyway.',
 }
@@ -131,12 +138,14 @@ export const INTERLUDE_2: NewsBeat = {
       date: '22 Jan 2025',
       text: 'Trump announces $500bn ‘Stargate’ venture to build up AI infrastructure',
       url: 'https://www.aljazeera.com/news/2025/1/22/trump-announces-500bn-stargate-venture-to-build-up-ai-infrastucture',
+      photo: { file: 'stargate.jpg', credit: 'Photo: The White House, Public domain (Wikimedia Commons)' },
     },
     {
       outlet: 'Bloomberg',
       date: '15 Aug 2025',
       text: 'OpenAI’s Sam Altman Expects to Spend ‘Trillions’ on Infrastructure',
       url: 'https://www.bloomberg.com/news/articles/2025-08-15/openai-s-altman-expects-to-spend-trillions-on-infrastructure',
+      photo: { file: 'altman-2019.jpg', credit: 'Photo: TechCrunch, CC BY 2.0 (Wikimedia Commons)' },
     },
     {
       outlet: 'Micron',
@@ -144,6 +153,7 @@ export const INTERLUDE_2: NewsBeat = {
       text: 'Micron Announces Exit from Crucial Consumer Business',
       note: 'The reason given: AI datacenter demand for memory.',
       url: 'https://www.storagenewsletter.com/2025/12/05/micron-announces-exit-from-crucial-consumer-business/',
+      photo: { file: 'crucial-ram.jpg', credit: 'Photo: ITEagle Europe - Sebastiaan Broekhoven, CC BY-SA 4.0 (Wikimedia Commons)' },
     },
   ],
   // Right before the last era: Altman's own words on RAM in home PCs, as
@@ -154,6 +164,7 @@ export const INTERLUDE_2: NewsBeat = {
     date: 'Oct 2026',
     text: 'From a global allocation perspective, actually, it’s quite terrible to have everybody have a bunch of the world’s limited supply of DRAM sitting in their own computer.',
     url: 'https://pcworld.com/article/3274634/sam-altman-says-your-pcs-memory-should-belong-to-him.html',
+    photo: { file: 'altman-ted.jpg', credit: 'Photo: Steve Jurvetson, CC BY 2.0 (Wikimedia Commons)' },
   },
   outro: 'What follows has not happened yet. It is what happens if nobody does anything. Including you.',
 }
@@ -174,6 +185,7 @@ export const TIMELINE: Milestone[] = [
   { year: '2025', text: 'Micron exits Crucial, its consumer memory business. AI datacenters need the chips.', real: true, source: 'Micron' },
   { year: '2026', text: 'Dell, Lenovo and HP raise PC prices 15-20%. Memory is running short.', real: true, source: 'The Register' },
   { year: '2026', text: 'A 16 GB Raspberry Pi 5 now costs $385. It launched at $120.', real: true, source: 'CNX Software' },
+  { year: '2026', text: 'PlayStation 5 up $100. Steam Deck up $300. Memory chip costs are to blame.', real: true, source: 'Reuters, Engadget' },
   { year: '2027', text: 'Memory costs more than the computer around it.', real: false },
   { year: '2028', text: 'New laptops ship with 4 GB. Anything heavy runs in the cloud.', real: false },
   { year: '2030', text: 'A cloud computer: $3 a month. A real one: a month’s rent.', real: false },
