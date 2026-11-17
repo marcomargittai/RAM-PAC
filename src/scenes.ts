@@ -308,8 +308,8 @@ export function drawBriefing(ctx: CanvasRenderingContext2D, view: View): Hit[] {
     // a "+1 RAM" rises each time one is picked up
     const k = roll / gap
     ctx.save()
-    ctx.globalAlpha = Math.max(0, 1 - k * 1.3)
-    label(ctx, '+1 RAM', hand - 4, cy - man * 0.5 - k * 26, portrait ? 24 : 20, CONSUMER)
+    ctx.globalAlpha = Math.max(0, 1 - k * 0.9)
+    label(ctx, '+1 RAM', lead + 6, cy - man * 0.5 - 2 - k * 18, portrait ? 26 : 22, CONSUMER)
     ctx.restore()
     ctx.restore()
   })

@@ -2,6 +2,14 @@
 // Every item was checked against the outlet named. Headlines are quoted as
 // published; quotes are exact (fragments are joined with ellipses).
 
+// A freely licensed photo shown beside the item (public/news/<file>; sources
+// and licences in tools/newsphotos.py). Not the outlet's own press photo.
+export interface Photo {
+  file: string
+  // 'Photo: <Author>, <License> (Wikimedia Commons)'
+  credit: string
+}
+
 export interface Headline {
   outlet: string
   date: string
@@ -9,6 +17,7 @@ export interface Headline {
   // a short line of context under the headline
   note?: string
   url: string
+  photo?: Photo
 }
 
 export interface Quote {
@@ -17,6 +26,7 @@ export interface Quote {
   date: string
   text: string
   url: string
+  photo?: Photo
 }
 
 export interface NewsBeat {

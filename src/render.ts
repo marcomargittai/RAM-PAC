@@ -464,7 +464,7 @@ function drawMinis(ctx: CanvasRenderingContext2D, game: Game, tile: number): voi
   const moving = game.mode === 'play'
   const edible = minisEdibleNow(game)
   // consumers are little people: upright, mirrored to face where they walk, a touch smaller than you
-  const size = Math.max(20, Math.round(actorSize(game.levelIndex) * 0.95))
+  const size = Math.max(20, Math.round(actorSize(game.levelIndex) * 1.05))
   for (const mini of game.minis) {
     const pos = visual(mini)
     const step = moving ? game.time * 8 + mini.id * 1.3 : 1

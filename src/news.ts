@@ -1,9 +1,11 @@
 // The news screens before the game and between boards: a wire feed seen
 // through the CRT. The kicker and title slam in, the intro types out, then
 // each real headline lands as a wire card, then a quote, then the outro.
-// Text only; the lead maps hooks.type / hooks.stamp to sounds.
+// Each card can carry a freely licensed photo (public/news/, see
+// tools/newsphotos.py) with its credit line, like a news site's story card.
+// The lead maps hooks.type / hooks.stamp to sounds.
 
-import type { Headline, NewsBeat, Quote } from './headlines'
+import type { Headline, NewsBeat, Photo, Quote } from './headlines'
 import { ALERT, GLOW, ICE, theme } from './palette'
 import { MONO, brackets, clamp, fill, label, tag } from './render'
 import { frameFor } from './scenes'
@@ -17,6 +19,20 @@ export type NewsStep =
   | { kind: 'card'; headline: Headline; index: number; text: string }
   | { kind: 'quote'; quote: Quote; text: string }
   | { kind: 'outro'; text: string }
+
+// Photos load in the background; nothing but an empty frame until they do.
+const PHOTOS = new Map<string, HTMLImageElement>()
+
+function loadPhoto(photo: Photo | undefined): HTMLImageElement | null {
+  if (!photo) return null
+  let image = PHOTOS.get(photo.file)
+  if (!image) {
+    image = new Image()
+    image.src = `${import.meta.env.BASE_URL}news/${photo.file}`
+    PHOTOS.set(photo.file, image)
+  }
+  return image.complete && image.naturalWidth > 0 ? image : null
+}
 
 // how long a card takes to drop into place, and the title to slam in
 const LAND = 0.32
@@ -48,6 +64,8 @@ export class NewsPlayer {
       ...(beat.quote ? [{ kind: 'quote' as const, quote: beat.quote, text: beat.quote.text }] : []),
       { kind: 'outro', text: beat.outro },
     ]
+    for (const h of beat.headlines) loadPhoto(h.photo)
+    loadPhoto(beat.quote?.photo)
     this.enter()
   }
 
@@ -195,21 +213,64 @@ interface CardLayout {
   draw(y: number, alpha: number, live: boolean): void
 }
 
+// A photo cropped to fill its box (cover), in a thin frame. Until the file
+// has loaded the frame is drawn empty.
+function drawPhoto(ctx: CanvasRenderingContext2D, photo: Photo, x: number, y: number, w: number, h: number): void {
+  x = Math.round(x)
+  y = Math.round(y)
+  w = Math.round(w)
+  h = Math.round(h)
+  ctx.fillStyle = 'rgba(1, 4, 11, 0.9)'
+  ctx.fillRect(x, y, w, h)
+  const image = loadPhoto(photo)
+  if (image) {
+    const iw = image.naturalWidth
+    const ih = image.naturalHeight
+    const k = Math.max(w / iw, h / ih)
+    const sw = w / k
+    const sh = h / k
+    ctx.drawImage(image, (iw - sw) / 2, (ih - sh) / 2, sw, sh, x, y, w, h)
+  }
+  ctx.strokeStyle = 'rgba(150, 214, 255, 0.45)'
+  ctx.lineWidth = 1
+  ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1)
+}
+
+// The credit under a photo: small, up to two lines, shrunk to fit.
+function creditRows(ctx: CanvasRenderingContext2D, photo: Photo, w: number, size: number): { size: number; rows: string[] } {
+  return fit(ctx, photo.credit, w, 2, size, Math.max(10, size - 6), (s) => `${s}px ${MONO}`)
+}
+
+function drawCredit(ctx: CanvasRenderingContext2D, credit: { size: number; rows: string[] }, x: number, y: number, align: CanvasTextAlign = 'left'): void {
+  rowsAt(ctx, credit.rows, x, y, credit.size, 1.0, 'rgba(150, 214, 255, 0.62)', `${credit.size}px ${MONO}`, align)
+}
+
 function cardLayout(ctx: CanvasRenderingContext2D, news: NewsPlayer, step: Extract<NewsStep, { kind: 'card' }>, x: number, w: number, compact: boolean, portrait: boolean, at: number): CardLayout {
   const h0 = step.headline
   const pad = compact ? 14 : 22
   const metaSize = compact ? (portrait ? 20 : 18) : portrait ? 26 : 22
-  const big = compact ? (portrait ? 28 : 21) : portrait ? 52 : 36
-  const headFont = (s: number) => `${compact ? 400 : 600} ${s}px ${HUD}`
-  const innerW = w - pad * 2 - 8
-  const head = fit(ctx, h0.text, innerW, compact ? 2 : 4, big, compact ? 16 : 24, headFont)
-  const noteSize = portrait ? 30 : 25
-  setFont(ctx, `${noteSize}px ${MONO}`)
-  const noteRows = !compact && h0.note ? wrap(ctx, h0.note, innerW) : []
+  const photo = compact ? undefined : h0.photo
   const metaH = metaSize * 1.1
+  const innerW = w - pad * 2 - 8
+  // the photo: beside the text in landscape, full width above it on a phone
+  const photoW = photo ? (portrait ? innerW : 264) : 0
+  const photoH = photo ? Math.round(portrait ? photoW * 0.5 : (photoW * 3) / 4) : 0
+  const credit = photo ? creditRows(ctx, photo, photoW, portrait ? 21 : 17) : null
+  const creditH = credit ? 6 + credit.rows.length * credit.size : 0
+  const side = photo && !portrait ? photoW + 22 : 0
+  const textW = innerW - side
+  const big = compact ? (portrait ? 28 : 21) : portrait ? (photo ? 44 : 52) : photo ? 32 : 36
+  const headFont = (s: number) => `${compact ? 400 : 600} ${s}px ${HUD}`
+  const head = fit(ctx, h0.text, textW, compact ? 2 : portrait ? 3 : 5, big, compact ? 16 : 22, headFont)
+  const noteSize = portrait ? 28 : photo ? 23 : 25
+  setFont(ctx, `${noteSize}px ${MONO}`)
+  const noteRows = !compact && h0.note ? wrap(ctx, h0.note, textW) : []
   const headH = head.rows.length * head.size * 1.16
   const noteH = noteRows.length ? 10 + noteRows.length * noteSize * 1.05 : 0
-  const h = pad + metaH + (compact ? 4 : 10) + headH + noteH + pad - 4
+  const topGap = compact ? 4 : 10
+  const picH = photo ? photoH + creditH : 0
+  const body = portrait ? picH + (photo ? 14 : 0) + headH + noteH : Math.max(picH, headH + noteH)
+  const h = pad + metaH + topGap + body + pad - 4
   const total = news.beat.headlines.length
   return {
     h,
@@ -223,27 +284,32 @@ function cardLayout(ctx: CanvasRenderingContext2D, news: NewsPlayer, step: Extra
       ctx.strokeRect(Math.round(x) + 0.5, Math.round(y) + 0.5, Math.round(w) - 1, Math.round(h) - 1)
       fill(ctx, live ? ALERT : 'rgba(150, 214, 255, 0.35)', x, y, live ? 6 : 3, h)
       if (live) brackets(ctx, ICE, x - 4, y - 4, w + 8, h + 8, 14, 2)
-      // the stamp: a flash as the card lands
-      if (live && at < 0.5) {
-        ctx.globalAlpha = alpha * (1 - at / 0.5) * 0.35
-        ctx.fillStyle = ICE
-        ctx.fillRect(x, y, w, h)
-        ctx.globalAlpha = alpha
-      }
       const lx = x + pad + 8
       let cy = y + pad
       label(ctx, `SOURCE: ${h0.outlet.toUpperCase()}`, lx, cy + metaH / 2, metaSize, live ? ALERT : GLOW, 'left')
       const right = `${h0.date.toUpperCase()}  ·  ${String(step.index + 1).padStart(2, '0')}/${String(total).padStart(2, '0')}`
       label(ctx, right, x + w - pad, cy + metaH / 2, metaSize, GLOW, 'right')
-      cy += metaH + (compact ? 4 : 10)
-      rowsAt(ctx, head.rows, lx, cy, head.size, 1.16, live ? ICE : 'rgba(226, 245, 255, 0.85)', headFont(head.size))
+      cy += metaH + topGap
+      if (photo && credit) {
+        drawPhoto(ctx, photo, lx, cy, photoW, photoH)
+        drawCredit(ctx, credit, lx, cy + photoH + 6)
+        if (portrait) cy += picH + 14
+      }
+      const tx = lx + side
+      rowsAt(ctx, head.rows, tx, cy, head.size, 1.16, live ? ICE : 'rgba(226, 245, 255, 0.85)', headFont(head.size))
       cy += headH
       if (noteRows.length) {
         cy += 10
         const typed = live ? news.typed : step.text.length
         const shown = typedRows(noteRows, typed)
-        rowsAt(ctx, shown, lx, cy, noteSize, 1.05, GLOW, `${noteSize}px ${MONO}`)
-        if (live && typed < step.text.length && at >= LAND) cursor(ctx, shown, lx, cy, noteSize, 1.05, GLOW, news.time)
+        rowsAt(ctx, shown, tx, cy, noteSize, 1.05, GLOW, `${noteSize}px ${MONO}`)
+        if (live && typed < step.text.length && at >= LAND) cursor(ctx, shown, tx, cy, noteSize, 1.05, GLOW, news.time)
+      }
+      // the stamp: a flash as the card lands, over the photo too
+      if (live && at < 0.5) {
+        ctx.globalAlpha = alpha * (1 - at / 0.5) * 0.35
+        ctx.fillStyle = ICE
+        ctx.fillRect(x, y, w, h)
       }
       ctx.restore()
     },
@@ -399,7 +465,8 @@ function drawFeed(ctx: CanvasRenderingContext2D, news: NewsPlayer, step: Extract
   ctx.restore()
 }
 
-// The quote in large type, then the outro in pink beneath it.
+// The quote in large type, then the outro in pink beneath it. A photo of the
+// speaker sits beside the quote in landscape, or by the byline on a phone.
 function drawClose(ctx: CanvasRenderingContext2D, news: NewsPlayer, x: number, w: number, top: number, bottom: number, portrait: boolean): void {
   const beat = news.beat
   const quote = beat.quote
@@ -407,15 +474,26 @@ function drawClose(ctx: CanvasRenderingContext2D, news: NewsPlayer, x: number, w
   const inQuote = step.kind === 'quote'
   const avail = bottom - top
   const mark = portrait ? 120 : 100
+  const photo = quote?.photo
+  // landscape: a column on the right; portrait: beside the byline
+  const pw = photo ? (portrait ? 150 : 210) : 0
+  const ph = Math.round((pw * 4) / 3)
+  const side = photo && !portrait ? pw + 30 : 0
+  const qW = w - 40 - side
   const qFont = (s: number) => `italic 400 ${s}px ${HUD}`
-  const q = quote ? fit(ctx, quote.text, w - 40, portrait ? 7 : 6, portrait ? 46 : 38, 24, qFont) : null
+  const q = quote ? fit(ctx, quote.text, qW, portrait ? 7 : 6, portrait ? 46 : 38, 24, qFont) : null
   const whoSize = portrait ? 28 : 24
+  const byW = photo && portrait ? w - 40 - pw - 20 : qW
   setFont(ctx, `${whoSize}px ${MONO}`)
-  const whoRows = quote ? wrap(ctx, `— ${quote.who}, ${quote.where}, ${quote.date}`, w - 40) : []
+  const whoRows = quote ? wrap(ctx, `— ${quote.who}, ${quote.where}, ${quote.date}`, byW) : []
+  const credit = photo ? creditRows(ctx, photo, portrait ? byW : pw, portrait ? 21 : 17) : null
+  const creditH = credit ? 6 + credit.rows.length * credit.size : 0
   const oFont = (s: number) => `${s}px ${MONO}`
   const o = fit(ctx, beat.outro, w - 20, 4, portrait ? 46 : 40, 26, oFont)
 
-  const quoteH = q ? mark * 0.55 + q.rows.length * q.size * 1.22 + 16 + whoRows.length * whoSize * 1.1 : 0
+  const whoH = whoRows.length * whoSize * 1.1
+  const textH = q ? mark * 0.55 + q.rows.length * q.size * 1.22 + 16 + (photo && portrait ? Math.max(ph, whoH + 10 + creditH) : whoH) : 0
+  const quoteH = q ? Math.max(textH, photo && !portrait ? ph + creditH : 0) : 0
   const outroH = o.rows.length * o.size * 1.1 + 40
   const gap = q ? (portrait ? 70 : 50) : 0
   const total = quoteH + gap + outroH
@@ -425,6 +503,11 @@ function drawClose(ctx: CanvasRenderingContext2D, news: NewsPlayer, x: number, w
     const qAlpha = inQuote ? 1 : 0.45
     ctx.save()
     ctx.globalAlpha = qAlpha * (inQuote ? ease(news.age / 0.4) : 1)
+    if (photo && credit && !portrait) {
+      const px = x + w - pw
+      drawPhoto(ctx, photo, px, y, pw, ph)
+      drawCredit(ctx, credit, px, y + ph + 6)
+    }
     ctx.fillStyle = ALERT
     ctx.font = `900 ${mark}px "Orbitron", "Chakra Petch", sans-serif`
     ctx.textAlign = 'left'
@@ -445,9 +528,20 @@ function drawClose(ctx: CanvasRenderingContext2D, news: NewsPlayer, x: number, w
       ctx.fillText('”', x + 20 + lw + 6, y + (q.rows.length - 1) * q.size * 1.22 - q.size * 0.1)
     }
     y += q.rows.length * q.size * 1.22 + 16
-    const whoAlpha = !inQuote || typed >= quote.text.length ? 1 : 0
-    ctx.globalAlpha *= whoAlpha
-    rowsAt(ctx, whoRows, x + 20, y, whoSize, 1.1, GLOW, `${whoSize}px ${MONO}`)
+    if (photo && credit && portrait) {
+      drawPhoto(ctx, photo, x + 20, y, pw, ph)
+      const bx = x + 20 + pw + 20
+      const by = y + Math.max(0, (ph - whoH - 10 - creditH) / 2)
+      ctx.save()
+      ctx.globalAlpha *= !inQuote || typed >= quote.text.length ? 1 : 0
+      rowsAt(ctx, whoRows, bx, by, whoSize, 1.1, GLOW, `${whoSize}px ${MONO}`)
+      ctx.restore()
+      drawCredit(ctx, credit, bx, by + whoH + 10)
+    } else {
+      const whoAlpha = !inQuote || typed >= quote.text.length ? 1 : 0
+      ctx.globalAlpha *= whoAlpha
+      rowsAt(ctx, whoRows, x + 20, y, whoSize, 1.1, GLOW, `${whoSize}px ${MONO}`)
+    }
     ctx.restore()
     y = top + Math.max(0, (avail - total) / 2) + quoteH + gap
   }
