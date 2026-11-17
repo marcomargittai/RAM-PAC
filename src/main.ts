@@ -171,6 +171,7 @@ function play(): void {
 }
 
 function beginRun(): void {
+  movedThisRun = false
   if (!seenPrologue) {
     seenPrologue = true
     audio.play('boot', 0.7)
@@ -412,6 +413,7 @@ function press(id: HitId): void {
 }
 
 function steer(dir: Dir): void {
+  noteMove()
   held.add(dir)
   lastDir = dir
 }
@@ -596,24 +598,16 @@ let swipeY = 0
 let swiping = -1
 let swiped = false
 
-// The swipe hint shows on phones until the player has steered once.
-let swipedOnce = (() => {
-  try {
-    return localStorage.getItem('ramgrab.swiped') === '1'
-  } catch {
-    return false
-  }
-})()
+// How to move is shown over the board at the start of every run (keys on a
+// computer, a swipe on a phone) until the player steers for the first time.
+let movedThisRun = false
+
+function noteMove(): void {
+  if (stage.kind === 'game' && (game.mode === 'play' || game.mode === 'ready')) movedThisRun = true
+}
 
 function swipeTo(dx: number, dy: number): void {
-  if (!swipedOnce && stage.kind === 'game' && (game.mode === 'play' || game.mode === 'ready')) {
-    swipedOnce = true
-    try {
-      localStorage.setItem('ramgrab.swiped', '1')
-    } catch {
-      // private mode
-    }
-  }
+  noteMove()
   const dir: Dir = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up'
   held.clear()
   held.add(dir)
@@ -751,7 +745,7 @@ function currentView(): View {
     touch: window.matchMedia('(pointer: coarse)').matches,
     muted: audio.muted,
     full: !!document.fullscreenElement,
-    hint: !swipedOnce && window.matchMedia('(pointer: coarse)').matches,
+    hint: !movedThisRun,
     hover,
     held: lit,
     card,

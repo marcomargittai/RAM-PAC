@@ -52,7 +52,7 @@ export interface View {
   height: number
   touch: boolean
   muted: boolean
-  // show the swipe hint over the board (phones, until the first swipe)
+  // show how to move over the board (until the player steers in this run)
   hint?: boolean
   full: boolean
   hover: HitId | null
@@ -359,7 +359,60 @@ function drawField(ctx: CanvasRenderingContext2D, game: Game, frame: Frame, th: 
   ctx.clip()
   render(ctx, game)
   ctx.restore()
-  if (frame.view.card) drawCard(ctx, frame, frame.view.card, th, x, y, size)
+  const view = frame.view
+  if (view.hint && !view.card && (game.mode === 'ready' || game.mode === 'play')) {
+    if (view.touch) drawSwipeHint(ctx, x, y, size, view.time)
+    else drawKeysHint(ctx, x, y, size, view.time)
+  }
+  if (view.card) drawCard(ctx, frame, view.card, th, x, y, size)
+}
+
+// A keycap with a label, lit when its turn comes in the little animation.
+function keycap(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, text: string, lit: boolean): void {
+  ctx.fillStyle = lit ? ICE : 'rgba(1, 4, 11, 0.9)'
+  ctx.fillRect(x, y, s, s)
+  ctx.strokeStyle = ICE
+  ctx.lineWidth = 2
+  ctx.strokeRect(x + 1, y + 1, s - 2, s - 2)
+  fill(ctx, lit ? 'rgba(1, 4, 11, 0.25)' : 'rgba(150, 214, 255, 0.25)', x + 3, y + s - 6, s - 6, 3)
+  label(ctx, text, x + s / 2, y + s / 2 - 1, s * 0.55, lit ? VOID : ICE)
+}
+
+// On a computer: the arrow keys and WASD, lighting up in turn, until the
+// player first moves.
+function drawKeysHint(ctx: CanvasRenderingContext2D, x: number, y: number, size: number, time: number): void {
+  // at the top of the board: the player starts lower down, and the era box
+  // sits just under this
+  const w = 620
+  const h = 214
+  const left = x + size / 2 - w / 2
+  const top = y + 12
+  ctx.fillStyle = 'rgba(1, 4, 11, 0.88)'
+  ctx.fillRect(left, top, w, h)
+  ctx.strokeStyle = 'rgba(150, 214, 255, 0.55)'
+  ctx.lineWidth = 2
+  ctx.strokeRect(left + 1, top + 1, w - 2, h - 2)
+  fill(ctx, ALERT, left, top, 6, h)
+  label(ctx, 'HOW TO MOVE', x + size / 2, top + 26, 28, ALERT)
+  const order = ['up', 'left', 'down', 'right']
+  const on = order[Math.floor(time * 2.2) % 4]
+  const s = 50
+  const g = 7
+  // arrows on the left, WASD on the right, both as an inverted T
+  const groups: Array<{ cx: number; keys: [string, string, string, string] }> = [
+    { cx: left + w * 0.3, keys: ['\u2191', '\u2190', '\u2193', '\u2192'] },
+    { cx: left + w * 0.7, keys: ['W', 'A', 'S', 'D'] },
+  ]
+  const ky = top + 50
+  for (const grp of groups) {
+    const [u, l, d, r] = grp.keys
+    keycap(ctx, grp.cx - s / 2, ky, s, u, on === 'up')
+    keycap(ctx, grp.cx - s / 2 - s - g, ky + s + g, s, l, on === 'left')
+    keycap(ctx, grp.cx - s / 2, ky + s + g, s, d, on === 'down')
+    keycap(ctx, grp.cx + s / 2 + g, ky + s + g, s, r, on === 'right')
+  }
+  label(ctx, 'OR', left + w / 2, ky + s + g / 2, 24, GLOW)
+  label(ctx, 'eat all the RAM \u00B7 avoid the resistance', x + size / 2, top + h - 20, 22, GLOW)
 }
 
 function drawCard(ctx: CanvasRenderingContext2D, frame: Frame, card: Card, th: Theme, bx: number, by: number, size: number, backdrop = true): void {
