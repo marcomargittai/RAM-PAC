@@ -189,6 +189,23 @@ function prices(ctx: CanvasRenderingContext2D, game: Game, x: number, y: number,
   })
   const sold = Math.min(97, Math.round(taken(game) / 7))
   label(ctx, `HOMES THAT STILL BUY A PC: ${100 - sold}%`, x, y + 56 + 3 * 44, 22, sold > 40 ? DOWN : GLOW, 'left')
+  realRises(ctx, x, y + 56 + 3 * 44 + 30, w, game.time)
+}
+
+// One real price rise at a time, turning over every few seconds.
+function realRises(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, time: number): void {
+  const n = Math.floor(time / 3.5) % REAL_RISES.length
+  const r = REAL_RISES[n]!
+  const fade = Math.min(1, ((time % 3.5) / 0.35))
+  fill(ctx, 'rgba(255, 46, 69, 0.1)', x, y, w, 96)
+  fill(ctx, DOWN, x, y, 3, 96)
+  label(ctx, 'REAL PRICE RISES \u00B7 BLAMED ON MEMORY', x + 12, y + 14, 15, 'rgba(255, 140, 150, 0.85)', 'left')
+  ctx.globalAlpha = fade
+  label(ctx, r.item, x + 12, y + 40, 22, ICE, 'left')
+  const rise = `${r.from} \u2192 ${r.to}`
+  label(ctx, rise, x + 12, y + 66, 26, DOWN, 'left')
+  label(ctx, r.source, x + w - 8, y + 84, 14, 'rgba(150, 214, 255, 0.6)', 'right')
+  ctx.globalAlpha = 1
 }
 
 // What is in the news while you play. Real headlines for the eras that
@@ -202,10 +219,34 @@ const FUTURE_NEWS = [
   'Cloud subscriptions hit $3 a month. Everything else runs on them',
 ]
 
+// Real 2026 headlines about products getting dearer because of the memory
+// shortage, quoted as published (outlet: headline).
+const PRODUCT_NEWS = [
+  'REUTERS: Sony to hike PlayStation 5 prices again as memory chip costs surge',
+  'ENGADGET: Valve jacks up Steam Deck prices by as much as $300',
+  'GAME DEVELOPER: Microsoft raises price of Xbox consoles once again, sunsets 2TB model',
+  'CGMAGAZINE: The Switch 2 Is Getting More Expensive This September as Memory Costs Keep Climbing',
+  'PCGAMESN: Nvidia RTX 50 graphics cards see drastic rises above retail price, as AI memory boom continues',
+  'THE NEXT WEB: Samsung lifts prices across most of the Galaxy S26 range by $100',
+]
+
+// The same rises as numbers, for the card in the side panel. Only figures the
+// sources state outright.
+const REAL_RISES: Array<{ item: string; from: string; to: string; source: string }> = [
+  { item: 'PLAYSTATION 5', from: '$549.99', to: '$649.99', source: 'Reuters, Mar 2026' },
+  { item: 'STEAM DECK 1TB', from: '$649', to: '$949', source: 'Engadget, May 2026' },
+  { item: 'XBOX SERIES X 1TB', from: '+$150', to: '$749.99', source: 'Game Developer, Jun 2026' },
+  { item: 'NINTENDO SWITCH 2', from: '$449.99', to: '$499.99', source: 'CGMagazine, May 2026' },
+  { item: 'RTX 5070 GRAPHICS CARD', from: '$659.99', to: '$899.99', source: 'PCGamesN, Aug 2026' },
+  { item: 'FRAMEWORK 64 GB RAM', from: '$849', to: '$1,600', source: 'Notebookcheck, Jul 2026' },
+  { item: 'SAMSUNG 990 PRO SSD 2TB', from: '$309', to: '$640', source: 'Engadget, Jul 2026' },
+  { item: 'GALAXY S26', from: '+$100', to: '$1,000', source: 'The Next Web, Oct 2026' },
+]
+
 function newsFor(level: number): string[] {
   const real = (beats: Array<typeof PROLOGUE>) => beats.flatMap((b) => b.headlines.map((h) => `${h.outlet.toUpperCase()}: ${h.text}`))
   if (level <= 0) return real([PROLOGUE, INTERLUDE_1])
-  if (level === 1) return real([INTERLUDE_1, INTERLUDE_2])
+  if (level === 1) return [...real([INTERLUDE_1, INTERLUDE_2]), ...PRODUCT_NEWS]
   return FUTURE_NEWS.map((t) => `BREAKING: ${t}`)
 }
 
@@ -277,7 +318,7 @@ export function drawMarket(ctx: CanvasRenderingContext2D, game: Game, x: number,
   const cy = y + 112 * k
   // a tall panel also lists what everybody else pays
   const table = h > 500
-  const tableH = table ? 250 : 0
+  const tableH = table ? 350 : 0
   // on a phone there may be no room for the chart; the price and the tape stay
   const room = h - (cy - y) - tapeH - footH - tableH - 10 * k
   const chH = room >= 50 ? room : 0
